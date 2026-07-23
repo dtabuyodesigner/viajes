@@ -2,8 +2,8 @@
    Con red: trae siempre la versión más reciente y la guarda.
    Sin red: sirve lo último que se guardó en el móvil. */
 
-const CACHE = "eslovenia26-v4";
-const ARCHIVOS = ["./", "./index.html"];
+const CACHE = "eslovenia26-v5";
+const ARCHIVOS = ["./", "./index.html", "./fotos/bled-osojnica.jpg"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
