@@ -170,6 +170,15 @@ ul.plain li span{color:var(--paper-dim)}
   font-family:var(--sans);font-size:15px}
 .buscador::placeholder{color:var(--paper-dim)}
 .vacio{color:var(--paper-dim);font-size:14px;padding:18px 2px}
+.tel{border-top:1px solid var(--line);padding:15px 0}
+.tel:first-of-type{border-top:0;padding-top:4px}
+.tel h4{margin:0;font-size:15.5px;font-weight:600;letter-spacing:-.01em}
+.tel .sub{margin:3px 0 0;font-size:13px;color:var(--paper-dim);line-height:1.45}
+.tel .num{font-family:var(--mono);font-size:15px;color:var(--soca);margin:8px 0 0;letter-spacing:.04em}
+.tel.sos h4{color:var(--panel-red)}
+.tel.sos .num{color:var(--panel-red);font-size:22px;font-weight:700}
+.btn.wa{border-color:#25D366;color:#25D366}
+.btn.sos{background:var(--panel-red);border-color:var(--panel-red);color:#fff}
 .note{font-size:13.5px;color:var(--paper-dim);line-height:1.5;margin:10px 0 0}
 </style>
 </head>
@@ -247,19 +256,14 @@ const VIAJE = {
   ],
 
   telefonos: [
-    ["Last Minute Rent (el coche)","+39 342 013 8930"],
-    ["Coche de sustitución (Sincera)","+39 06 9763 9380"],
-    ["Sincera · línea Reino Unido","+44 2045 774280"]
-  ],
-
-  alojamientos: [
-    { fechas:"18 jul",      nombre:"Hotel Mary",                  zona:"Mestre · Venecia",        tel:"" },
-    { fechas:"19 jul",      nombre:"Brne Rooms",                  zona:"Postojna",                tel:"" },
-    { fechas:"20 jul",      nombre:"Synergy Deluxe Apartments",   zona:"Sečovlje · Dragonja",     tel:"" },
-    { fechas:"21 jul",      nombre:"Alojamiento en Tolmin",       zona:"Tolmin",                  tel:"" },
-    { fechas:"22–24 jul",   nombre:"PONI NAKLO · Sobe Marinšek",  zona:"Naklo",                   tel:"" },
-    { fechas:"25–27 jul",   nombre:"Guest house Pr Ambružarju",   zona:"Cerklje na Gorenjskem",   tel:"" },
-    { fechas:"28 jul",      nombre:"LH Hotel Sirio Venice",       zona:"Mestre · Venecia",        tel:"" }
+    { q:"Last Minute Rent", sub:"El proveedor del coche. Averías, retrasos y dudas en la entrega",
+      n:"+39 342 013 8930", wa:true },
+    { q:"Sincera · coche de sustitución", sub:"Si el coche se queda tirado y necesitáis otro",
+      n:"+39 06 9763 9380", wa:false },
+    { q:"Sincera · línea Reino Unido", sub:"Alternativa si la línea italiana no responde",
+      n:"+44 2045 774280", wa:false },
+    { q:"Emergencias", sub:"Válido en Eslovenia y en Italia. Bomberos, ambulancia y rescate en montaña",
+      n:"112", wa:false, urgente:true }
   ],
 
   dias: [
@@ -865,8 +869,18 @@ function vistaReservas(){
       <div class="btns"><button class="btn" data-copy="${esc(s.poliza)}">Copiar póliza</button></div>
     </div>`).join("");
 
-  const tels = VIAJE.telefonos.map(([k,v]) =>
-    `<div class="row"><span class="k">${esc(k)}</span><span class="v mono"><a href="tel:${esc(v.replace(/\s/g,""))}">${esc(v)}</a></span></div>`).join("");
+  const limpio = n => n.replace(/[^\d+]/g, "");
+  const tels = VIAJE.telefonos.map(t => `
+    <div class="tel${t.urgente ? " sos" : ""}">
+      <h4>${esc(t.q)}</h4>
+      <p class="sub">${esc(t.sub)}</p>
+      <p class="num">${esc(t.n)}</p>
+      <div class="btns">
+        <a class="btn ${t.urgente ? "sos" : "solid"}" href="tel:${esc(limpio(t.n))}">Llamar</a>
+        ${t.wa ? `<a class="btn wa" href="https://wa.me/${esc(limpio(t.n).replace("+",""))}" target="_blank" rel="noopener">WhatsApp</a>` : ""}
+        <button class="btn" data-copy="${esc(t.n)}">Copiar</button>
+      </div>
+    </div>`).join("");
 
   const camas = VIAJE.alojamientos.map(x => `
     <div class="card">
@@ -900,10 +914,9 @@ function vistaReservas(){
     </div>
 
     <div class="sec"><span class="label">Discover Cars · Sincera</span><h2>Seguros del coche</h2></div>${seguros}
-    <div class="card">
-      <span class="label">Si algo va mal</span>
-      <h3>Teléfonos de asistencia</h3>${tels}
-    </div>
+    <div class="sec"><span class="label">Si algo va mal</span><h2>Teléfonos</h2></div>
+    <div class="card">${tels}</div>
+    <p class="note">WhatsApp solo en el móvil del proveedor del coche. Los dos de Sincera son fijos de oficina: ahí hay que llamar.</p>
     <p class="note">${esc(c.franquicia)}. Si hay daños los pagas primero allí y luego reclamas a Sincera con el contrato firmado, el informe de estado, la factura y fotos.</p>
 
     <div class="sec"><span class="label">Once noches</span><h2>Alojamientos</h2></div>${camas}
