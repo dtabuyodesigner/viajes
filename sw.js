@@ -1,8 +1,8 @@
 /* Eslovenia 2026 — funcionamiento sin cobertura.
-   Guarda la app en el móvil la primera vez que se abre con datos
-   y a partir de ahí la sirve desde el propio teléfono. */
+   Con red: trae siempre la versión más reciente y la guarda.
+   Sin red: sirve lo último que se guardó en el móvil. */
 
-const CACHE = "eslovenia26-v3";
+const CACHE = "eslovenia26-v4";
 const ARCHIVOS = ["./", "./index.html"];
 
 self.addEventListener("install", e => {
@@ -23,15 +23,14 @@ self.addEventListener("fetch", e => {
   if (url.origin !== location.origin) return;   // Maps y la web de Wizz van siempre a la red
 
   e.respondWith(
-    caches.match(e.request).then(guardado => {
-      const red = fetch(e.request).then(res => {
+    fetch(e.request)
+      .then(res => {
         if (res && res.ok) {
           const copia = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, copia));
         }
         return res;
-      }).catch(() => guardado);
-      return guardado || red;                    // primero lo guardado: abre al instante
-    })
+      })
+      .catch(() => caches.match(e.request).then(g => g || caches.match("./index.html")))
   );
 });
