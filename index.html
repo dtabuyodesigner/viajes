@@ -121,7 +121,7 @@ main{padding:0 20px 32px;max-width:640px;margin:0 auto}
 /* ---------- Nav inferior ---------- */
 nav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;
-  display:grid;grid-template-columns:repeat(4,1fr);
+  display:grid;grid-template-columns:repeat(5,1fr);
   background:rgba(14,42,40,.94);backdrop-filter:blur(14px);
   border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom);
@@ -131,7 +131,7 @@ nav button{
   color:var(--paper-dim);font-family:var(--mono);
   font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
 }
-nav button svg{display:block;margin:0 auto 5px;width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav button svg{display:block;margin:0 auto 5px;width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 nav button.on{color:var(--soca)}
 .sec{margin:26px 0 10px}
 .sec .label{display:block;margin-bottom:2px}
@@ -141,6 +141,35 @@ ul.plain li{padding:8px 0;border-top:1px solid var(--line);font-size:15px}
 ul.plain li:first-child{border-top:0}
 ul.plain li span{color:var(--paper-dim)}
 .art{display:block;width:100%;height:120px;border-radius:14px;margin:2px 0 18px;background:#0A1F1D;border:1px solid var(--line)}
+.zona{margin:24px 0 0}
+.zona-cab{display:flex;align-items:baseline;gap:10px;margin-bottom:2px}
+.zona h2{margin:0;font-size:19px;letter-spacing:-.02em}
+.zona .cuenta{font-family:var(--mono);font-size:11px;color:var(--soca-dim)}
+.zona .intro{font-size:13.5px;color:var(--paper-dim);margin:4px 0 12px;line-height:1.5}
+.lugar{border-top:1px solid var(--line)}
+.lugar:first-of-type{border-top:0}
+.lugar-cab{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;
+  background:none;border:0;padding:14px 2px;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.lugar-cab .nom{font-size:15.5px;font-weight:600;letter-spacing:-.01em}
+.lugar-cab .dia{display:block;font-family:var(--mono);font-size:11px;color:var(--panel);
+  letter-spacing:.1em;text-transform:uppercase;margin-top:3px}
+.lugar-cab .mas{flex:0 0 auto;color:var(--soca);font-size:19px;line-height:1;transition:transform .2s}
+.lugar.abierto .mas{transform:rotate(45deg)}
+.lugar-cuerpo{display:none;padding:0 2px 18px}
+.lugar.abierto .lugar-cuerpo{display:block}
+.lugar-cuerpo p{margin:0 0 12px;font-size:14.5px;line-height:1.55;color:#CBDAD5}
+.datos{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.dato{background:rgba(79,195,184,.09);border:1px solid var(--line);border-radius:10px;padding:7px 11px}
+.dato b{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--soca-dim);font-weight:400;margin-bottom:2px}
+.dato span{font-size:13.5px}
+.lnk{background:none;border:0;padding:0;font:inherit;color:var(--soca);cursor:pointer;
+  font-size:13.5px;text-decoration:underline;text-underline-offset:3px}
+.buscador{width:100%;padding:12px 15px;margin:4px 0 6px;border-radius:12px;
+  border:1px solid var(--line);background:var(--karst-2);color:var(--paper);
+  font-family:var(--sans);font-size:15px}
+.buscador::placeholder{color:var(--paper-dim)}
+.vacio{color:var(--paper-dim);font-size:14px;padding:18px 2px}
 .note{font-size:13.5px;color:var(--paper-dim);line-height:1.5;margin:10px 0 0}
 </style>
 </head>
@@ -156,6 +185,7 @@ ul.plain li span{color:var(--paper-dim)}
   <section class="view on" id="v-hoy"></section>
   <section class="view" id="v-dias"></section>
   <section class="view" id="v-reservas"></section>
+  <section class="view" id="v-guia"></section>
   <section class="view" id="v-info"></section>
 </main>
 
@@ -163,6 +193,7 @@ ul.plain li span{color:var(--paper-dim)}
   <button class="on" data-v="hoy"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>Hoy</button>
   <button data-v="dias"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Días</button>
   <button data-v="reservas"><svg viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 0 0 4 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 0 0-4z"/><path d="M14 6v12"/></svg>Reservas</button>
+  <button data-v="guia"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M9 8h7M9 12h5"/></svg>Guía</button>
   <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
 </nav>
 
@@ -240,8 +271,8 @@ const VIAJE = {
     { f:"2026-07-19", t:"Cuevas y castillos", arte:"cueva", base:"Brne Rooms · Postojna", paradas:[
       { h:"15:00", txt:"Recogida del coche en Marco Polo", n:"Puerta 4 de llegadas → P5 → túnel blanco", key:true },
       { txt:"Cruce de frontera a Eslovenia" },
-      { txt:"Cuevas de Škocjan", n:"Patrimonio de la Humanidad · visita guiada con horarios fijos", mapa:"Škocjan Caves Slovenia" },
-      { txt:"Castillo de Predjama", n:"Incrustado en la pared de roca", mapa:"Predjama Castle" }
+      { txt:"Cuevas de Škocjan", n:"Patrimonio de la Humanidad · visita guiada con horarios fijos", mapa:"Škocjan Caves Slovenia", g:"skocjan" },
+      { txt:"Castillo de Predjama", n:"Incrustado en la pared de roca", mapa:"Predjama Castle", g:"predjama" }
     ]},
     { f:"2026-07-20", t:"La costa eslovena", arte:"costa", base:"Synergy Deluxe Apartments · Sečovlje", paradas:[
       { txt:"Costa adriática eslovena" },
@@ -250,48 +281,48 @@ const VIAJE = {
     ]},
     { f:"2026-07-21", t:"Valle del Soča", arte:"rio", base:"Tolmin", paradas:[
       { txt:"Subida desde la costa por el valle del Soča" },
-      { txt:"Kanal ob Soči", n:"Parada en el puente sobre el río", mapa:"Kanal ob Soci" },
-      { txt:"Gargantas de Tolmin", n:"Ruta desde el aparcamiento P2", mapa:"Tolmin Gorges P2", key:true },
-      { txt:"Cascada Kozjak · Kobarid", n:"Unos 20 min a pie desde el aparcamiento", mapa:"Slap Kozjak Kobarid" }
+      { txt:"Kanal ob Soči", n:"Parada en el puente sobre el río", mapa:"Kanal ob Soci", g:"soca" },
+      { txt:"Gargantas de Tolmin", n:"Ruta desde el aparcamiento P2", mapa:"Tolmin Gorges P2", g:"tolmin", key:true },
+      { txt:"Cascada Kozjak · Kobarid", n:"Unos 20 min a pie desde el aparcamiento", mapa:"Slap Kozjak Kobarid", g:"kozjak" }
     ]},
     { f:"2026-07-22", t:"El gran paso alpino", arte:"paso", base:"PONI NAKLO · Naklo", paradas:[
-      { h:"Mañana", txt:"Paso de Vršič", n:"50 curvas de herradura · carretera lenta, calcula tiempo de sobra", mapa:"Vrsic Pass", key:true },
-      { h:"Tarde", txt:"Lago Jasna", n:"Parada junto a Kranjska Gora", mapa:"Lake Jasna Kranjska Gora" },
-      { txt:"Reserva natural de Zelenci", n:"Pasarelas sobre el manantial esmeralda", mapa:"Zelenci Nature Reserve" },
+      { h:"Mañana", txt:"Paso de Vršič", n:"50 curvas de herradura · carretera lenta, calcula tiempo de sobra", mapa:"Vrsic Pass", g:"vrsic", key:true },
+      { h:"Tarde", txt:"Lago Jasna", n:"Parada junto a Kranjska Gora", mapa:"Lake Jasna Kranjska Gora", g:"jasna" },
+      { txt:"Reserva natural de Zelenci", n:"Pasarelas sobre el manantial esmeralda", mapa:"Zelenci Nature Reserve", g:"zelenci" },
       { txt:"Check-in en PONI NAKLO", n:"Sobe Marinšek · Naklo" }
     ]},
     { f:"2026-07-23", t:"El icónico lago Bled", arte:"bled", base:"PONI NAKLO · Naklo", paradas:[
-      { h:"Mañana", txt:"Vuelta al lago Bled", n:"Subida al mirador de Ojstrica: 20 min de rampa y la foto de la isla", mapa:"Ojstrica viewpoint Bled", key:true },
+      { h:"Mañana", txt:"Vuelta al lago Bled", n:"Subida al mirador de Ojstrica: 20 min de rampa y la foto de la isla", mapa:"Ojstrica viewpoint Bled", g:"bled", key:true },
       { txt:"Barca tradicional a la isla", n:"La pletna, a remo. 99 escalones hasta la iglesia", mapa:"Bled Island" },
-      { h:"Tarde", txt:"Garganta de Vintgar", n:"Pasarelas de madera sobre el río. Entrada con hora asignada", mapa:"Vintgar Gorge", key:true },
+      { h:"Tarde", txt:"Garganta de Vintgar", n:"Pasarelas de madera sobre el río. Entrada con hora asignada", mapa:"Vintgar Gorge", g:"vintgar", key:true },
       { txt:"Noche en Naklo" }
     ]},
     { f:"2026-07-24", t:"El salvaje lago Bohinj", arte:"bohinj", base:"PONI NAKLO · Naklo", paradas:[
-      { h:"Mañana", txt:"Día en el lago Bohinj", n:"Caminata, kayak o la cascada Savica", mapa:"Lake Bohinj", key:true },
-      { txt:"Cascada Savica", n:"Unos 20 min de subida con escalones", mapa:"Slap Savica" },
-      { h:"Tarde", txt:"Teleférico de Vogel", n:"Vistas del Parque Nacional de Triglav desde arriba", mapa:"Vogel cable car", key:true },
+      { h:"Mañana", txt:"Día en el lago Bohinj", n:"Caminata, kayak o la cascada Savica", mapa:"Lake Bohinj", g:"bohinj", key:true },
+      { txt:"Cascada Savica", n:"Unos 20 min de subida con escalones", mapa:"Slap Savica", g:"savica" },
+      { h:"Tarde", txt:"Teleférico de Vogel", n:"Vistas del Parque Nacional de Triglav desde arriba", mapa:"Vogel cable car", g:"vogel", key:true },
       { txt:"Noche en Naklo" }
     ]},
     { f:"2026-07-25", t:"Peričnik y la capital", arte:"cascada", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
-      { h:"Mañana", txt:"Cascada de Peričnik", n:"52 m de caída. Se camina por detrás de la cortina de agua: vais a acabar mojados", mapa:"Pericnik Waterfall", key:true },
+      { h:"Mañana", txt:"Cascada de Peričnik", n:"52 m de caída. Se camina por detrás de la cortina de agua: vais a acabar mojados", mapa:"Pericnik Waterfall", g:"pericnik", key:true },
       { txt:"Bajada a Liubliana", n:"Aparcad fuera del centro, es peatonal" },
-      { h:"Comida", txt:"Centro histórico", n:"Puente de los Dragones y orillas del Ljubljanica", mapa:"Zmajski most Ljubljana", key:true },
-      { h:"Tarde", txt:"Castillo de Liubliana", n:"Funicular hasta arriba. Desde la torre se ve un tercio del país", mapa:"Ljubljana Castle", key:true },
+      { h:"Comida", txt:"Centro histórico", n:"Puente de los Dragones y orillas del Ljubljanica", mapa:"Zmajski most Ljubljana", g:"liubliana", key:true },
+      { h:"Tarde", txt:"Castillo de Liubliana", n:"Funicular hasta arriba. Desde la torre se ve un tercio del país", mapa:"Ljubljana Castle", g:"castillo-lj", key:true },
       { h:"Noche", txt:"Cena en las terrazas del río", n:"Y después a Cerklje, media hora de coche" },
       { txt:"Check-in en Pr Ambružarju", n:"Cerklje na Gorenjskem" }
     ]},
     { f:"2026-07-26", t:"Valle de Logar y cascada Rinka", arte:"valle", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
-      { h:"Mañana", txt:"Valle de Logar", n:"Hora y cuarto desde Cerklje. Valle glaciar en U, de los más bonitos del país", mapa:"Logar Valley Slovenia", key:true },
+      { h:"Mañana", txt:"Valle de Logar", n:"Hora y cuarto desde Cerklje. Valle glaciar en U, de los más bonitos del país", mapa:"Logar Valley Slovenia", g:"logar", key:true },
       { txt:"Entrada al valle", n:"Se paga por vehículo. La carretera llega hasta el fondo" },
-      { h:"Mediodía", txt:"Cascada Rinka", n:"90 m. Mirador a 15 min a pie; hasta el pie, media hora larga", mapa:"Rinka Waterfall", key:true },
+      { h:"Mediodía", txt:"Cascada Rinka", n:"90 m. Mirador a 15 min a pie; hasta el pie, media hora larga", mapa:"Rinka Waterfall", g:"rinka", key:true },
       { txt:"Picnic en el valle", n:"Comprad en el Mercator o el Hofer de camino: sale a mitad de precio" },
       { h:"Tarde", txt:"Vuelta tranquila a Cerklje" }
     ]},
     { f:"2026-07-27", t:"Velika Planina y despedida", arte:"meseta", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
-      { h:"Temprano", txt:"Teleférico a Velika Planina", n:"Lunes por la mañana hay bastante menos cola que en domingo", mapa:"Velika Planina", key:true },
+      { h:"Temprano", txt:"Teleférico a Velika Planina", n:"Lunes por la mañana hay bastante menos cola que en domingo", mapa:"Velika Planina", g:"velika", key:true },
       { txt:"El poblado de pastores", n:"El más grande de Europa. En julio están arriba con las vacas", key:true },
       { txt:"Comer en la meseta", n:"Comprobad la hora del último descenso antes de subir" },
-      { h:"Tarde", txt:"Škofja Loka si quedan ganas", n:"Pueblo medieval, 40 min. Opcional", mapa:"Skofja Loka" },
+      { h:"Tarde", txt:"Škofja Loka si quedan ganas", n:"Pueblo medieval, 40 min. Opcional", mapa:"Skofja Loka", g:"skofja" },
       { txt:"Maletas y repostar", n:"El gasóleo es más barato aquí que en Italia" },
       { txt:"Noche en Cerklje" }
     ]},
@@ -317,11 +348,12 @@ const VIAJE = {
       ["Emb. España en Liubliana","+386 1 620 01 30"]
     ],
     conducir:[
-      ["Viñeta","Obligatoria en autopistas eslovenas. Comprueba que el coche de alquiler la lleve o compra la e-vinjeta"],
+      ["Viñeta","Obligatoria en autopistas eslovenas. Semanal 16 €, mensual 32 €. En gasolinera o por la web oficial, eligiendo la fecha de inicio"],
+      ["Luces","Cruce encendidas también de día. Es obligatorio"],
+      ["Gasolineras","Cada 30 km más o menos. Precio parecido al de España"],
       ["Italia","Peaje en cabina, se paga al salir"],
-      ["Luces","Cruce encendidas también de día en Eslovenia"],
       ["Alcohol","0,5 g/l · 0,0 para noveles"],
-      ["Gasolina","95 = bencin · gasóleo = dizel"]
+      ["Combustible","95 = bencin · gasóleo = dizel"]
     ],
     frases:[
       ["Dober dan","Buenos días"],
@@ -337,14 +369,153 @@ const VIAJE = {
     ],
     practico:[
       ["Moneda","Euro en Eslovenia e Italia"],
+      ["Precios","Punto medio: ni Suiza ni el este barato. Parecidos a España, más altos en Bled"],
+      ["Comer","Menús del día de 10 a 12 € fuera de las plazas principales. Raciones enormes"],
+      ["Entradas","De 15 a 30 € por persona en cuevas y castillos grandes"],
+      ["Truco","Compra en Mercator o Hofer y haz picnic frente a un lago"],
+      ["Tasa turística","De 2 a 3 € por persona y noche, aparte del alojamiento"],
       ["Enchufes","Tipo C/F, 230 V — igual que en España"],
       ["Agua","Del grifo potable en todo el país"],
       ["Propina","No obligatoria, se redondea o ~10%"],
-      ["Horarios","Las cocinas cierran pronto fuera de las ciudades"],
       ["Montaña","El tiempo cambia rápido: chubasquero siempre en la mochila"]
     ]
   }
 };
+
+
+/* =========================================================
+   GUÍA DE LUGARES — información recopilada del viaje
+   ========================================================= */
+const GUIA = [
+  { zona:"Alpes Julianos", arte:"bled", nota:"La postal eslovena: picos, lagos glaciares y el parque nacional más salvaje del país.", lugares:[
+    { id:"bled", n:"Lago Bled", d:"2026-07-23",
+      t:"El más conocido y el más turístico, y aun así merece la pena. Una isla en mitad del agua con una iglesia encima, y montañas de fondo. La foto clásica sale del mirador de Ojstrica; a la isla se va en pletna, la barca de remo tradicional, y hay 99 escalones hasta arriba.",
+      k:[["Mirador Ojstrica","20 min de subida"],["Isla","99 escalones"]], m:"Lake Bled Slovenia" },
+    { id:"castillo-bled", n:"Castillo de Bled",
+      t:"Lo mejor no es el interior sino lo que se ve desde él. Dentro se puede comer y catar vinos eslovenos.",
+      m:"Bled Castle" },
+    { id:"vintgar", n:"Garganta de Vintgar", d:"2026-07-23",
+      t:"Pasarelas y puentes de madera clavados en la roca sobre el río Radovna, entre paredes muy estrechas. De los sitios más bonitos del país. La entrada lleva hora asignada, así que conviene reservar.",
+      k:[["Río","Radovna"],["Entrada","con hora asignada"]], m:"Vintgar Gorge" },
+    { id:"bohinj", n:"Lago Bohinj", d:"2026-07-24",
+      t:"El lago más grande de Eslovenia y mucho más silvestre que Bled. En julio te puedes bañar. Desde aquí salen la cascada Savica y las rutas a los montes de alrededor.",
+      k:[["Tamaño","el mayor del país"],["Baño","sí, en verano"]], m:"Lake Bohinj" },
+    { id:"savica", n:"Cascada Savica", d:"2026-07-24",
+      t:"Una de las más pintorescas: la corriente se parte en dos ramas dentro de un subterráneo oculto antes de salir a la luz.",
+      m:"Slap Savica" },
+    { id:"pericnik", n:"Cascada de Peričnik", d:"2026-07-25",
+      t:"De las más altas e icónicas del país. Tiene dos saltos y se puede caminar por detrás de la cortina de agua del primero, que es lo que la hace especial. Vais a salir mojados.",
+      k:[["Salto principal","52 m"],["Segundo salto","16 m"]], m:"Pericnik Waterfall" },
+    { id:"vogel", n:"Teleférico de Vogel", d:"2026-07-24",
+      t:"Sube desde Bohinj hasta un balcón sobre el Parque Nacional de Triglav. Es la forma rápida de ver la alta montaña sin caminar seis horas.",
+      m:"Vogel cable car" },
+    { id:"triglav", n:"Lagos de Triglav",
+      t:"También llamado el Valle de los Siete Lagos. Hay siete permanentes y algunos intermitentes, así que el paisaje cambia según cuándo vayas. Es excursión de día completo.",
+      k:[["Lagos","7 permanentes"]], m:"Triglav Lakes Valley" },
+    { id:"mostnica", n:"Garganta de Mostnica",
+      t:"Atraviesa un bosque precioso. Es conocida por una roca a la que llaman el Elefante por su parecido. Se puede hacer circular recorriendo los dos lados del río.",
+      m:"Mostnica Gorge" }
+  ]},
+
+  { zona:"Valle del Soča", arte:"rio", nota:"La zona más salvaje y aventurera: el río más esmeralda de Europa, gargantas imposibles y cascadas escondidas.", lugares:[
+    { id:"soca", n:"Garganta del río Soča", d:"2026-07-21",
+      t:"El color del agua es lo primero que te descoloca: un turquesa que no parece real. Se puede recorrer a pie, hacer rafting y darse un baño, aunque el agua está helada.",
+      m:"Soca Gorge Slovenia" },
+    { id:"tolmin", n:"Garganta de Tolmin", d:"2026-07-21",
+      t:"La ruta pasa bajo un puente natural formado por una roca que cayó y se quedó encajada entre las paredes del desfiladero. Debajo del llamado puente del Diablo hay un manantial termal metido en una cueva.",
+      k:[["Aparcamiento","P2"],["Curiosidad","manantial termal en cueva"]], m:"Tolmin Gorges" },
+    { id:"kozjak", n:"Cascada Kozjak", d:"2026-07-21",
+      t:"Cae dentro de un anfiteatro de roca y forma una balsa turquesa que parece de película de fantasía. Es de las más fotogénicas del país.",
+      m:"Slap Kozjak Kobarid" },
+    { id:"boka", n:"Cascada Boka",
+      t:"La cascada más alta de Eslovenia. No te puedes acercar a ella, pero se ve desde la carretera y aun así impresiona.",
+      k:[["Récord","la más alta del país"]], m:"Boka Waterfall" },
+    { id:"vrsic", n:"Paso de Vršič", d:"2026-07-22",
+      t:"El puerto de montaña más alto del país. Cincuenta curvas de herradura, muchas de ellas adoquinadas, cruzando el corazón de los Alpes Julianos.",
+      k:[["Curvas","50 de herradura"]], m:"Vrsic Pass" },
+    { id:"jasna", n:"Lago Jasna", d:"2026-07-22",
+      t:"Muy cerca del paso, junto a Kranjska Gora. Son dos lagos artificiales conectados que se recorren en un rato, con los Alpes de fondo.",
+      m:"Lake Jasna Kranjska Gora" },
+    { id:"zelenci", n:"Reserva natural de Zelenci", d:"2026-07-22",
+      t:"Pasarelas de madera sobre un manantial de un verde esmeralda intenso. Es el nacimiento del río Sava Dolinka.",
+      m:"Zelenci Nature Reserve" }
+  ]},
+
+  { zona:"Cuevas y sur", arte:"cueva", nota:"Hay unas 14.000 cuevas bajo el país, como un queso gruyère. Solo 22 se pueden visitar.", lugares:[
+    { id:"skocjan", n:"Cuevas de Škocjan", d:"2026-07-19",
+      t:"Patrimonio de la Humanidad. Se descubrieron en 1885 mientras buscaban de dónde sacar agua potable para Trieste, y desde entonces se han ido explorando más galerías. Junto con Postojna son las dos imprescindibles, y se complementan porque son muy distintas.",
+      k:[["Descubiertas","1885"],["UNESCO","sí"]], m:"Skocjan Caves" },
+    { id:"postojna", n:"Cuevas de Postojna",
+      t:"Las más largas y visitadas de Europa, y de las mayores del mundo. Miden unos 24 km, de los que se recorren cerca de 5, parte en un tren subterráneo.",
+      k:[["Longitud","24 km"],["Recorrido","unos 5 km"]], m:"Postojna Cave" },
+    { id:"predjama", n:"Castillo de Predjama", d:"2026-07-19",
+      t:"Ochocientos años encajado dentro de la boca de una cueva. Naturaleza y mano humana hicieron una fortaleza imposible de tomar, con su historia y su leyenda. La cueva de debajo es prescindible si ya ves Postojna y Škocjan.",
+      k:[["Antigüedad","unos 800 años"]], m:"Predjama Castle" },
+    { id:"krizna", n:"Krizna Cave y Planina Cave",
+      t:"Más pequeñas y menos conocidas, pero con lagos subterráneos navegables. Otra forma de ver el mundo de debajo.",
+      m:"Krizna Cave Slovenia" },
+    { id:"cerknica", n:"Lago Cerknica",
+      t:"Un lago que desaparece en verano y vuelve a aparecer. Es de los lagos intermitentes más grandes de Europa. Se recorre a pie, en bici o en canoa, y tiene centro de visitantes.",
+      k:[["Rareza","intermitente"]], m:"Lake Cerknica" },
+    { id:"sneznik", n:"Castillo de Sneznik",
+      t:"Conserva los interiores originales y está en un paraje con árboles y un estanque con patos donde se refleja el edificio. Prescindible si vas justo de tiempo.",
+      m:"Sneznik Castle" }
+  ]},
+
+  { zona:"Liubliana y centro", arte:"medieval", nota:"El corazón verde de un país muy verde. Capital verde europea en 2016.", lugares:[
+    { id:"liubliana", n:"Liubliana", d:"2026-07-25",
+      t:"Ciudad pequeña y con mucho encanto, de centro histórico compacto y peatonal. Catedral, iglesia franciscana de la Anunciación, edificios barrocos de aire italiano y el Puente de los Dragones. Se recorre andando sin esfuerzo.",
+      k:[["Capital verde europea","2016"]], m:"Ljubljana old town" },
+    { id:"castillo-lj", n:"Castillo de Liubliana", d:"2026-07-25",
+      t:"Se sube en funicular. Desde la torre panorámica, a unos 400 m de altitud, dicen que se llega a ver un tercio del país.",
+      k:[["Altitud","unos 400 m"],["Acceso","funicular"]], m:"Ljubljana Castle" },
+    { id:"velika", n:"Velika Planina", d:"2026-07-27",
+      t:"El poblado de pastores más grande de Europa, en una meseta alpina a la que se sube en teleférico. Entre junio y septiembre los pastores están arriba y se oyen los cencerros de las vacas por toda la meseta. Parada obligatoria, según todo el mundo que ha ido.",
+      k:[["Temporada de pastores","junio a septiembre"],["Acceso","teleférico"]], m:"Velika Planina" },
+    { id:"skofja", n:"Škofja Loka", d:"2026-07-27",
+      t:"Villa medieval de las mejor conservadas de Eslovenia, a un rato corto de Liubliana.",
+      m:"Skofja Loka" },
+    { id:"tivoli", n:"Parque Tivoli",
+      t:"El gran parque de Liubliana, pegado al centro. Buen sitio para el último paseo tranquilo antes de irse.",
+      m:"Tivoli Park Ljubljana" }
+  ]},
+
+  { zona:"Este y Valle de Logar", arte:"valle", nota:"Paisajes alpinos brutales y tranquilidad absoluta, a un par de horas de la capital.", lugares:[
+    { id:"logar", n:"Valle de Logar", d:"2026-07-26",
+      t:"Valle glaciar en forma de U, uno de los tres valles de la zona. Es el destino perfecto si buscas montaña grande sin las colas de Bled. Se entra en coche pagando por vehículo y la carretera llega hasta el fondo.",
+      k:[["Desde Cerklje","hora y cuarto"],["Entrada","por vehículo"]], m:"Logar Valley Slovenia" },
+    { id:"rinka", n:"Cascada Rinka", d:"2026-07-26",
+      t:"Noventa metros de caída al fondo del Valle de Logar, de las más altas del país. Hay un mirador a quince minutos a pie y se puede seguir hasta el pie del salto.",
+      k:[["Altura","90 m"],["Mirador","15 min a pie"]], m:"Rinka Waterfall" },
+    { id:"celje", n:"Celje",
+      t:"La tercera ciudad del país, la de los Condes de Celje. Llena de historia: restos de calzada romana, torres medievales y un buen conjunto de plazas y edificios.",
+      m:"Celje Slovenia" },
+    { id:"castillo-celje", n:"Castillo de Celje",
+      t:"La fortaleza medieval más antigua de Eslovenia y el castillo más grande. Las vistas desde la muralla son de las mejores del país.",
+      k:[["Récord","el mayor castillo del país"]], m:"Celje Castle" },
+    { id:"ptuj", n:"Ptuj",
+      t:"La ciudad más antigua de Eslovenia, con historia que se remonta a la Edad de Piedra y muchos edificios protegidos. Su carnaval es el más importante del país: el desfile del Kurent es Patrimonio Cultural Inmaterial de la UNESCO.",
+      k:[["Carnaval","Kurenti · UNESCO"]], m:"Ptuj Slovenia" },
+    { id:"sumik", n:"Cascadas Veliki y Mali Šumik",
+      t:"Dos cascadas metidas entre bosques. La caminata es algo exigente, pero compensa.",
+      m:"Veliki Sumik waterfall" }
+  ]},
+
+  { zona:"Comer, beber y ver bichos", arte:"meseta", nota:"Lo que no sale en el itinerario pero acaba siendo la mitad del viaje.", lugares:[
+    { id:"vinos", n:"Eslovenia, tierra de vinos",
+      t:"Tres regiones vinícolas, cada una con sus cepas según suelo, clima y forma de elaborar. Se cultivan 52 variedades de vid. En los Decanter World Wine Awards de 2022 el país se llevó siete oros, setenta platas y ciento dieciocho bronces. Brda, junto a la frontera italiana, es la zona más fotogénica para catar.",
+      k:[["Regiones","3"],["Variedades","52"]], m:"Brda wine region Slovenia" },
+    { id:"osos", n:"Observación de osos",
+      t:"El 60% del país es bosque, y los más extensos están en el sur. Ahí viven entre 900 y 1.000 osos pardos, la mayor densidad del mundo, sobre todo en los bosques de Kočevje. Hay tours de observación desde escondites con ventana.",
+      k:[["Osos","900–1.000"],["Zona","Kočevje"]], m:"Kocevje Slovenia" },
+    { id:"comer", n:"Comer sin arruinarse",
+      t:"Los precios se parecen a los de España, un poco más bajos en algunas cosas y más altos en las zonas turísticas como Bled. Fuera de las plazas principales hay menús del día muy buenos por 10 o 12 euros, y las raciones son enormes. El truco que repite todo el mundo: comprar en Mercator o Hofer y hacer picnic frente a un lago.",
+      k:[["Menú del día","10–12 €"],["Entradas","15–30 € por persona"]] }
+  ]}
+];
+
+const LUGARES = {};
+GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }));
 
 /* =========================================================
    LÓGICA
@@ -374,6 +545,7 @@ function pintaParadas(dia){
       <p>${esc(p.txt)}</p>
       ${p.n ? `<small>${esc(p.n)}</small>` : ""}
       ${p.mapa ? `<small><a href="${mapa(p.mapa)}" target="_blank" rel="noopener">Abrir en Maps →</a></small>` : ""}
+      ${p.g ? `<small><button class="lnk" data-guia="${esc(p.g)}">Qué es y qué ver →</button></small>` : ""}
     </div>`).join("") + `</div>`;
 }
 
@@ -396,6 +568,7 @@ function vistaHoy(){
           <p class="note">${sig.paradas.map(p => esc(p.txt)).join(" · ")}</p>`;
   }
   document.getElementById("v-hoy").innerHTML = h;
+  activaEnlacesGuia();
 }
 
 /* ---- Vista DÍAS ---- */
@@ -416,6 +589,7 @@ function vistaDias(){
     const d = VIAJE.dias[+b.dataset.i], f = fecha(d.f);
     const det = document.getElementById("detalle");
     det.innerHTML = `<div class="sec"><span class="label">${esc(f.wd)} ${esc(f.txt)}</span><h2>${esc(d.t)}</h2></div>${ilustra(d.arte)}${pintaParadas(d)}`;
+    activaEnlacesGuia();
     det.scrollIntoView({behavior:"smooth", block:"start"});
   }));
 }
@@ -755,20 +929,102 @@ function vistaInfo(){
     bloque("Día a día", "Práctico", VIAJE.info.practico);
 }
 
+
+/* ---- Vista GUÍA ---- */
+let filtroGuia = "";
+
+function vistaGuia(){
+  const q = filtroGuia.trim().toLowerCase();
+  const coincide = l => !q || (l.n + " " + l.t + " " + l.zona).toLowerCase().includes(q);
+
+  let html = `<input class="buscador" id="q" type="search" placeholder="Buscar un sitio…" value="${esc(filtroGuia)}">`;
+  let total = 0;
+
+  GUIA.forEach(z => {
+    const ls = z.lugares.filter(coincide);
+    if (!ls.length) return;
+    total += ls.length;
+    html += `<div class="zona">
+      <div class="zona-cab"><h2>${esc(z.zona)}</h2><span class="cuenta">${ls.length}</span></div>
+      <p class="intro">${esc(z.nota)}</p>` + ilustra(z.arte) +
+      ls.map(l => ficha(l)).join("") + `</div>`;
+  });
+
+  if (!total) html += `<p class="vacio">Nada con ese nombre. Prueba con otra palabra.</p>`;
+  document.getElementById("v-guia").innerHTML = html;
+
+  const inp = document.getElementById("q");
+  inp.addEventListener("input", e => {
+    filtroGuia = e.target.value;
+    const pos = e.target.selectionStart;
+    vistaGuia();
+    const nuevo = document.getElementById("q");
+    nuevo.focus(); nuevo.setSelectionRange(pos, pos);
+  });
+  activaFichas();
+}
+
+function ficha(l){
+  const f = l.d ? fecha(l.d) : null;
+  return `<div class="lugar" id="l-${esc(l.id)}">
+    <button class="lugar-cab">
+      <span><span class="nom">${esc(l.n)}</span>
+      ${f ? `<span class="dia">${esc(f.wd)} ${esc(f.txt)} · en tu ruta</span>` : ""}</span>
+      <span class="mas">+</span>
+    </button>
+    <div class="lugar-cuerpo">
+      <p>${esc(l.t)}</p>
+      ${l.k ? `<div class="datos">${l.k.map(([a,b]) =>
+        `<div class="dato"><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join("")}</div>` : ""}
+      ${l.m ? `<div class="btns"><a class="btn" href="${mapa(l.m)}" target="_blank" rel="noopener">Ver en el mapa</a></div>` : ""}
+    </div>
+  </div>`;
+}
+
+function activaFichas(){
+  document.querySelectorAll(".lugar-cab").forEach(b => b.addEventListener("click", () => {
+    b.parentElement.classList.toggle("abierto");
+  }));
+}
+
+/* Abrir una ficha concreta desde el itinerario */
+function abrirGuia(id){
+  filtroGuia = "";
+  vePestana("guia");
+  const el = document.getElementById("l-" + id);
+  if (!el) return;
+  el.classList.add("abierto");
+  setTimeout(() => el.scrollIntoView({behavior:"smooth", block:"center"}), 60);
+}
+
+function activaEnlacesGuia(){
+  document.querySelectorAll("[data-guia]").forEach(b => {
+    if (b.dataset.listo) return;
+    b.dataset.listo = "1";
+    b.addEventListener("click", () => abrirGuia(b.dataset.guia));
+  });
+}
+
 /* ---- Navegación ---- */
-const vistas = {hoy:vistaHoy, dias:vistaDias, reservas:vistaReservas, info:vistaInfo};
-document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
-  const v = b.dataset.v;
-  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+const vistas = {hoy:vistaHoy, dias:vistaDias, reservas:vistaReservas, guia:vistaGuia, info:vistaInfo};
+const TITULOS = {dias:"Itinerario", reservas:"Reservas", guia:"Guía de lugares", info:"Información"};
+
+function vePestana(v){
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x.dataset.v === v));
   document.querySelectorAll(".view").forEach(x => x.classList.toggle("on", x.id === "v-" + v));
   vistas[v]();
   if (v !== "hoy"){
     document.getElementById("eyebrow").textContent = VIAJE.nombre;
-    document.getElementById("title").textContent = {dias:"Itinerario", reservas:"Reservas", info:"Información"}[v];
-    document.getElementById("subtitle").textContent = `Julio ${VIAJE.anio}`;
+    document.getElementById("title").textContent = TITULOS[v];
+    document.getElementById("subtitle").textContent = v === "guia"
+      ? `${Object.keys(LUGARES).length} sitios recopilados`
+      : `Julio ${VIAJE.anio}`;
   }
   window.scrollTo({top:0});
-}));
+}
+
+document.querySelectorAll("nav button").forEach(b =>
+  b.addEventListener("click", () => vePestana(b.dataset.v)));
 
 vistaHoy();
 
