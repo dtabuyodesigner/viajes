@@ -266,6 +266,16 @@ const VIAJE = {
       n:"112", wa:false, urgente:true }
   ],
 
+  alojamientos: [
+    { fechas:"18 jul",    nombre:"Hotel Mary",                 zona:"Mestre · Venecia" },
+    { fechas:"19 jul",    nombre:"Brne Rooms",                 zona:"Postojna" },
+    { fechas:"20 jul",    nombre:"Synergy Deluxe Apartments",  zona:"Sečovlje · Dragonja" },
+    { fechas:"21 jul",    nombre:"Alojamiento en Tolmin",      zona:"Tolmin" },
+    { fechas:"22–24 jul", nombre:"PONI NAKLO · Sobe Marinšek", zona:"Naklo" },
+    { fechas:"25–27 jul", nombre:"Guest house Pr Ambružarju",  zona:"Cerklje na Gorenjskem" },
+    { fechas:"28 jul",    nombre:"LH Hotel Sirio Venice",      zona:"Mestre · Venecia" }
+  ],
+
   dias: [
     { f:"2026-07-18", t:"Llegada a Italia", arte:"venecia", base:"Hotel Mary · Mestre", paradas:[
       { h:"18:55", txt:"Vuelo Madrid → Venecia", key:true },
@@ -920,7 +930,7 @@ function vistaReservas(){
     <p class="note">${esc(c.franquicia)}. Si hay daños los pagas primero allí y luego reclamas a Sincera con el contrato firmado, el informe de estado, la factura y fotos.</p>
 
     <div class="sec"><span class="label">Once noches</span><h2>Alojamientos</h2></div>${camas}
-    <p class="note">Faltan los teléfonos de los alojamientos: se añaden en el bloque VIAJE del archivo.</p>`;
+`;
 
   pintaPassword();
 
