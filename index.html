@@ -272,21 +272,27 @@ const VIAJE = {
       { h:"Tarde", txt:"Teleférico de Vogel", n:"Vistas del Parque Nacional de Triglav desde arriba", mapa:"Vogel cable car", key:true },
       { txt:"Noche en Naklo" }
     ]},
-    { f:"2026-07-25", t:"Cascadas escondidas y la capital", arte:"cascada", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
-      { h:"Mañana", txt:"Cascada de Peričnik", n:"Se camina por detrás de la cortina de agua. Lleva chubasquero", mapa:"Pericnik Waterfall", key:true },
-      { h:"Tarde", txt:"Llegada a Liubliana", n:"Centro histórico, Puente de los Dragones y orillas del Ljubljanica", mapa:"Zmajski most Ljubljana", key:true },
+    { f:"2026-07-25", t:"Peričnik y la capital", arte:"cascada", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
+      { h:"Mañana", txt:"Cascada de Peričnik", n:"52 m de caída. Se camina por detrás de la cortina de agua: vais a acabar mojados", mapa:"Pericnik Waterfall", key:true },
+      { txt:"Bajada a Liubliana", n:"Aparcad fuera del centro, es peatonal" },
+      { h:"Comida", txt:"Centro histórico", n:"Puente de los Dragones y orillas del Ljubljanica", mapa:"Zmajski most Ljubljana", key:true },
+      { h:"Tarde", txt:"Castillo de Liubliana", n:"Funicular hasta arriba. Desde la torre se ve un tercio del país", mapa:"Ljubljana Castle", key:true },
+      { h:"Noche", txt:"Cena en las terrazas del río", n:"Y después a Cerklje, media hora de coche" },
       { txt:"Check-in en Pr Ambružarju", n:"Cerklje na Gorenjskem" }
     ]},
-    { f:"2026-07-26", t:"Velika Planina, el poblado de las nubes", arte:"meseta", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
-      { h:"Mañana", txt:"Teleférico a Velika Planina", n:"Meseta alpina con cabañas de pastores · comprobar el último descenso", mapa:"Velika Planina", key:true },
-      { h:"Tarde", txt:"Regreso a Liubliana", n:"Subida al castillo por el funicular" , mapa:"Ljubljana Castle"},
-      { txt:"Cena en las terrazas del río", n:"Reserva si podéis: en julio se llena" },
-      { txt:"Noche en Cerklje" }
+    { f:"2026-07-26", t:"Valle de Logar y cascada Rinka", arte:"valle", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
+      { h:"Mañana", txt:"Valle de Logar", n:"Hora y cuarto desde Cerklje. Valle glaciar en U, de los más bonitos del país", mapa:"Logar Valley Slovenia", key:true },
+      { txt:"Entrada al valle", n:"Se paga por vehículo. La carretera llega hasta el fondo" },
+      { h:"Mediodía", txt:"Cascada Rinka", n:"90 m. Mirador a 15 min a pie; hasta el pie, media hora larga", mapa:"Rinka Waterfall", key:true },
+      { txt:"Picnic en el valle", n:"Comprad en el Mercator o el Hofer de camino: sale a mitad de precio" },
+      { h:"Tarde", txt:"Vuelta tranquila a Cerklje" }
     ]},
-    { f:"2026-07-27", t:"Medievo esloveno y despedida verde", arte:"medieval", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
-      { h:"Mañana", txt:"Škofja Loka", n:"Pueblo medieval, de los mejor conservados del país", mapa:"Skofja Loka", key:true },
-      { h:"Tarde", txt:"Parque Tivoli · Liubliana", n:"Últimas compras y relax", mapa:"Tivoli Park Ljubljana" },
-      { txt:"Repostar antes de cruzar a Italia", n:"El gasóleo es más barato en Eslovenia" },
+    { f:"2026-07-27", t:"Velika Planina y despedida", arte:"meseta", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
+      { h:"Temprano", txt:"Teleférico a Velika Planina", n:"Lunes por la mañana hay bastante menos cola que en domingo", mapa:"Velika Planina", key:true },
+      { txt:"El poblado de pastores", n:"El más grande de Europa. En julio están arriba con las vacas", key:true },
+      { txt:"Comer en la meseta", n:"Comprobad la hora del último descenso antes de subir" },
+      { h:"Tarde", txt:"Škofja Loka si quedan ganas", n:"Pueblo medieval, 40 min. Opcional", mapa:"Skofja Loka" },
+      { txt:"Maletas y repostar", n:"El gasóleo es más barato aquí que en Italia" },
       { txt:"Noche en Cerklje" }
     ]},
     { f:"2026-07-28", t:"Retorno a los canales venecianos", arte:"canales", base:"LH Hotel Sirio Venice · Mestre", paradas:[
@@ -510,6 +516,18 @@ const ART = {
       <circle cx="176" cy="102" r="4"/><circle cx="224" cy="108" r="5"/><circle cx="200" cy="98" r="3"/></g>
     <path d="M130 40h30v12h-30z" fill="#0E2A28"/>
     <circle cx="140" cy="34" r="5" fill="#D9A233"/>`),
+
+  valle: marco(CIELO + `
+    <path d="M0 130L120 18l60 50 40-30 180 92z" fill="#163B37"/>
+    <path d="M120 18l24 22-48 0z" fill="#EAF0EC" opacity=".7"/>
+    <path d="M0 130L150 46l150 84z" fill="#1D4A44"/>
+    <path d="M214 44h12v46h-12z" fill="#8FE5DC" opacity=".9"/>
+    <ellipse cx="220" cy="94" rx="22" ry="7" fill="#4FC3B8" opacity=".6"/>
+    <path d="M0 118c70-10 140-10 200-4s130 6 200-4v20H0z" fill="#2C7C76" opacity=".45"/>
+    <g fill="#0E2A28">
+      <path d="M60 118l14-20 14 20zM300 122l12-18 12 18z"/></g>
+    <g stroke="#4FC3B8" stroke-width="2" opacity=".4" stroke-linecap="round">
+      <path d="M120 126h60M250 128h60"/></g>`),
 
   meseta: marco(CIELO + `
     <g fill="#EAF0EC" opacity=".16">
