@@ -2,7 +2,7 @@
    Guarda la app en el móvil la primera vez que se abre con datos
    y a partir de ahí la sirve desde el propio teléfono. */
 
-const CACHE = "eslovenia26-v2";
+const CACHE = "eslovenia26-v3";
 const ARCHIVOS = ["./", "./index.html"];
 
 self.addEventListener("install", e => {
