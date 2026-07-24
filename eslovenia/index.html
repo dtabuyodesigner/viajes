@@ -245,6 +245,7 @@ body.claro .art{background:#DDE5DE}
 .mapa .par.act{fill:var(--panel);opacity:1}
 .mapa .cama circle{fill:var(--soca);stroke:var(--karst-2);stroke-width:2;cursor:pointer}
 .mapa .cama.act circle{fill:var(--panel)}
+.mapa .cama .cuenta{font-size:8px;font-weight:700;fill:var(--karst-2);text-anchor:middle}
 .mapa .cama text{font-family:var(--mono);font-size:8.5px;fill:currentColor;opacity:.75;
   text-anchor:middle;pointer-events:none}
 .mapa .cama.act text{opacity:1;font-weight:700}
@@ -836,51 +837,78 @@ function botonesRuta(i){
   </div>`;
 }
 
-const etiqueta = (d, i) => { const f = fecha(d.f); return f.txt; };
+const etiqueta = (d, i) => String(new Date(d.f + "T12:00:00").getDate());
 
 /* ---- Mapa de la ruta, dibujado con las coordenadas reales ---- */
 function mapaRuta(){
-  const puntos = [];
+  const puntos = [], camas = new Map();
   VIAJE.dias.forEach((d, i) => {
     d.paradas.forEach(p => {
       const c = p.xy || (p.g && LUGARES[p.g] && LUGARES[p.g].xy);
       if (c) puntos.push({ xy:c.split(",").map(Number), dia:i, tipo:"parada" });
     });
-    if (d.xy) puntos.push({ xy:d.xy.split(",").map(Number), dia:i, tipo:"cama", d });
+    if (d.xy){
+      puntos.push({ xy:d.xy.split(",").map(Number), dia:i, tipo:"cama" });
+      if (!camas.has(d.xy)) camas.set(d.xy, []);
+      camas.get(d.xy).push(i);              // varios días pueden dormir en el mismo sitio
+    }
   });
   if (puntos.length < 3) return "";
 
   const lats = puntos.map(p => p.xy[0]), lons = puntos.map(p => p.xy[1]);
   const lat0 = (Math.min(...lats) + Math.max(...lats)) / 2;
   const k = Math.cos(lat0 * Math.PI / 180);
-  const W = 400, H = 250, M = 26;
+  const W = 400, H = 250, M = 30;
   const xs = lons.map(l => l * k), ys = lats;
   const [x0,x1,y0,y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  const esc1 = Math.min((W - 2*M) / ((x1-x0) || 1), (H - 2*M) / ((y1-y0) || 1));
-  const cx = v => M + (v * k - x0) * esc1 + ((W - 2*M) - (x1-x0)*esc1) / 2;
-  const cy = v => H - M - (v - y0) * esc1 - ((H - 2*M) - (y1-y0)*esc1) / 2;
+  const e = Math.min((W - 2*M) / ((x1-x0) || 1), (H - 2*M) / ((y1-y0) || 1));
+  const cx = v => M + (v * k - x0) * e + ((W - 2*M) - (x1-x0)*e) / 2;
+  const cy = v => H - M - (v - y0) * e - ((H - 2*M) - (y1-y0)*e) / 2;
 
   const linea = puntos.map(p => `${cx(p.xy[1]).toFixed(1)},${cy(p.xy[0]).toFixed(1)}`).join(" ");
   const hoy = indiceHoy();
 
-  const marcas = puntos.map(p => {
-    const x = cx(p.xy[1]).toFixed(1), y = cy(p.xy[0]).toFixed(1);
-    const act = p.dia === hoy;
-    if (p.tipo === "cama") return `
-      <g class="cama${act ? " act" : ""}" data-dia="${p.dia}">
-        <circle cx="${x}" cy="${y}" r="${act ? 7 : 5}"/>
-        <text x="${x}" y="${(+y - (act ? 12 : 10)).toFixed(1)}">${esc(etiqueta(p.d, p.dia))}</text>
-      </g>`;
-    return `<circle class="par${act ? " act" : ""}" cx="${x}" cy="${y}" r="${act ? 4 : 2.6}"/>`;
+  // Las paradas, detrás
+  const pequenos = puntos.filter(p => p.tipo === "parada").map(p =>
+    `<circle class="par${p.dia === hoy ? " act" : ""}" cx="${cx(p.xy[1]).toFixed(1)}"
+      cy="${cy(p.xy[0]).toFixed(1)}" r="${p.dia === hoy ? 4 : 2.6}"/>`).join("");
+
+  // Un solo círculo por alojamiento, con todos sus días en la etiqueta
+  let arriba = true;
+  const grandes = [...camas.entries()].map(([c, dias]) => {
+    const [la, lo] = c.split(",").map(Number);
+    const x = cx(lo).toFixed(1), y = cy(la);
+    const act = dias.includes(hoy);
+    const r = act ? 7.5 : 5.5;
+    arriba = !arriba;
+    const dy = arriba ? -(r + 6) : (r + 12);
+    return `<g class="cama${act ? " act" : ""}" data-dia="${dias[0]}">
+      <circle cx="${x}" cy="${y.toFixed(1)}" r="${r}"/>
+      ${dias.length > 1 ? `<text class="cuenta" x="${x}" y="${(y + 2.6).toFixed(1)}">${dias.length}</text>` : ""}
+      <text x="${x}" y="${(y + dy).toFixed(1)}">${esc(rotulo(dias))}</text>
+    </g>`;
   }).join("");
 
   return `<div class="mapa">
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa de la ruta">
       <polyline points="${linea}"/>
-      ${marcas}
+      ${pequenos}${grandes}
     </svg>
-    <p class="note" style="margin:8px 2px 0">Posiciones reales, unidas en el orden del viaje. Toca un punto para ir a ese día.</p>
+    <p class="note" style="margin:8px 2px 0">Posiciones reales, unidas en el orden del viaje. El número dentro de un punto son las noches. Toca para ir a ese día.</p>
   </div>`;
+}
+
+/* Etiqueta de un alojamiento: agrupa los días consecutivos */
+function rotulo(dias){
+  const partes = [];
+  let ini = dias[0], fin = dias[0];
+  for (let j = 1; j <= dias.length; j++){
+    if (dias[j] === fin + 1){ fin = dias[j]; continue; }
+    partes.push(ini === fin ? etiqueta(VIAJE.dias[ini], ini)
+      : `${etiqueta(VIAJE.dias[ini], ini)}–${etiqueta(VIAJE.dias[fin], fin)}`);
+    ini = fin = dias[j];
+  }
+  return partes.join(" · ") + " jul";
 }
 
 /* ---- Vista HOY ---- */
