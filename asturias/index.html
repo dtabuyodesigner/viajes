@@ -182,6 +182,8 @@ ul.plain li span{color:var(--papel-dim)}
   border:1px solid var(--line);background:var(--monte-2);color:var(--papel);
   font-family:var(--sans);font-size:14.5px;line-height:1.5}
 .nota-txt::placeholder{color:var(--papel-dim)}
+.btn.voz{border-color:var(--prau)}
+.btn.grabando{background:var(--oso);border-color:var(--oso);color:#fff}
 .km{float:right;font-family:var(--mono);font-size:12px;color:var(--papel-dim)}
 
 body.claro{--monte:#F4F6F2;--monte-2:#FFFFFF;--papel:#16261B;--papel-dim:#5C7263;--line:rgba(22,38,27,.14);--prau:#3E7A3F;--prau-dim:#4E8F50;--mar:#2C7A93;--teito:#96701C;--oso:#9C3F27}
@@ -644,6 +646,57 @@ function distancia(a, b){
 /* ---- El tiempo ---- */
 const tiempoEn = q => `https://www.google.com/search?q=${encodeURIComponent("tiempo " + q)}`;
 
+
+const TITULO_DIA = (d, i) => { const f = fechaDe(i); return f ? `${f.wd} ${f.txt}` : `Día ${d.d}`; };
+
+/* ---- Dictado por voz, si el navegador lo permite ---- */
+const VOZ = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+
+function escuchar(destino, boton){
+  if (!VOZ) return;
+  const r = new VOZ();
+  r.lang = "es-ES"; r.continuous = true; r.interimResults = false;
+  let previo = destino.value;
+  boton.classList.add("grabando"); boton.textContent = "● Escuchando";
+  r.onresult = e => {
+    let t = "";
+    for (let i = e.resultIndex; i < e.results.length; i++)
+      if (e.results[i].isFinal) t += e.results[i][0].transcript;
+    if (!t) return;
+    destino.value = (previo ? previo.trimEnd() + " " : "") + t.trim();
+    previo = destino.value;
+    destino.dispatchEvent(new Event("input", {bubbles:true}));
+  };
+  const parar = () => { boton.classList.remove("grabando"); boton.textContent = "Dictar"; };
+  r.onerror = parar; r.onend = parar;
+  boton.onclick = () => { r.stop(); parar(); boton.onclick = null; activaDiario(); };
+  r.start();
+}
+
+/* ---- Compartir el diario ---- */
+function textoDiario(){
+  const lineas = [`${VIAJE.nombre}`, ""];
+  VIAJE.dias.forEach((d, i) => {
+    const hechas = d.paradas.filter((p, k) => DIARIO.esta(`${i}:${k}`));
+    const nota = DIARIO.nota(i);
+    if (!hechas.length && !nota) return;
+    lineas.push(`${TITULO_DIA(d, i)} — ${d.t}`);
+    hechas.forEach(p => lineas.push(`  · ${p.txt}`));
+    if (nota) lineas.push(`  "${nota}"`);
+    lineas.push("");
+  });
+  return lineas.length > 2 ? lineas.join("\n") : "";
+}
+
+async function compartirDiario(){
+  const t = textoDiario();
+  if (!t) return alert("Todavía no hay nada marcado ni escrito.");
+  try {
+    if (navigator.share) await navigator.share({ title: VIAJE.nombre, text: t });
+    else { await navigator.clipboard.writeText(t); alert("Copiado. Pégalo donde quieras."); }
+  } catch {}
+}
+
 /* ---- Rutas del día ---- */
 function botonesRuta(i){
   const d = VIAJE.dias[i];
@@ -684,6 +737,11 @@ function cajaNota(i){
     <span class="label">Notas del día</span>
     <textarea class="nota-txt" data-dia="${i}" rows="2"
       placeholder="Dónde aparcamos, cuánto costó, qué tal se comió…">${esc(DIARIO.nota(i))}</textarea>
+    <div class="btns">
+      ${VOZ ? `<button class="btn voz" data-dictar="${i}">Dictar</button>` : ""}
+      <button class="btn" id="btn-compartir">Compartir el diario</button>
+    </div>
+    ${VOZ ? "" : `<p class="note">Para dictar, usa el micrófono del teclado del móvil.</p>`}
   </div>`;
 }
 
@@ -698,6 +756,15 @@ function activaDiario(){
       b.textContent = box.classList.contains("hecho") ? "✓" : "";
     });
   });
+  document.querySelectorAll("[data-dictar]").forEach(b => {
+    if (b.dataset.listo) return; b.dataset.listo = "1";
+    b.addEventListener("click", () => {
+      const t = document.querySelector(`.nota-txt[data-dia="${b.dataset.dictar}"]`);
+      if (t) escuchar(t, b);
+    });
+  });
+  const comp = document.getElementById("btn-compartir");
+  if (comp && !comp.dataset.listo){ comp.dataset.listo = "1"; comp.addEventListener("click", compartirDiario); }
   document.querySelectorAll(".nota-txt").forEach(t => {
     if (t.dataset.listo) return; t.dataset.listo = "1";
     const crece = () => { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
