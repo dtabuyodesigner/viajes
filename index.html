@@ -173,6 +173,9 @@ ul.plain li span{color:var(--paper-dim)}
 .zona h2{margin:0;font-size:19px;letter-spacing:-.02em}
 .zona .cuenta{font-family:var(--mono);font-size:11px;color:var(--soca-dim)}
 .zona .intro{font-size:13.5px;color:var(--paper-dim);margin:4px 0 12px;line-height:1.5}
+.cercanas{margin:16px 0 4px;padding:14px;border-radius:12px;
+  background:rgba(90,169,196,.08);border:1px solid var(--soca)}
+.btn.wl{border-color:var(--soca);color:var(--soca)}
 .lugar{border-top:1px solid var(--line)}
 .lugar:first-of-type{border-top:0}
 .lugar-cab{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;
@@ -429,7 +432,7 @@ const VIAJE = {
    GUÍA DE LUGARES — información recopilada del viaje
    ========================================================= */
 const GUIA = [
-  { zona:"Alpes Julianos", arte:"bled", nota:"La postal eslovena: picos, lagos glaciares y el parque nacional más salvaje del país.", lugares:[
+  { zona:"Alpes Julianos", wl:["Bled","Bohinj","Triglav","Vintgar"], arte:"bled", nota:"La postal eslovena: picos, lagos glaciares y el parque nacional más salvaje del país.", lugares:[
     { id:"bled", n:"Lago Bled", d:"2026-07-23",
       t:"El más conocido y el más turístico, y aun así merece la pena. Una isla en mitad del agua con una iglesia encima, y montañas de fondo. La foto clásica sale del mirador de Ojstrica; a la isla se va en pletna, la barca de remo tradicional, y hay 99 escalones hasta arriba.",
       k:[["Mirador Ojstrica","20 min de subida"],["Isla","99 escalones"]], m:"Lake Bled Slovenia" },
@@ -459,7 +462,7 @@ const GUIA = [
       m:"Mostnica Gorge" }
   ]},
 
-  { zona:"Valle del Soča", arte:"rio", nota:"La zona más salvaje y aventurera: el río más esmeralda de Europa, gargantas imposibles y cascadas escondidas.", lugares:[
+  { zona:"Valle del Soča", wl:["Soča","Tolmin","Bovec","Vršič"], arte:"rio", nota:"La zona más salvaje y aventurera: el río más esmeralda de Europa, gargantas imposibles y cascadas escondidas.", lugares:[
     { id:"soca", n:"Garganta del río Soča", d:"2026-07-21",
       t:"El color del agua es lo primero que te descoloca: un turquesa que no parece real. Se puede recorrer a pie, hacer rafting y darse un baño, aunque el agua está helada.",
       m:"Soca Gorge Slovenia" },
@@ -483,7 +486,7 @@ const GUIA = [
       m:"Zelenci Nature Reserve" }
   ]},
 
-  { zona:"Cuevas y sur", arte:"cueva", nota:"Hay unas 14.000 cuevas bajo el país, como un queso gruyère. Solo 22 se pueden visitar.", lugares:[
+  { zona:"Cuevas y sur", wl:["Škocjan","Postojna","Cerknica"], arte:"cueva", nota:"Hay unas 14.000 cuevas bajo el país, como un queso gruyère. Solo 22 se pueden visitar.", lugares:[
     { id:"skocjan", n:"Cuevas de Škocjan", d:"2026-07-19",
       t:"Patrimonio de la Humanidad. Se descubrieron en 1885 mientras buscaban de dónde sacar agua potable para Trieste, y desde entonces se han ido explorando más galerías. Junto con Postojna son las dos imprescindibles, y se complementan porque son muy distintas.",
       k:[["Descubiertas","1885"],["UNESCO","sí"]], m:"Skocjan Caves" },
@@ -504,7 +507,7 @@ const GUIA = [
       m:"Sneznik Castle" }
   ]},
 
-  { zona:"Liubliana y centro", arte:"medieval", nota:"El corazón verde de un país muy verde. Capital verde europea en 2016.", lugares:[
+  { zona:"Liubliana y centro", wl:["Ljubljana","Velika planina","Škofja Loka"], arte:"medieval", nota:"El corazón verde de un país muy verde. Capital verde europea en 2016.", lugares:[
     { id:"liubliana", n:"Liubliana", d:"2026-07-25",
       t:"Ciudad pequeña y con mucho encanto, de centro histórico compacto y peatonal. Catedral, iglesia franciscana de la Anunciación, edificios barrocos de aire italiano y el Puente de los Dragones. Se recorre andando sin esfuerzo.",
       k:[["Capital verde europea","2016"]], m:"Ljubljana old town" },
@@ -522,7 +525,7 @@ const GUIA = [
       m:"Tivoli Park Ljubljana" }
   ]},
 
-  { zona:"Este y Valle de Logar", arte:"valle", nota:"Paisajes alpinos brutales y tranquilidad absoluta, a un par de horas de la capital.", lugares:[
+  { zona:"Este y Valle de Logar", wl:["Logarska dolina","Celje","Ptuj"], arte:"valle", nota:"Paisajes alpinos brutales y tranquilidad absoluta, a un par de horas de la capital.", lugares:[
     { id:"logar", n:"Valle de Logar", d:"2026-07-26",
       t:"Valle glaciar en forma de U, uno de los tres valles de la zona. Es el destino perfecto si buscas montaña grande sin las colas de Bled. Se entra en coche pagando por vehículo y la carretera llega hasta el fondo.",
       k:[["Desde Cerklje","hora y cuarto"],["Entrada","por vehículo"]], m:"Logar Valley Slovenia" },
@@ -565,6 +568,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const wikiloc = q => `https://es.wikiloc.com/rutas/buscar?q=${encodeURIComponent(q)}`;
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const fecha = f => { const d = new Date(f+"T12:00:00"); return {d, wd:DIAS_SEM[d.getDay()], txt:`${d.getDate()} ${MESES[d.getMonth()]}`}; };
 
@@ -1112,7 +1116,7 @@ function vistaGuia(){
     html += `<div class="zona">
       <div class="zona-cab"><h2>${esc(z.zona)}</h2><span class="cuenta">${ls.length}</span></div>
       <p class="intro">${esc(z.nota)}</p>` + ilustra(z.arte) +
-      ls.map(l => ficha(l)).join("") + `</div>`;
+      ls.map(l => ficha(l)).join("") + rutasCercanas(z) + `</div>`;
   });
 
   if (!total) html += `<p class="vacio">Nada con ese nombre. Prueba con otra palabra.</p>`;
@@ -1127,6 +1131,18 @@ function vistaGuia(){
     nuevo.focus(); nuevo.setSelectionRange(pos, pos);
   });
   activaFichas();
+}
+
+
+/* ---- Rutas cercanas en Wikiloc, por zona ---- */
+function rutasCercanas(z){
+  if (!z.wl || !z.wl.length) return "";
+  return `<div class="cercanas">
+    <span class="label">Rutas cercanas</span>
+    <p class="note" style="margin:4px 0 0">Abre Wikiloc con las rutas de la zona. Descargad el GPX antes de subir: allí no hay cobertura.</p>
+    <div class="btns">${z.wl.map(t =>
+      `<a class="btn wl" href="${wikiloc(t)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("")}</div>
+  </div>`;
 }
 
 function ficha(l){
