@@ -142,6 +142,7 @@ ul.plain li span{color:var(--papel-dim)}
 .zona{margin:24px 0 0}
 .zona h2{margin:0;font-size:19px;letter-spacing:-.02em}
 .zona .intro{font-size:13.5px;color:var(--papel-dim);margin:4px 0 12px;line-height:1.5}
+.btn.app{border-color:var(--teito);color:var(--teito)}
 .cercanas{margin:16px 0 4px;padding:14px;border-radius:12px;
   background:rgba(90,169,196,.08);border:1px solid var(--mar)}
 .btn.wl{border-color:var(--mar);color:var(--mar)}
@@ -716,9 +717,10 @@ function rutasCercanas(z){
   if (!z.wl || !z.wl.length) return "";
   return `<div class="cercanas">
     <span class="label">Rutas cercanas</span>
-    <p class="note" style="margin:4px 0 0">Abre el mapa de Wikiloc centrado en ese punto. Descargad el GPX y el mapa offline antes de subir.</p>
+    <p class="note" style="margin:4px 0 0">Abre el mapa de Wikiloc en ese punto. Descargad el GPX y el mapa offline antes de subir.</p>
     <div class="btns">${z.wl.map(t =>
       `<a class="btn wl" href="${wikiloc(t)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("")}</div>
+    <div class="btns"><a class="btn app" href="wikiloc://">Abrir la app de Wikiloc</a></div>
   </div>`;
 }
 
