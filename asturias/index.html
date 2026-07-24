@@ -125,6 +125,12 @@ ul.plain li span{color:var(--papel-dim)}
   font-family:var(--mono);font-size:13px;font-weight:700;display:grid;place-items:center}
 .aviso p{margin:0;font-size:13.5px;line-height:1.5;color:#E8D5CE}
 
+.tip{display:flex;gap:10px;padding:11px 13px;border-radius:11px;margin:0 0 14px;
+  background:rgba(90,169,196,.1);border:1px solid rgba(90,169,196,.3)}
+.tip .ic{flex:0 0 auto;color:var(--mar);font-family:var(--mono);font-size:14px;line-height:1.5}
+.tip p{margin:0;font-size:13.5px;line-height:1.5;color:#C9DDE4}
+.foto{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line);margin-bottom:8px}
+.pie{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--papel-dim);margin:0 0 12px}
 .ops{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .op{flex:1 1 140px;text-align:left;padding:11px 13px;border-radius:12px;cursor:pointer;
   background:transparent;border:1px solid var(--line);color:var(--papel);font:inherit}
@@ -275,80 +281,159 @@ const VIAJE = {
   ],
 
   guia: [
-    { zona:"Somiedo", arte:"lagos", nota:"Parque natural y reserva de la biosfera. Lagos glaciares, brañas de teito y la mayor población de osos de la cordillera.", lugares:[
+    { zona:"Somiedo", arte:"lagos", nota:"Parque Natural desde 1988 y Reserva de la Biosfera desde 2000. Cinco valles glaciares, una docena de lagos y la mayor población de oso pardo de la cordillera Cantábrica.", lugares:[
+
+      { id:"parque", n:"El parque, en general",
+        t:"Somiedo son cinco valles que bajan en paralelo desde la divisoria con León: Saliencia, Valle, Pigüeña, Somiedo y Perlunes. Esa estructura explica el viaje: no se recorre en círculo, se entra y se sale de cada valle desde el eje de la AS-227.¶Es uno de los pocos sitios de la península donde la actividad ganadera de montaña sigue viva de verdad, no como decorado. En julio y agosto hay ganado en los pastos altos y gente trabajando en las brañas, y eso condiciona lo que os vais a encontrar: pistas con vacas, perros de rebaño y cierres que hay que dejar como estaban.",
+        k:[["Superficie","unas 29.000 ha"],["Valles","5"],["Altitud","400 a 2.100 m"]],
+        tip:"El Centro de Interpretación de Pola no es un trámite: allí saben qué aparcamiento está lleno hoy y qué pista está cortada.",
+        m:"Parque Natural de Somiedo" },
+
       { id:"saliencia", n:"Lagos de Saliencia", d:2,
-        t:"Tres lagos glaciares escalonados a más de 1.600 m: la Cueva, Cerveiriz y Calabazosa, que también llaman Negro. Se sale del Alto de La Farrapona por una pista ancha y cómoda. No hay una sombra en todo el recorrido, así que en agosto o se madruga o se pasa mal.",
-        k:[["Distancia","8 a 11 km"],["Altitud","1.600–1.700 m"],["Sombra","ninguna"]],
+        t:"Tres lagos glaciares escalonados por encima de los 1.600 metros. El primero, el Lago de la Cueva, aparece a los veinte minutos y es el más accesible. Después vienen Cerveiriz y, algo más arriba, Calabazosa, al que muchos llaman Lago Negro por el color que le da la profundidad. Hay un cuarto, Almagrera, que en verano se queda casi seco.¶La ruta sale del Alto de La Farrapona por pista ancha y cómoda, sin trepadas ni pasos expuestos. La dificultad no está en el terreno: está en la altitud, en el sol y en que no hay una sola sombra en todo el recorrido. En agosto, a mediodía, el reflejo en la roca caliza es duro para las perras.¶Se puede alargar bajando desde Cerveiriz hasta el Lago del Valle y saliendo por el pueblo de Valle de Lago, pero eso obliga a dejar dos coches o a volver por donde vinisteis.",
+        k:[["Distancia","8 a 11 km"],["Desnivel","moderado"],["Altitud","1.600–1.700 m"],["Sombra","ninguna"]],
+        tip:"Salid del aparcamiento antes de las 9:30. A partir de las once el sendero es una fila india y la roca ya quema.",
         m:"Alto de la Farrapona Somiedo", wl:"lagos de saliencia" },
+
       { id:"lagodelvalle", n:"Lago del Valle", d:2,
-        t:"El lago natural más grande de la cordillera Cantábrica, 24 hectáreas. Se llega por pista llana desde el pueblo de Valle de Lago, unos 13 km ida y vuelta sin apenas desnivel. Es la mejor opción del viaje si las perras van justas de fuelle.",
-        k:[["Distancia","13 km i/v"],["Desnivel","poco"],["Firme","pista ancha"]],
+        t:"Veinticuatro hectáreas de agua: el lago natural más grande de toda la cordillera Cantábrica. Está metido en un circo glaciar al fondo de su propio valle, y se llega por una pista llana y ancha desde el pueblo de Valle de Lago, unos seis kilómetros y medio en cada sentido.¶Es la ruta más agradecida del viaje si Bella y Lisboa van justas de fuelle o si el día viene caluroso: casi no hay desnivel, el firme es bueno y hay tramos con sombra y agua corriendo al lado. Se puede hacer también en bici.",
+        k:[["Distancia","13 km i/v"],["Desnivel","poco"],["Firme","pista ancha"],["Tamaño","24 hectáreas"]],
+        tip:"Es la alternativa perfecta si La Farrapona os pilla el aparcamiento lleno. Mismo paisaje, otra puerta de entrada.",
         m:"Valle de Lago Somiedo", wl:"lago del valle" },
+
       { id:"pornacal", n:"Braña de La Pornacal", d:3,
-        t:"La braña de teitos mejor conservada de Somiedo: más de treinta cabañas de piedra con techumbre de escoba, juntas en la ladera. Se sube desde Villar de Vildas por un camino empedrado. Es de esos sitios donde parece que no ha pasado el siglo XX.",
-        k:[["Distancia","7 km i/v"],["Desde","Villar de Vildas"]],
+        t:"La braña de teitos mejor conservada de Somiedo y probablemente de Asturias: más de treinta cabañas de piedra con cubierta vegetal, agrupadas en la ladera sobre el valle del Pigüeña. Se sube desde Villar de Vildas por un camino empedrado en buena parte, con desnivel constante pero sin dificultad.¶Lo que la hace distinta de otras brañas es la concentración: no son tres cabañas sueltas, es un poblado entero. Y sigue teniendo uso ganadero, así que lo normal es cruzarse con vacas y con quien sube a atenderlas.",
+        k:[["Distancia","7 km i/v"],["Desde","Villar de Vildas"],["Cabañas","más de 30"]],
+        tip:"El camino es de piedra suelta en algún tramo. Con perras, calzado y calma en la bajada.",
         m:"Villar de Vildas Somiedo", wl:"la pornacal" },
-      { id:"teitos", n:"Cabañas de teito", d:1,
-        t:"Construcciones de piedra con cubierta vegetal de escoba que usaban los vaqueiros de alzada, los ganaderos que subían con el ganado a los pastos altos en verano. Se ven por todo el valle de Saliencia y en las brañas.",
+
+      { id:"teitos", n:"Brañas y cabañas de teito", d:1,
+        t:"El teito es una cubierta vegetal de escoba, un arbusto de la zona, montada sobre una estructura de madera y muros de piedra sin argamasa. Aguanta décadas si se mantiene, y se pudre en pocos años si se abandona. Por eso quedan tantas ruinas al lado de las que siguen en pie.¶Las brañas son los conjuntos de cabañas en los pastos altos, donde el ganado sube en verano. Las hay de dos tipos: las de alzada, que se ocupaban solo en la temporada alta, y las equidistantes, más cerca del pueblo. En el valle de Saliencia se ven desde la propia carretera sin bajarse del coche.",
+        k:[["Material","piedra y escoba"],["Uso","pastos de verano"]],
         m:"Valle de Saliencia Somiedo" },
+
+      { id:"vaqueiros", n:"Vaqueiros de alzada",
+        t:"El grupo humano que dio forma a este paisaje: ganaderos trashumantes del occidente asturiano que subían con el ganado a las brañas en verano y bajaban a los valles en invierno, moviendo la casa entera con ellos.¶Fueron durante siglos una comunidad marginada, con iglesias donde tenían banco aparte y matrimonios de puertas adentro. Hoy queda la arquitectura, la toponimia y las fiestas, y una historia bastante más áspera que la que cuentan los folletos.",
+        m:"Museo Etnográfico Grandas de Salime" },
+
       { id:"osos", n:"Osos pardos",
-        t:"Somiedo tiene la mayor densidad de osos de la cordillera. Verlos es cuestión de suerte, paciencia y prismáticos, al amanecer o al atardecer, desde los miradores del Valle de Lago o La Peral. No se busca al oso: se espera.",
-        k:[["Mejor hora","amanecer y atardecer"]], m:"Mirador de La Peral Somiedo" },
+        t:"La población cantábrica de oso pardo llegó a estar al borde de la extinción y hoy se ha recuperado hasta las varias centenas de ejemplares, con Somiedo como uno de sus núcleos. Verlos es posible, pero no es un safari: hace falta prismáticos, madrugar o esperar al atardecer, y quedarse quieto en un mirador mirando laderas durante un buen rato.¶Los puntos habituales son los miradores del entorno de Valle de Lago y de La Peral. En agosto la mejor hora es la primera del día, antes de que suba la gente y el calor.",
+        k:[["Mejor hora","amanecer y atardecer"],["Necesario","prismáticos y paciencia"]],
+        tip:"Con perras la probabilidad baja mucho: el oso las huele antes de que vosotros lo veáis. Si os interesa de verdad, id sin ellas.",
+        m:"Mirador de La Peral Somiedo" },
+
+      { id:"puertosomiedo", n:"Puerto de Somiedo", d:1,
+        t:"El paso desde León, a casi 1.500 metros. La subida desde el lado leonés es larga y la bajada hacia Pola es de curvas cerradas con paredes de roca. En agosto no tiene ningún problema, pero es carretera lenta: contad bastante más de lo que diga el navegador.",
+        k:[["Altitud","unos 1.486 m"]],
+        m:"Puerto de Somiedo" },
+
       { id:"centro", n:"Centro de Interpretación", d:1,
-        t:"En Pola de Somiedo. Aparte de la exposición, es donde te dicen qué aparcamientos están llenos, qué pistas están cortadas y en qué orden conviene hacer los valles según los días que tengáis.",
+        t:"En Pola de Somiedo, junto a la oficina de turismo. Además de la exposición sobre el parque y el oso, es el sitio donde os van a decir lo que ninguna web actualiza a tiempo: qué aparcamientos están saturados hoy, qué pistas están en mal estado y qué orden tiene sentido según los días que llevéis.",
+        tip:"Parad aquí el primer día aunque no os apetezca. Ahorra volantazos.",
         m:"Centro Interpretación Parque Natural Somiedo" }
     ]},
 
-    { zona:"La costa", arte:"costa", nota:"Acantilados altos, playas escondidas y puertos metidos en la roca. Mucho menos masificada que la costa oriental.", lugares:[
+    { zona:"La costa occidental", arte:"costa", nota:"Acantilados altos cortados a pico, playas escondidas al final de un camino y puertos encajados en la roca. Mucho menos masificada que la costa oriental, incluso en agosto.", lugares:[
+
       { id:"silencio", n:"Playa del Silencio", d:3,
-        t:"También la llaman Gavieiru. Una cala de cantos rodados cerrada por un anfiteatro de acantilados, con islotes delante. No es de tumbarse a tomar el sol: es de mirarla. Se aparca arriba en Castañeras y se baja por una escalera de piedra.",
-        k:[["Suelo","canto rodado"],["Acceso","a pie desde Castañeras"]],
+        t:"El nombre real es Gavieiru, pero se impuso el otro y con razón. Es una cala cerrada por un anfiteatro de acantilados, con un rosario de islotes delante que rompen el oleaje. El suelo es de canto rodado grande, no de arena.¶No es playa de toalla y sombrilla: es playa de mirarla desde arriba y bajar un rato. Se aparca en Castañeras, arriba, y se baja por una senda con escalones de piedra que en la vuelta se nota. Está protegida y no hay ningún servicio.",
+        k:[["Suelo","canto rodado"],["Acceso","a pie, con escaleras"],["Servicios","ninguno"]],
+        tip:"La luz buena es a última hora de la tarde. Y a esa hora ya se ha ido casi todo el mundo.",
         m:"Playa del Silencio Cudillero" },
+
       { id:"vidio", n:"Cabo Vidio", d:3,
-        t:"Uno de los cabos más altos de la costa asturiana, con faro y vistas que en día claro alcanzan medio litoral. Al atardecer es de los mejores sitios del occidente.",
+        t:"Uno de los cabos más altos de la costa asturiana, con un faro en punta y un acantilado que cae limpio al mar. En día claro se ve un tramo enorme de litoral en las dos direcciones, y con suerte hasta los Picos de Europa al fondo.¶Hay aparcamiento arriba y un paseo corto hasta el mirador. Es de esos sitios donde no hay que hacer nada: llegar, sentarse y esperar a que se ponga el sol.",
+        tip:"Combina bien con la Playa del Silencio el mismo atardecer: están a diez minutos.",
         m:"Cabo Vidio Asturias" },
+
       { id:"cudillero", n:"Cudillero", d:4,
-        t:"Casas de colores apiladas en un anfiteatro sobre un puerto diminuto. Precioso y en agosto lleno hasta arriba. El truco es dejar el coche en los aparcamientos de arriba y bajar andando, y verlo temprano o a última hora.",
+        t:"Casas de colores apiladas en un anfiteatro imposible sobre un puerto diminuto. Es de los pueblos más fotografiados de Asturias y en agosto se nota mucho: a mediodía no cabe un alfiler y las terrazas del puerto cobran la vista a precio de vista.¶Los pixuetos, sus habitantes, conservan una habla propia y una fiesta particular, la Amuravela, en la que se lee un pregón satírico sobre el año. El casco viejo se recorre subiendo callejas y escaleras, así que con calzado cómodo.",
+        k:[["Aparcar","arriba, nunca abajo"],["Mejor hora","antes de las 11 o al atardecer"]],
+        tip:"Unas calles por encima del puerto se come mejor y bastante más barato que en primera línea.",
         m:"Cudillero Asturias" },
+
       { id:"luarca", n:"Luarca", d:4,
-        t:"La villa blanca de la costa verde, repartida en siete barrios alrededor de la desembocadura del Negrillón. Lo más recordado es el cementerio sobre el acantilado, junto al faro, con las tumbas mirando al Cantábrico.",
+        t:"La villa blanca de la costa verde, repartida en siete barrios alrededor de la desembocadura del río Negrillón, con un puerto pesquero todavía activo y puentes que cosen las dos orillas.¶Lo que casi todo el mundo recuerda es el cementerio: está en lo alto del acantilado, junto al faro, con las tumbas de mármol blanco mirando al Cantábrico. Ahí está enterrado Severo Ochoa, que era de aquí. Suena raro recomendarlo, pero es uno de los sitios más bonitos de la costa.",
+        k:[["Barrios","siete"],["No perderse","faro y cementerio"]],
         m:"Luarca Asturias" },
+
       { id:"barayo", n:"Playa de Barayo", d:4,
-        t:"Reserva natural parcial entre Navia y Valdés: sistema dunar, marisma y la ría desembocando en la arena. Como solo se llega andando, nunca está petada.",
-        k:[["Protección","reserva natural"],["Acceso","a pie"]],
-        m:"Playa de Barayo Navia" },
+        t:"Reserva natural parcial entre los concejos de Navia y Valdés. Tiene un sistema dunar bien conservado, marisma detrás y el río Barayo desembocando en mitad de la arena, lo que forma un paisaje que cambia con la marea.¶Como solo se llega andando —hay una bajada desde el aparcamiento por pista y sendero— nunca está masificada ni en pleno agosto. Es zona protegida, así que ojo con dónde pisáis y con las perras.",
+        k:[["Protección","reserva natural parcial"],["Acceso","a pie, unos 20 min"]],
+        tip:"Comprobad la normativa de perros antes: al ser espacio protegido puede ser más estricta que en una playa normal.",
+        m:"Playa de Barayo Navia", wl:"playa de barayo" },
+
+      { id:"frexulfe", n:"Playa de Frexulfe",
+        t:"Otra playa protegida en el concejo de Navia, con dunas y bosque detrás. Más fácil de acceso que Barayo y también tranquila. Buena alternativa si Barayo os parece mucha caminata.",
+        m:"Playa de Frexulfe Navia" },
+
+      { id:"busto", n:"Cabo Busto", d:4,
+        t:"Acantilados y un faro entre Luarca y Cudillero, con molinos de viento en la rasa costera detrás. Es parada corta, de bajarse diez minutos a mirar y seguir, pero el sitio tiene fuerza los días de mar movido.",
+        m:"Cabo Busto Asturias" },
+
       { id:"coana", n:"Castro de Coaña", d:4,
-        t:"Poblado fortificado de la Edad del Hierro, de los mejor conservados del noroeste. Se ven las plantas circulares de las casas encajadas en la ladera y la muralla.",
+        t:"Poblado fortificado de la Edad del Hierro, uno de los mejor conservados del noroeste peninsular. Se ven con claridad las plantas circulares de las viviendas encajadas en la ladera, las calles entre ellas y los restos de la muralla y el foso.¶Se excavó por primera vez en el siglo XIX y sigue dando trabajo a los arqueólogos. Tiene centro de recepción y el recorrido es corto y en pendiente suave.",
+        k:[["Época","Edad del Hierro"],["Visita","aproximadamente 1 h"]],
         m:"Castro de Coaña" }
     ]},
 
-    { zona:"El interior del oeste", arte:"embalse", nota:"Valles profundos, embalses encajados y carreteras vacías. La Asturias que no sale en las postales.", lugares:[
+    { zona:"El interior del oeste", arte:"embalse", nota:"Valles muy profundos, embalses encajonados y carreteras vacías que cruzan de un concejo a otro por lo alto. La Asturias que no sale en las postales.", lugares:[
+
       { id:"salime", n:"Embalse de Salime", d:4,
-        t:"Un embalse largo y encajonado entre laderas muy verticales, con la carretera colgada por encima. La presa es una obra enorme de los años cincuenta y la subida desde el Navia es de las mejores conducciones del viaje.",
+        t:"Un embalse largo y estrecho metido entre laderas casi verticales, con la carretera colgada por encima durante kilómetros. La subida desde el valle del Navia hasta Grandas es una de las mejores conducciones del viaje.¶La presa es una obra de los años cincuenta, enorme para su tiempo, y tiene algo poco habitual: el arquitecto Joaquín Vaquero Palacios integró arte en la propia central, con relieves y murales dentro de un edificio industrial. Cuando se construyó quedaron varios pueblos bajo el agua.",
+        k:[["Presa","años 50"],["Carretera","AS-14, de curvas"]],
+        tip:"Hay miradores señalizados en la subida. Merece parar en uno aunque solo sea diez minutos.",
         m:"Embalse de Salime" },
+
       { id:"museo", n:"Museo Etnográfico de Grandas", d:5,
-        t:"Uno de los mejores museos etnográficos de España, montado sobre casas y talleres reales: la fragua, el molino, la casa campesina. Comprobad horarios antes de contar con él.",
+        t:"Uno de los mejores museos etnográficos de España, y no es exageración. Lo levantó Pepe el Ferreiro recogiendo durante décadas lo que la gente tiraba: aperos, telares, mobiliario, herramientas de oficios desaparecidos.¶No es una vitrina con cartelitos. Están montados la fragua, el molino, la casa campesina completa, el taller del zapatero, y se entiende cómo funcionaba una economía rural entera. Si tenéis interés por el mundo que retratan las brañas de Somiedo, aquí se cierra el círculo.",
+        k:[["Ubicación","Grandas de Salime"],["Visita","1 h 30 o más"]],
+        tip:"Comprobad horarios y día de cierre antes de contar con él: es el eje del día 5.",
         m:"Museo Etnográfico Grandas de Salime" },
+
       { id:"oneta", n:"Cascadas de Oneta",
-        t:"Tres saltos de agua en un bosque de castaños cerca de Villayón. La ruta es corta y umbría, buena opción si hace calor o si queréis un día suave.",
-        k:[["Distancia","3 km i/v"],["Sombra","toda"]],
+        t:"Tres saltos de agua escalonados en un bosque de castaños y robles cerca de Villayón, declarados monumento natural. El primero es el más espectacular y está a menos de veinte minutos del pueblo por camino bien marcado.¶Es la ruta de reserva del viaje: corta, umbría y con agua, perfecta si un día viene con calor de verdad o si las perras han hecho ya demasiado kilómetro.",
+        k:[["Distancia","3 km i/v"],["Sombra","toda la ruta"],["Saltos","tres"]],
         m:"Cascadas de Oneta Villayón", wl:"cascadas de oneta" },
+
+      { id:"cangas", n:"Cangas del Narcea", d:5,
+        t:"El concejo más extenso de Asturias y la última parada seria antes de cruzar a León. Tiene vino de la tierra con denominación propia, cosa poco conocida fuera, y el monasterio de Corias, al que llaman el Escorial asturiano por el tamaño.¶Para vosotros es sobre todo el punto logístico: gasolinera, supermercado de verdad y sitio donde comer antes de meterse en el puerto.",
+        k:[["Vino","DOP Cangas"],["No perderse","Monasterio de Corias"]],
+        tip:"Repostad aquí sí o sí. En el Rañadoiro y Leitariegos no hay nada.",
+        m:"Cangas del Narcea" },
+
+      { id:"leitariegos", n:"Puerto de Leitariegos", d:5,
+        t:"El paso de vuelta a León, a unos 1.500 metros, con la estación de esquí a un lado y el valle de Laciana abriéndose al otro. En agosto es una carretera de montaña preciosa y vacía; en invierno es otra historia.",
+        k:[["Altitud","unos 1.525 m"]],
+        m:"Puerto de Leitariegos" },
+
       { id:"muniellos", n:"Bosque de Muniellos",
-        t:"El robledal mejor conservado de Europa. Aviso importante: hace falta permiso previo, hay cupo diario limitado y no se permite la entrada de perros. Con Bella y Lisboa queda descartado.",
-        k:[["Permiso","obligatorio"],["Perros","no permitidos"]],
+        t:"El robledal mejor conservado de España y uno de los mayores de Europa, Reserva Natural Integral. La protección es la más estricta que existe: hace falta permiso solicitado con antelación, hay un cupo diario muy reducido de visitantes y no se permite la entrada de animales de compañía.¶Con Bella y Lisboa queda descartado. Lo pongo aquí para que no lo descubráis el día de antes buscando plan.",
+        k:[["Permiso","obligatorio y con cupo"],["Perros","no permitidos"]],
         m:"Reserva Natural Integral de Muniellos" }
     ]},
 
-    { zona:"Comer", arte:"puerto-mar", nota:"Confirmad horarios y apertura antes de contar con ninguno: en la montaña cierran pronto y en agosto hay que reservar.", lugares:[
-      { id:"comer-somiedo", n:"En Somiedo",
-        t:"En Pola de Somiedo hay varias casas de comidas con guisos de montaña: pote, cabrito y quesos del concejo. Fuera de Pola, las cocinas cierran temprano y en muchos pueblos no hay nada, así que el día que subáis a los lagos llevad la comida encima.",
+    { zona:"Comer, comprar y repostar", arte:"puerto-mar", nota:"Confirmad horarios y apertura antes de contar con ningún sitio: en la montaña las cocinas cierran pronto y en agosto conviene reservar.", lugares:[
+
+      { id:"comer-somiedo", n:"Comer en Somiedo",
+        t:"En Pola de Somiedo hay varias casas de comidas con cocina de montaña: pote asturiano, cabrito, cordero y quesos del propio concejo. Fuera de Pola la oferta cae en picado y en muchos pueblos directamente no hay nada abierto.¶El día de los lagos dad por hecho que coméis lo que llevéis encima: arriba no hay ningún servicio y al bajar es fácil que ya hayan cerrado la cocina.",
+        tip:"En los pueblos de montaña la cocina suele cerrar sobre las 15:30. Comer a las tres es tarde.",
         m:"restaurantes Pola de Somiedo" },
-      { id:"comer-costa", n:"En la costa",
-        t:"Cudillero y Luarca viven del pescado: pixín, virrey, calamar de potera. En Cudillero las terrazas del puerto son carísimas por la vista; unas calles arriba se come mejor y más barato. En Otur, cerca de Luarca, está Casa Consuelo, que lleva décadas siendo la referencia de la zona.",
+
+      { id:"comer-costa", n:"Comer en la costa",
+        t:"Cudillero y Luarca viven del mar: pixín, virrey, besugo, calamar de potera y percebe cuando lo hay. En Cudillero, las terrazas de primera línea del puerto cobran la postal; subiendo un par de calles se come mejor y más barato.¶En Otur, cerca de Luarca, está Casa Consuelo, que lleva décadas siendo la referencia de la zona. En agosto sin reservar es difícil.",
+        tip:"En agosto, reservad la víspera en cualquier sitio de la costa que os interese de verdad.",
         m:"Casa Consuelo Otur Luarca" },
+
       { id:"compra", n:"Compra para la furgo",
-        t:"En Pola de Somiedo hay tienda pero pequeña. Para llenar la nevera, mejor en Cangas del Narcea, Luarca o Navia, que tienen supermercados de verdad. Los quesos del occidente merecen sitio en la nevera.",
-        m:"supermercado Luarca" }
+        t:"Para llenar nevera de verdad: Cangas del Narcea, Luarca o Navia, que tienen supermercados grandes. En Pola de Somiedo hay tienda, pero pequeña y con horario corto.¶De la zona merecen sitio en la nevera los quesos del occidente y el vino de Cangas. Y agua: en las rutas de altura no hay fuentes fiables.",
+        tip:"Comprad para dos días vista. Entre Grandas y Cangas no hay gran cosa.",
+        m:"supermercado Navia" },
+
+      { id:"gasolina", n:"Gasolina y agua",
+        t:"El occidente de montaña tiene muy pocas gasolineras y algunas cierran a mediodía y los domingos. Los puntos seguros del recorrido son Pola de Somiedo, Navia, Grandas de Salime y Cangas del Narcea.¶Para agua y vaciado, mirad las áreas señaladas en park4night: en los pueblos hay fuentes, pero no siempre con acceso cómodo para llenar depósitos.",
+        tip:"Norma de furgo en montaña: por debajo de medio depósito, se reposta en la primera que se vea.",
+        m:"gasolinera Cangas del Narcea" }
     ]}
   ],
 
@@ -630,7 +715,10 @@ function ficha(l){
       <span class="mas">+</span>
     </button>
     <div class="lugar-cuerpo">
-      <p>${esc(l.t)}</p>
+      ${l.foto ? `<img class="foto" src="${esc(l.foto.src)}" alt="${esc(l.n)}" loading="lazy">
+        <p class="pie">${esc(l.foto.pie)}</p>` : ""}
+      ${esc(l.t).split("¶").map(x => `<p>${x}</p>`).join("")}
+      ${l.tip ? `<div class="tip"><span class="ic">→</span><p>${esc(l.tip)}</p></div>` : ""}
       ${l.k ? `<div class="datos">${l.k.map(([a,b]) =>
         `<div class="dato"><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join("")}</div>` : ""}
       <div class="btns">
