@@ -519,7 +519,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v25 · 24/07 19:12";
+const VERSION = "v26 · 24/07 19:17";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -1162,7 +1162,24 @@ aplicaTema();
 vistaHoy();
 
 if ("serviceWorker" in navigator){
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
+      reg.update();                                   // busca versión nueva en cada arranque
+      // Si entra un service worker nuevo, recarga sola una vez para mostrarlo
+      reg.addEventListener("updatefound", () => {
+        const sw = reg.installing;
+        sw && sw.addEventListener("statechange", () => {
+          if (sw.state === "installed" && navigator.serviceWorker.controller) {
+            if (!sessionStorage.getItem("recargado")) {
+              sessionStorage.setItem("recargado", "1");
+              location.reload();
+            }
+          }
+        });
+      });
+    } catch {}
+  });
 }
 </script>
 </body>
