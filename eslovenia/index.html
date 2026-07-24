@@ -181,6 +181,7 @@ ul.plain li span{color:var(--paper-dim)}
 .cercanas{margin:16px 0 4px;padding:14px;border-radius:12px;
   background:rgba(90,169,196,.08);border:1px solid var(--soca)}
 .btn.wl{border-color:var(--soca);color:var(--soca)}
+.btn.civ{border-color:var(--panel);color:var(--panel)}
 .lugar{border-top:1px solid var(--line)}
 .lugar:first-of-type{border-top:0}
 .lugar-cab{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;
@@ -548,7 +549,11 @@ const GUIA = [
   ]},
 
   { zona:"Liubliana y centro", wl:["Ljubljana","Velika planina","Škofja Loka"], arte:"medieval", nota:"El corazón verde de un país muy verde. Capital verde europea en 2016.", lugares:[
-    { id:"liubliana", xy:"46.051,14.506", n:"Liubliana", d:"2026-07-25",
+    { id:"venecia", xy:"45.434,12.339", n:"Venecia", d:"2026-07-28",
+      civ:"https://www.civitatis.com/es/venecia/",
+      t:"El principio y el final del viaje. La primera noche hicisteis free tour, y la última tarde queda el paseo de despedida por la isla: San Marcos, los canales y la cena. Desde Mestre se llega en tren en poco más de diez minutos.",
+      k:[["Desde Mestre","10–15 min en tren"]], m:"Piazza San Marco Venezia" },
+    { id:"liubliana", civ:"https://www.civitatis.com/es/liubliana/", xy:"46.051,14.506", n:"Liubliana", d:"2026-07-25",
       t:"Ciudad pequeña y con mucho encanto, de centro histórico compacto y peatonal. Catedral, iglesia franciscana de la Anunciación, edificios barrocos de aire italiano y el Puente de los Dragones. Se recorre andando sin esfuerzo.",
       k:[["Capital verde europea","2016"]], m:"Ljubljana old town" },
     { id:"castillo-lj", xy:"46.049,14.508", n:"Castillo de Liubliana", d:"2026-07-25",
@@ -1467,7 +1472,8 @@ function ficha(l){
         `<div class="dato"><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join("")}</div>` : ""}
       ${l.m ? `<div class="btns">
         <a class="btn solid" href="${navegar(l.m)}" target="_blank" rel="noopener">Ir con ${comoNavego()}</a>
-        <a class="btn" href="${mapa(l.m)}" target="_blank" rel="noopener">Ver en Maps</a></div>` : ""}
+        <a class="btn" href="${mapa(l.m)}" target="_blank" rel="noopener">Ver en Maps</a>
+        ${l.civ ? `<a class="btn civ" href="${l.civ}" target="_blank" rel="noopener">Free tours</a>` : ""}</div>` : ""}
     </div>
   </div>`;
 }
