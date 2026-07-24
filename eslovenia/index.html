@@ -181,7 +181,7 @@ ul.plain li span{color:var(--paper-dim)}
 .cercanas{margin:16px 0 4px;padding:14px;border-radius:12px;
   background:rgba(90,169,196,.08);border:1px solid var(--soca)}
 .btn.wl{border-color:var(--soca);color:var(--soca)}
-.btn.civ{border-color:var(--panel);color:var(--panel)}
+.btn.civ{border-color:#F70759;color:#F70759}
 .lugar{border-top:1px solid var(--line)}
 .lugar:first-of-type{border-top:0}
 .lugar-cab{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;
@@ -215,6 +215,7 @@ ul.plain li span{color:var(--paper-dim)}
 .tel.sos .num{color:var(--panel-red);font-size:22px;font-weight:700}
 .btn.wa{border-color:#25D366;color:#25D366}
 .btn.sos{background:var(--panel-red);border-color:var(--panel-red);color:#fff}
+.version{text-align:center;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--paper-dim);opacity:.6;margin:30px 0 4px}
 .note{font-size:13.5px;color:var(--paper-dim);line-height:1.5;margin:10px 0 0}
 
 /* Marcado, notas, cercanía y modo claro */
@@ -612,6 +613,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const VERSION = "v23 · 24/07 18:59";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const wikiloc = q => `https://es.wikiloc.com/wikiloc/map.do?q=${encodeURIComponent(q)}`;
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
@@ -1362,7 +1364,8 @@ function vistaInfo(){
     bloque("Marca sin prefijo", "Emergencias", VIAJE.info.emergencias, true) +
     bloque("Al volante", "Carretera", VIAJE.info.conducir) +
     bloque("Slovenščina", "Cuatro palabras", VIAJE.info.frases) +
-    bloque("Día a día", "Práctico", VIAJE.info.practico);
+    bloque("Día a día", "Práctico", VIAJE.info.practico) +
+    `<p class="version" id="version">Versión ${VERSION}</p>`;
 
   document.querySelectorAll("[data-app]").forEach(b => b.addEventListener("click", () => {
     PREF.app = b.dataset.app; vistaInfo();
