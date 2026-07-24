@@ -284,7 +284,7 @@ const VIAJE = {
   ],
 
   guia: [
-    { zona:"Somiedo", caja:["42.98,-6.45","43.20,-6.05"], arte:"lagos", nota:"Parque Natural desde 1988 y Reserva de la Biosfera desde 2000. Cinco valles glaciares, una docena de lagos y la mayor población de oso pardo de la cordillera Cantábrica.", lugares:[
+    { zona:"Somiedo", wl:["Somiedo","Saliencia","Valle de Lago","Villar de Vildas"], arte:"lagos", nota:"Parque Natural desde 1988 y Reserva de la Biosfera desde 2000. Cinco valles glaciares, una docena de lagos y la mayor población de oso pardo de la cordillera Cantábrica.", lugares:[
 
       { id:"parque", n:"El parque, en general",
         t:"Somiedo son cinco valles que bajan en paralelo desde la divisoria con León: Saliencia, Valle, Pigüeña, Somiedo y Perlunes. Esa estructura explica el viaje: no se recorre en círculo, se entra y se sale de cada valle desde el eje de la AS-227.¶Es uno de los pocos sitios de la península donde la actividad ganadera de montaña sigue viva de verdad, no como decorado. En julio y agosto hay ganado en los pastos altos y gente trabajando en las brañas, y eso condiciona lo que os vais a encontrar: pistas con vacas, perros de rebaño y cierres que hay que dejar como estaban.",
@@ -336,7 +336,7 @@ const VIAJE = {
         m:"Centro Interpretación Parque Natural Somiedo" }
     ]},
 
-    { zona:"La costa occidental", caja:["43.45,-6.85","43.62,-6.05"], arte:"costa", nota:"Acantilados altos cortados a pico, playas escondidas al final de un camino y puertos encajados en la roca. Mucho menos masificada que la costa oriental, incluso en agosto.", lugares:[
+    { zona:"La costa occidental", wl:["Cudillero","Luarca","Navia","Valdés"], arte:"costa", nota:"Acantilados altos cortados a pico, playas escondidas al final de un camino y puertos encajados en la roca. Mucho menos masificada que la costa oriental, incluso en agosto.", lugares:[
 
       { id:"silencio", n:"Playa del Silencio", d:3,
         t:"El nombre real es Gavieiru, pero se impuso el otro y con razón. Es una cala cerrada por un anfiteatro de acantilados, con un rosario de islotes delante que rompen el oleaje. El suelo es de canto rodado grande, no de arena.¶No es playa de toalla y sombrilla: es playa de mirarla desde arriba y bajar un rato. Se aparca en Castañeras, arriba, y se baja por una senda con escalones de piedra que en la vuelta se nota. Está protegida y no hay ningún servicio.",
@@ -380,7 +380,7 @@ const VIAJE = {
         m:"Castro de Coaña" }
     ]},
 
-    { zona:"El interior del oeste", caja:["43.00,-7.05","43.45,-6.45"], arte:"embalse", nota:"Valles muy profundos, embalses encajonados y carreteras vacías que cruzan de un concejo a otro por lo alto. La Asturias que no sale en las postales.", lugares:[
+    { zona:"El interior del oeste", wl:["Grandas de Salime","Villayón","Cangas del Narcea","Ibias"], arte:"embalse", nota:"Valles muy profundos, embalses encajonados y carreteras vacías que cruzan de un concejo a otro por lo alto. La Asturias que no sale en las postales.", lugares:[
 
       { id:"salime", n:"Embalse de Salime", d:4,
         t:"Un embalse largo y estrecho metido entre laderas casi verticales, con la carretera colgada por encima durante kilómetros. La subida desde el valle del Navia hasta Grandas es una de las mejores conducciones del viaje.¶La presa es una obra de los años cincuenta, enorme para su tiempo, y tiene algo poco habitual: el arquitecto Joaquín Vaquero Palacios integró arte en la propia central, con relieves y murales dentro de un edificio industrial. Cuando se construyó quedaron varios pueblos bajo el agua.",
@@ -472,7 +472,6 @@ const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","S�
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-const wikilocZona = (sw, ne) => `https://es.wikiloc.com/wikiloc/map.do?sw=${sw}&ne=${ne}`;
 const wikiloc = q => `https://es.wikiloc.com/wikiloc/map.do?q=${encodeURIComponent(q)}`;
 
 /* ---- Preferencias, guardadas en este móvil ---- */
@@ -714,11 +713,12 @@ function vistaGuia(){
 
 /* ---- Rutas cercanas en Wikiloc, por zona ---- */
 function rutasCercanas(z){
-  if (!z.caja) return "";
+  if (!z.wl || !z.wl.length) return "";
   return `<div class="cercanas">
     <span class="label">Rutas cercanas</span>
-    <p class="note" style="margin:4px 0 10px">Abre el mapa de Wikiloc en esta zona. Descargad el GPX y el mapa offline antes de subir.</p>
-    <a class="btn wl" href="${wikilocZona(z.caja[0], z.caja[1])}" target="_blank" rel="noopener">Explorar rutas en el mapa</a>
+    <p class="note" style="margin:4px 0 0">Abre el mapa de Wikiloc centrado en ese punto. Descargad el GPX y el mapa offline antes de subir.</p>
+    <div class="btns">${z.wl.map(t =>
+      `<a class="btn wl" href="${wikiloc(t)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("")}</div>
   </div>`;
 }
 
