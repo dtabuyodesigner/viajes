@@ -1031,6 +1031,7 @@ function vistaReservas(){
     <p class="note">${esc(c.franquicia)}. Si hay daños los pagas primero allí y luego reclamas a Sincera con el contrato firmado, el informe de estado, la factura y fotos.</p>
 
     <div class="sec"><span class="label">Once noches</span><h2>Alojamientos</h2></div>${camas}
+    ${tarjetaGastos()}
 `;
 
   pintaPassword();
@@ -1059,6 +1060,19 @@ function panelNav(){
     </div>`;
 }
 
+
+/* ---- Enlace a la app de gastos compartidos ---- */
+const GASTOS = "https://dtabuyodesigner.github.io/splitwise/";
+const tarjetaGastos = () => `
+  <div class="sec"><span class="label">Cuentas del viaje</span><h2>Gastos compartidos</h2></div>
+  <div class="card">
+    <h3>Quién ha pagado qué</h3>
+    <p class="note" style="margin-top:0">Apuntadlo en el momento de pagar. Al final del viaje las cuentas salen solas.</p>
+    <div class="btns">
+      <a class="btn solid" href="${GASTOS}" target="_blank" rel="noopener">Abrir gastos compartidos</a>
+    </div>
+  </div>`;
+
 function vistaInfo(){
   const bloque = (label, titulo, filas, tel) => `
     <div class="sec"><span class="label">${label}</span><h2>${titulo}</h2></div>
@@ -1066,7 +1080,7 @@ function vistaInfo(){
       ? `<a href="tel:${esc(b.replace(/\s/g,""))}"><strong>${esc(b)}</strong></a> · <span>${esc(a)}</span>`
       : `<strong>${esc(a)}</strong> · <span>${esc(b)}</span>`}</li>`).join("")}</ul>`;
 
-  document.getElementById("v-info").innerHTML = panelNav() +
+  document.getElementById("v-info").innerHTML = tarjetaGastos() + panelNav() +
     bloque("Marca sin prefijo", "Emergencias", VIAJE.info.emergencias, true) +
     bloque("Al volante", "Carretera", VIAJE.info.conducir) +
     bloque("Slovenščina", "Cuatro palabras", VIAJE.info.frases) +
