@@ -232,6 +232,18 @@ body.claro{--karst:#F2F5F3;--karst-2:#FFFFFF;--paper:#0F2926;--paper-dim:#5A736E
 body.claro header{background:linear-gradient(180deg,var(--karst) 72%,rgba(255,255,255,0))}
 body.claro nav{background:rgba(255,255,255,.94)}
 body.claro .art{background:#DDE5DE}
+
+.mapa{background:var(--karst-2);border:1px solid var(--line);border-radius:14px;padding:10px 8px 12px;margin:6px 0 20px}
+.mapa svg{display:block;width:100%;height:auto}
+.mapa polyline{fill:none;stroke:var(--soca-dim);stroke-width:1.6;stroke-linejoin:round;
+  stroke-linecap:round;stroke-dasharray:3 4;opacity:.85}
+.mapa .par{fill:var(--soca-dim);opacity:.75}
+.mapa .par.act{fill:var(--panel);opacity:1}
+.mapa .cama circle{fill:var(--soca);stroke:var(--karst-2);stroke-width:2;cursor:pointer}
+.mapa .cama.act circle{fill:var(--panel)}
+.mapa .cama text{font-family:var(--mono);font-size:8.5px;fill:currentColor;opacity:.75;
+  text-anchor:middle;pointer-events:none}
+.mapa .cama.act text{opacity:1;font-weight:700}
 </style>
 </head>
 <body>
@@ -329,48 +341,48 @@ const VIAJE = {
   ],
 
   dias: [
-    { f:"2026-07-18", dest:"Hotel Mary Mestre Venezia", t:"Llegada a Italia", arte:"venecia", base:"Hotel Mary · Mestre", paradas:[
+    { f:"2026-07-18", xy:"45.490,12.240", dest:"Hotel Mary Mestre Venezia", t:"Llegada a Italia", arte:"venecia", base:"Hotel Mary · Mestre", paradas:[
       { h:"18:55", txt:"Vuelo Madrid → Venecia", key:true },
       { txt:"Check-in en el Hotel Mary", n:"Mestre" },
       { txt:"Free tour por Venecia", n:"Primer contacto con la ciudad" }
     ]},
-    { f:"2026-07-19", dest:"Brne Rooms Postojna", t:"Cuevas y castillos", arte:"cueva", base:"Brne Rooms · Postojna", paradas:[
+    { f:"2026-07-19", xy:"45.780,14.210", dest:"Brne Rooms Postojna", t:"Cuevas y castillos", arte:"cueva", base:"Brne Rooms · Postojna", paradas:[
       { h:"15:00", txt:"Recogida del coche en Marco Polo", n:"Puerta 4 de llegadas → P5 → túnel blanco", key:true },
       { txt:"Cruce de frontera a Eslovenia" },
       { txt:"Cuevas de Škocjan", c:"Cuevas de Škocjan", n:"Patrimonio de la Humanidad · visita guiada con horarios fijos", mapa:"Škocjan Caves Slovenia", w:"Park Škocjanske jame", g:"skocjan" },
       { txt:"Castillo de Predjama", c:"Castillo de Predjama", n:"Incrustado en la pared de roca", mapa:"Predjama Castle", w:"Predjamski grad", g:"predjama" }
     ]},
-    { f:"2026-07-20", dest:"Synergy Deluxe Apartments Sečovlje", t:"La costa eslovena", arte:"costa", base:"Synergy Deluxe Apartments · Sečovlje", paradas:[
+    { f:"2026-07-20", xy:"45.480,13.620", dest:"Synergy Deluxe Apartments Sečovlje", t:"La costa eslovena", arte:"costa", base:"Synergy Deluxe Apartments · Sečovlje", paradas:[
       { txt:"Costa adriática eslovena" },
       { txt:"Pirán", c:"Pirán", n:"Aparcar en Fornače y subir en la lanzadera", mapa:"Parkirna hiša Fornače Piran", w:"Parkirna hiša Fornače Piran", key:true },
       { txt:"Cena en Okrepčevalnica Barka", mapa:"Okrepcevalnica Barka Slovenia", w:"Okrepčevalnica Barka Seča" }
     ]},
-    { f:"2026-07-21", dest:"Tolmin Slovenia", t:"Valle del Soča", arte:"rio", base:"Tolmin", paradas:[
+    { f:"2026-07-21", xy:"46.180,13.730", dest:"Tolmin Slovenia", t:"Valle del Soča", arte:"rio", base:"Tolmin", paradas:[
       { txt:"Subida desde la costa por el valle del Soča" },
       { txt:"Kanal ob Soči", c:"Kanal ob Soči", n:"Parada en el puente sobre el río", mapa:"Kanal ob Soci", w:"Kanal ob Soči", g:"soca" },
       { txt:"Gargantas de Tolmin", c:"Gargantas de Tolmin", n:"Ruta desde el aparcamiento P2", mapa:"Tolmin Gorges P2", w:"Tolminska korita", g:"tolmin", key:true },
       { txt:"Cascada Kozjak · Kobarid", c:"Cascada Kozjak", n:"Unos 20 min a pie desde el aparcamiento", mapa:"Slap Kozjak Kobarid", w:"Slap Kozjak Kobarid", g:"kozjak" }
     ]},
-    { f:"2026-07-22", dest:"Sobe Marinšek Naklo", t:"El gran paso alpino", arte:"paso", base:"PONI NAKLO · Naklo", paradas:[
+    { f:"2026-07-22", xy:"46.270,14.320", dest:"Sobe Marinšek Naklo", t:"El gran paso alpino", arte:"paso", base:"PONI NAKLO · Naklo", paradas:[
       { h:"Mañana", txt:"Paso de Vršič", c:"Paso de Vršič", n:"50 curvas de herradura · carretera lenta, calcula tiempo de sobra", mapa:"Vrsic Pass", w:"Prelaz Vršič", g:"vrsic", key:true },
       { h:"Tarde", txt:"Lago Jasna", c:"Lago Jasna", n:"Parada junto a Kranjska Gora", mapa:"Lake Jasna Kranjska Gora", w:"Jezero Jasna Kranjska Gora", g:"jasna" },
       { txt:"Reserva natural de Zelenci", c:"Zelenci", n:"Pasarelas sobre el manantial esmeralda", mapa:"Zelenci Nature Reserve", w:"Zelenci Kranjska Gora", g:"zelenci" },
       { txt:"Check-in en PONI NAKLO", n:"Sobe Marinšek · Naklo" }
     ]},
-    { f:"2026-07-23", dest:"Sobe Marinšek Naklo", t:"El icónico lago Bled", arte:"bled",
+    { f:"2026-07-23", xy:"46.270,14.320", dest:"Sobe Marinšek Naklo", t:"El icónico lago Bled", arte:"bled",
       foto:{ src:"fotos/bled-osojnica.jpg", pie:"El lago Bled desde los miradores de Osojnica · 23 de julio" }, base:"PONI NAKLO · Naklo", paradas:[
       { h:"Mañana", txt:"Vuelta al lago Bled", c:"Mirador Ojstrica", n:"Subida al mirador de Ojstrica: 20 min de rampa y la foto de la isla", mapa:"Ojstrica viewpoint Bled", w:"Ojstrica Bled parkirišče", g:"bled", key:true },
       { txt:"Barca tradicional a la isla", c:"Embarcadero de Mlino", n:"La pletna, a remo. 99 escalones hasta la iglesia", mapa:"Bled Island", w:"Mlino Bled pletna" },
       { h:"Tarde", txt:"Garganta de Vintgar", c:"Garganta de Vintgar", n:"Pasarelas de madera sobre el río. Entrada con hora asignada", mapa:"Vintgar Gorge", w:"Soteska Vintgar", g:"vintgar", key:true },
       { txt:"Noche en Naklo" }
     ]},
-    { f:"2026-07-24", dest:"Sobe Marinšek Naklo", t:"El salvaje lago Bohinj", arte:"bohinj", base:"PONI NAKLO · Naklo", paradas:[
+    { f:"2026-07-24", xy:"46.270,14.320", dest:"Sobe Marinšek Naklo", t:"El salvaje lago Bohinj", arte:"bohinj", base:"PONI NAKLO · Naklo", paradas:[
       { h:"Mañana", txt:"Día en el lago Bohinj", c:"Lago Bohinj", park:{ n:"Bohinjska Bistrica (gratis)", w:"Bohinjska Bistrica železniška postaja", p:"Gratis + autobús. Junto al lago son 3–4 €/h", gratis:true }, n:"Caminata, kayak o la cascada Savica", mapa:"Lake Bohinj", w:"Bohinjsko jezero Ribčev Laz", g:"bohinj", key:true },
       { txt:"Cascada Savica", c:"Cascada Savica", n:"Unos 20 min de subida con escalones", mapa:"Slap Savica", w:"Slap Savica parkirišče", g:"savica" },
       { h:"Tarde", txt:"Teleférico de Vogel", c:"Teleférico de Vogel", n:"Vistas del Parque Nacional de Triglav desde arriba", mapa:"Vogel cable car", w:"Vogel žičnica", g:"vogel", key:true },
       { txt:"Noche en Naklo" }
     ]},
-    { f:"2026-07-25", dest:"Pr Ambružarju Cerklje na Gorenjskem", t:"Peričnik y la capital", arte:"cascada", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
+    { f:"2026-07-25", xy:"46.250,14.490", dest:"Pr Ambružarju Cerklje na Gorenjskem", t:"Peričnik y la capital", arte:"cascada", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
       { h:"Mañana", txt:"Cascada de Peričnik", c:"Cascada Peričnik", park:{ n:"Koča pri Peričniku", w:"Koča pri Peričniku", p:"Unos 3 €/h. Varias fuentes dicen que es gratis antes de las 10:00", gratis:false }, n:"52 m de caída. Se camina por detrás de la cortina de agua: vais a acabar mojados", mapa:"Pericnik Waterfall", w:"Slap Peričnik", g:"pericnik", key:true },
       { txt:"Bajada a Liubliana", n:"Aparcad fuera del centro, es peatonal" },
       { h:"Comida", txt:"Centro histórico", c:"Centro de Liubliana", park:{ n:"P+R Ježica (1,50 € con bus)", w:"P+R Ježica Ljubljana", p:"1,50 € todo el día e incluye el bus de ida y vuelta. Se paga con tarjeta Urbana (2 €)", gratis:false }, n:"Puente de los Dragones y orillas del Ljubljanica", mapa:"Zmajski most Ljubljana", w:"Ljubljana center", g:"liubliana", key:true },
@@ -378,14 +390,14 @@ const VIAJE = {
       { h:"Noche", txt:"Cena en las terrazas del río", n:"Y después a Cerklje, media hora de coche" },
       { txt:"Check-in en Pr Ambružarju", n:"Cerklje na Gorenjskem" }
     ]},
-    { f:"2026-07-26", dest:"Pr Ambružarju Cerklje na Gorenjskem", t:"Valle de Logar y cascada Rinka", arte:"valle", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
+    { f:"2026-07-26", xy:"46.250,14.490", dest:"Pr Ambružarju Cerklje na Gorenjskem", t:"Valle de Logar y cascada Rinka", arte:"valle", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
       { h:"Mañana", txt:"Valle de Logar", c:"Valle de Logar", park:{ n:"Antes de la barrera (gratis)", w:"Logarska dolina vstop", p:"Entrar en coche cuesta 10 €. A pie o en bici es gratis: hay aparcamiento antes de la entrada", gratis:true }, n:"Hora y cuarto desde Cerklje. Valle glaciar en U, de los más bonitos del país", mapa:"Logar Valley Slovenia", w:"Logarska dolina", g:"logar", key:true },
       { txt:"Entrada al valle", n:"Se paga por vehículo. La carretera llega hasta el fondo" },
       { h:"Mediodía", txt:"Cascada Rinka", c:"Cascada Rinka", n:"90 m. Mirador a 15 min a pie; hasta el pie, media hora larga", mapa:"Rinka Waterfall", w:"Slap Rinka", g:"rinka", key:true },
       { txt:"Picnic en el valle", n:"Comprad en el Mercator o el Hofer de camino: sale a mitad de precio" },
       { h:"Tarde", txt:"Vuelta tranquila a Cerklje" }
     ]},
-    { f:"2026-07-27", dest:"Pr Ambružarju Cerklje na Gorenjskem", t:"Velika Planina y despedida", arte:"meseta", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
+    { f:"2026-07-27", xy:"46.250,14.490", dest:"Pr Ambružarju Cerklje na Gorenjskem", t:"Velika Planina y despedida", arte:"meseta", base:"Guest house Pr Ambružarju · Cerklje", paradas:[
       { h:"Temprano", txt:"Teleférico a Velika Planina", c:"Velika Planina", park:{ n:"Estación del teleférico (gratis)", w:"Velika planina spodnja postaja parkirišče", p:"Aparcamiento gratuito en la estación de abajo, en Kamniška Bistrica", gratis:true }, n:"Lunes por la mañana hay bastante menos cola que en domingo", mapa:"Velika Planina", w:"Velika planina spodnja postaja", g:"velika", key:true },
       { txt:"El poblado de pastores", n:"El más grande de Europa. En julio están arriba con las vacas", key:true },
       { txt:"Comer en la meseta", n:"Comprobad la hora del último descenso antes de subir" },
@@ -393,14 +405,14 @@ const VIAJE = {
       { txt:"Maletas y repostar", n:"El gasóleo es más barato aquí que en Italia" },
       { txt:"Noche en Cerklje" }
     ]},
-    { f:"2026-07-28", dest:"LH Hotel Sirio Venice Mestre", t:"Retorno a los canales venecianos", arte:"canales", base:"LH Hotel Sirio Venice · Mestre", paradas:[
+    { f:"2026-07-28", xy:"45.490,12.240", dest:"LH Hotel Sirio Venice Mestre", t:"Retorno a los canales venecianos", arte:"canales", base:"LH Hotel Sirio Venice · Mestre", paradas:[
       { h:"Mañana", txt:"Vuelta a Italia por autopista", n:"Peajes italianos en cabina, se paga al salir" },
       { h:"15:00", txt:"Devolución del coche en Marco Polo", n:"Fotos del coche y del cuentakilómetros. Pide el informe de estado por escrito", key:true },
       { txt:"Traslado al hotel en Mestre", n:"Bus ATVO o taxi" },
       { h:"Tarde", txt:"Despedida por la isla de Venecia", c:"Venecia", n:"Plaza San Marcos, canales y cena", mapa:"Piazza San Marco Venezia", key:true },
       { txt:"Dejar cerrado el taxi de mañana", n:"Sale de madrugada: resérvalo esta noche", key:true }
     ]},
-    { f:"2026-07-29", dest:"Aeroporto Marco Polo Venezia", t:"Madrugón y fin del viaje", arte:"avion", base:"—", paradas:[
+    { f:"2026-07-29", xy:"45.505,12.352", dest:"Aeroporto Marco Polo Venezia", t:"Madrugón y fin del viaje", arte:"avion", base:"—", paradas:[
       { h:"03:30", txt:"Taxi de Mestre al aeropuerto VCE", key:true },
       { h:"05:45", txt:"Vuelo Venecia → Madrid", n:"Wizz Air Malta · VJEL5V", key:true },
       { h:"10:00", txt:"Llegada y recogida del coche", n:"Parking de Barajas", key:true }
@@ -819,6 +831,53 @@ function botonesRuta(i){
   </div>`;
 }
 
+const etiqueta = (d, i) => { const f = fecha(d.f); return f.txt; };
+
+/* ---- Mapa de la ruta, dibujado con las coordenadas reales ---- */
+function mapaRuta(){
+  const puntos = [];
+  VIAJE.dias.forEach((d, i) => {
+    d.paradas.forEach(p => {
+      const c = p.xy || (p.g && LUGARES[p.g] && LUGARES[p.g].xy);
+      if (c) puntos.push({ xy:c.split(",").map(Number), dia:i, tipo:"parada" });
+    });
+    if (d.xy) puntos.push({ xy:d.xy.split(",").map(Number), dia:i, tipo:"cama", d });
+  });
+  if (puntos.length < 3) return "";
+
+  const lats = puntos.map(p => p.xy[0]), lons = puntos.map(p => p.xy[1]);
+  const lat0 = (Math.min(...lats) + Math.max(...lats)) / 2;
+  const k = Math.cos(lat0 * Math.PI / 180);
+  const W = 400, H = 250, M = 26;
+  const xs = lons.map(l => l * k), ys = lats;
+  const [x0,x1,y0,y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const esc1 = Math.min((W - 2*M) / ((x1-x0) || 1), (H - 2*M) / ((y1-y0) || 1));
+  const cx = v => M + (v * k - x0) * esc1 + ((W - 2*M) - (x1-x0)*esc1) / 2;
+  const cy = v => H - M - (v - y0) * esc1 - ((H - 2*M) - (y1-y0)*esc1) / 2;
+
+  const linea = puntos.map(p => `${cx(p.xy[1]).toFixed(1)},${cy(p.xy[0]).toFixed(1)}`).join(" ");
+  const hoy = indiceHoy();
+
+  const marcas = puntos.map(p => {
+    const x = cx(p.xy[1]).toFixed(1), y = cy(p.xy[0]).toFixed(1);
+    const act = p.dia === hoy;
+    if (p.tipo === "cama") return `
+      <g class="cama${act ? " act" : ""}" data-dia="${p.dia}">
+        <circle cx="${x}" cy="${y}" r="${act ? 7 : 5}"/>
+        <text x="${x}" y="${(+y - (act ? 12 : 10)).toFixed(1)}">${esc(etiqueta(p.d, p.dia))}</text>
+      </g>`;
+    return `<circle class="par${act ? " act" : ""}" cx="${x}" cy="${y}" r="${act ? 4 : 2.6}"/>`;
+  }).join("");
+
+  return `<div class="mapa">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa de la ruta">
+      <polyline points="${linea}"/>
+      ${marcas}
+    </svg>
+    <p class="note" style="margin:8px 2px 0">Posiciones reales, unidas en el orden del viaje. Toca un punto para ir a ese día.</p>
+  </div>`;
+}
+
 /* ---- Vista HOY ---- */
 function vistaHoy(){
   const i = indiceHoy();
@@ -845,7 +904,7 @@ function vistaHoy(){
 function vistaDias(){
   const h = hoyISO();
   document.getElementById("v-dias").innerHTML =
-    `<div class="sec"><span class="label">18 → 29 julio</span><h2>Los doce días</h2></div>` +
+    `<div class="sec"><span class="label">18 → 29 julio</span><h2>Los doce días</h2></div>` + mapaRuta() +
     VIAJE.dias.map((d,i) => {
       const f = fecha(d.f);
       const cls = d.f === h ? "today" : (d.f < h ? "past" : "");
@@ -855,10 +914,14 @@ function vistaDias(){
       </button>`;
     }).join("") + `<div id="detalle"></div>`;
 
+  document.querySelectorAll(".mapa .cama").forEach(g => g.addEventListener("click", () => {
+    const b = document.querySelector(`.day[data-i="${g.dataset.dia}"]`);
+    if (b) b.click();
+  }));
   document.querySelectorAll(".day").forEach(b => b.addEventListener("click", () => {
-    const d = VIAJE.dias[+b.dataset.i], f = fecha(d.f);
+    const i = +b.dataset.i, d = VIAJE.dias[i], f = fecha(d.f);
     const det = document.getElementById("detalle");
-    det.innerHTML = `<div class="sec"><span class="label">${esc(f.wd)} ${esc(f.txt)}</span><h2>${esc(d.t)}</h2></div>${cabecera(d)}${botonesRuta(+b.dataset.i)}${pintaParadas(d, i)}`;
+    det.innerHTML = `<div class="sec"><span class="label">${esc(f.wd)} ${esc(f.txt)}</span><h2>${esc(d.t)}</h2></div>${cabecera(d)}${botonesRuta(i)}${pintaParadas(d, i)}`;
     activaEnlacesGuia(); activaDiario();
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
