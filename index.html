@@ -140,6 +140,13 @@ ul.plain{list-style:none;margin:0;padding:0}
 ul.plain li{padding:8px 0;border-top:1px solid var(--line);font-size:15px}
 ul.plain li:first-child{border-top:0}
 ul.plain li span{color:var(--paper-dim)}
+.ops{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.op{flex:1 1 140px;text-align:left;padding:11px 13px;border-radius:12px;cursor:pointer;
+  background:transparent;border:1px solid var(--line);color:var(--paper);font:inherit}
+.op b{display:block;font-size:14px;font-weight:600}
+.op small{display:block;font-size:11.5px;color:var(--paper-dim);margin-top:2px;line-height:1.35}
+.op.on{border-color:var(--soca);background:rgba(79,195,184,.11)}
+.op.on b{color:var(--soca)}
 .park{display:flex;gap:10px;align-items:flex-start;margin:10px 0 0;padding:10px 12px;
   background:rgba(217,162,51,.09);border:1px solid rgba(217,162,51,.3);border-radius:11px}
 .park.free{background:rgba(79,195,184,.1);border-color:rgba(79,195,184,.35)}
@@ -579,7 +586,7 @@ function pintaParadas(dia){
       ${p.h ? `<span class="t">${esc(p.h)}</span>` : ""}
       <p>${esc(p.txt)}</p>
       ${p.n ? `<small>${esc(p.n)}</small>` : ""}
-      ${p.mapa ? `<small><a href="${waze(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">Ir con Waze →</a>
+      ${p.mapa ? `<small><a href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">Ir con Waze →</a>
         <span style="color:var(--soca-dim)"> · </span><a href="${mapa(p.mapa)}" target="_blank" rel="noopener">Maps</a></small>` : ""}
       ${p.g ? `<small><button class="lnk" data-guia="${esc(p.g)}">Qué es y qué ver →</button></small>` : ""}
       ${p.park ? `<div class="park${p.park.gratis ? " free" : ""}">
@@ -590,6 +597,32 @@ function pintaParadas(dia){
 }
 
 
+
+/* ---- Preferencias de navegación (guardadas en este móvil) ---- */
+const PREF = {
+  get app(){ try { return localStorage.getItem("nav_app") || "waze"; } catch { return "waze"; } },
+  set app(v){ try { localStorage.setItem("nav_app", v); } catch {} },
+  get via(){ try { return localStorage.getItem("nav_via") || "rapido"; } catch { return "rapido"; } },
+  set via(v){ try { localStorage.setItem("nav_via", v); } catch {} }
+};
+
+const EVITAR = { rapido:"", sinpeajes:"tolls", secundarias:"tolls,highways" };
+const VIAS = [
+  ["rapido",      "Lo más rápido",  "Autopista incluida"],
+  ["sinpeajes",   "Sin peajes",     "Autovía y nacional"],
+  ["secundarias", "Por carreteras", "Evita autopista y peaje"]
+];
+
+/* Enlace de navegación a un destino, según lo que tenga elegido */
+function navegar(q){
+  if (PREF.app === "waze") return `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+  const u = new URLSearchParams({ api:"1", destination:q, travelmode:"driving" });
+  const ev = EVITAR[PREF.via];
+  if (ev) u.set("avoid", ev);
+  return `https://www.google.com/maps/dir/?${u}`;
+}
+const comoNavego = () => PREF.app === "waze" ? "Waze" : "Maps";
+
 /* ---- Rutas del día ---- */
 const waze = q => `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
 
@@ -599,6 +632,8 @@ function rutaDelDia(i){
   const paradas = d.paradas.filter(p => p.mapa).map(p => p.mapa);
   const u = new URLSearchParams({ api:"1", origin:previo, destination:d.dest, travelmode:"driving" });
   if (paradas.length) u.set("waypoints", paradas.slice(0, 9).join("|"));
+  const ev = EVITAR[PREF.via];
+  if (ev) u.set("avoid", ev);
   return { url:`https://www.google.com/maps/dir/?${u}`, n:paradas.length };
 }
 
@@ -607,13 +642,13 @@ function botonesRuta(i){
   const tramos = d.paradas.filter(p => p.mapa);
 
   const chips = tramos.map((p, k) =>
-    `<a class="wz" href="${waze(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">
+    `<a class="wz" href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">
        <b>${k+1}</b>${esc(p.c || p.txt)}</a>`).join("");
 
   return `<div class="ruta">
-    <span class="label">Navegar con Waze</span>
+    <span class="label">Navegar con ${comoNavego()}</span>
     <div class="wz-lista">${chips}
-      ${d.dest ? `<a class="wz cama" href="${waze(d.dest)}" target="_blank" rel="noopener">
+      ${d.dest ? `<a class="wz cama" href="${navegar(d.dest)}" target="_blank" rel="noopener">
         <b>${tramos.length+1}</b>Alojamiento</a>` : ""}</div>
     <p class="note" style="margin:10px 0 0">Waze solo lleva a un sitio por vez: dale al siguiente número según vayas llegando.
     ${r.n ? `<a href="${r.url}" target="_blank" rel="noopener">Ver la ruta entera en Maps →</a>` : ""}</p>
@@ -961,7 +996,7 @@ function vistaReservas(){
       <h3>${esc(x.nombre)}</h3>
       <div class="row"><span class="k">Zona</span><span class="v">${esc(x.zona)}</span></div>
       <div class="btns">
-        <a class="btn solid" href="${waze(x.nombre + " " + x.zona)}" target="_blank" rel="noopener">Ir con Waze</a>
+        <a class="btn solid" href="${navegar(x.nombre + " " + x.zona)}" target="_blank" rel="noopener">Ir con ${comoNavego()}</a>
         <a class="btn" href="${mapa(x.nombre + " " + x.zona)}" target="_blank" rel="noopener">Ver en Maps</a>
       </div>
     </div>`).join("");
@@ -1004,6 +1039,26 @@ function vistaReservas(){
 }
 
 /* ---- Vista INFO ---- */
+function panelNav(){
+  const op = (grupo, val, act, t, sub) =>
+    `<button class="op${val === act ? " on" : ""}" data-${grupo}="${val}">
+      <b>${t}</b><small>${sub}</small></button>`;
+
+  return `<div class="sec"><span class="label">Ajustes</span><h2>Cómo navegar</h2></div>
+    <div class="card">
+      <span class="label">Abrir las rutas en</span>
+      <div class="ops">
+        ${op("app","waze",PREF.app,"Waze","Tráfico y avisos en vivo")}
+        ${op("app","maps",PREF.app,"Google Maps","Permite elegir el tipo de vía")}
+      </div>
+      <span class="label" style="display:block;margin-top:16px">Tipo de carretera</span>
+      <div class="ops">${VIAS.map(([v,t,sub]) => op("via",v,PREF.via,t,sub)).join("")}</div>
+      <p class="note">${PREF.app === "waze"
+        ? "Waze no acepta esta preferencia desde un enlace: se pone una vez en Waze, en Ajustes → Navegación. Aquí solo afecta al enlace de la ruta completa."
+        : "Se aplica a todos los botones de navegación."}</p>
+    </div>`;
+}
+
 function vistaInfo(){
   const bloque = (label, titulo, filas, tel) => `
     <div class="sec"><span class="label">${label}</span><h2>${titulo}</h2></div>
@@ -1011,11 +1066,18 @@ function vistaInfo(){
       ? `<a href="tel:${esc(b.replace(/\s/g,""))}"><strong>${esc(b)}</strong></a> · <span>${esc(a)}</span>`
       : `<strong>${esc(a)}</strong> · <span>${esc(b)}</span>`}</li>`).join("")}</ul>`;
 
-  document.getElementById("v-info").innerHTML =
+  document.getElementById("v-info").innerHTML = panelNav() +
     bloque("Marca sin prefijo", "Emergencias", VIAJE.info.emergencias, true) +
     bloque("Al volante", "Carretera", VIAJE.info.conducir) +
     bloque("Slovenščina", "Cuatro palabras", VIAJE.info.frases) +
     bloque("Día a día", "Práctico", VIAJE.info.practico);
+
+  document.querySelectorAll("[data-app]").forEach(b => b.addEventListener("click", () => {
+    PREF.app = b.dataset.app; vistaInfo();
+  }));
+  document.querySelectorAll("[data-via]").forEach(b => b.addEventListener("click", () => {
+    PREF.via = b.dataset.via; vistaInfo();
+  }));
 }
 
 
@@ -1066,7 +1128,7 @@ function ficha(l){
       ${l.k ? `<div class="datos">${l.k.map(([a,b]) =>
         `<div class="dato"><b>${esc(a)}</b><span>${esc(b)}</span></div>`).join("")}</div>` : ""}
       ${l.m ? `<div class="btns">
-        <a class="btn solid" href="${waze(l.m)}" target="_blank" rel="noopener">Ir con Waze</a>
+        <a class="btn solid" href="${navegar(l.m)}" target="_blank" rel="noopener">Ir con ${comoNavego()}</a>
         <a class="btn" href="${mapa(l.m)}" target="_blank" rel="noopener">Ver en Maps</a></div>` : ""}
     </div>
   </div>`;
