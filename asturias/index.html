@@ -106,6 +106,13 @@ ul.plain li span{color:var(--papel-dim)}
 .note{font-size:13.5px;color:var(--papel-dim);line-height:1.5;margin:10px 0 0}
 
 .ruta{background:var(--monte-2);border:1px solid var(--line);border-radius:14px;padding:15px;margin:0 0 20px}
+.wz-par{display:inline-flex;align-items:stretch}
+.wz-alt{display:inline-flex;align-items:center;padding:0 9px;margin-left:-8px;
+  border:1px solid var(--line);border-left:0;border-radius:0 999px 999px 0;
+  font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--papel-dim);text-decoration:none}
+.wz{border-radius:999px 0 0 999px}
+.wz-par .wz{border-right:0}
 .wz-lista{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .wz{display:inline-flex;align-items:center;gap:8px;padding:9px 13px 9px 9px;border-radius:999px;
   border:1px solid var(--prau-dim);color:var(--papel);font-size:13.5px;font-weight:500;
@@ -512,9 +519,10 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v24 · 24/07 19:09";
+const VERSION = "v25 · 24/07 19:12";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const wikiloc = q => `https://es.wikiloc.com/wikiloc/map.do?q=${encodeURIComponent(q)}`;
 
 /* ---- Preferencias, guardadas en este móvil ---- */
@@ -723,8 +731,9 @@ function botonesRuta(i){
   const d = VIAJE.dias[i];
   const tramos = d.paradas.filter(p => p.mapa);
   const chips = tramos.map((p, k) =>
-    `<a class="wz" href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">
-       <b>${k+1}</b>${esc(p.c || p.txt)}</a>`).join("");
+    `<span class="wz-par"><a class="wz" href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">
+       <b>${k+1}</b>${esc(p.c || p.txt)}</a>${PREF.app === "waze"
+         ? `<a class="wz-alt" href="${mapsDe(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener" title="Abrir en Maps">map</a>` : ""}</span>`).join("");
   return `<div class="ruta">
     <span class="label">Navegar con ${comoNavego()} · ${esc(d.km)}</span>
     <div class="wz-lista">${chips}</div>
@@ -743,7 +752,7 @@ function pintaParadas(dia, iDia){
       ${p.h ? `<span class="t">${esc(p.h)}</span>` : ""}
       <p>${esc(p.txt)}<button class="tick" aria-label="Marcar">${ok ? "✓" : ""}</button></p>
       ${p.n ? `<small>${esc(p.n)}</small>` : ""}
-      ${p.mapa ? `<small><a href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">Ir con ${comoNavego()} →</a></small>` : ""}
+      ${p.mapa ? `<small><a href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">Ir con ${comoNavego()} →</a>${PREF.app === "waze" ? ` <a href="${mapsDe(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener" style="color:var(--papel-dim)">· Maps</a>`.replace("--papel-dim", "--papel-dim") : ""}</small>` : ""}
       ${p.wl ? `<small><a href="${wikiloc(p.wl)}" target="_blank" rel="noopener">Buscar la ruta en Wikiloc →</a></small>` : ""}
       ${p.g ? `<small><button class="lnk" data-guia="${esc(p.g)}">Qué es y qué ver →</button></small>` : ""}
       ${p.park ? `<div class="park${p.park.gratis ? " free" : ""}">
