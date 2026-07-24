@@ -1,8 +1,6 @@
-/* Eslovenia 2026 — funcionamiento sin cobertura.
-   Con red: trae siempre la versión más reciente y la guarda.
-   Sin red: sirve lo último que se guardó en el móvil. */
+/* Portada de viajes */
 
-const CACHE = "eslovenia26-v5";
+const CACHE = "portada-v1";
 const ARCHIVOS = ["./", "./index.html", "./fotos/bled-osojnica.jpg"];
 
 self.addEventListener("install", e => {
