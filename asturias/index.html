@@ -142,6 +142,9 @@ ul.plain li span{color:var(--papel-dim)}
 .zona{margin:24px 0 0}
 .zona h2{margin:0;font-size:19px;letter-spacing:-.02em}
 .zona .intro{font-size:13.5px;color:var(--papel-dim);margin:4px 0 12px;line-height:1.5}
+.cercanas{margin:16px 0 4px;padding:14px;border-radius:12px;
+  background:rgba(90,169,196,.08);border:1px solid var(--mar)}
+.btn.wl{border-color:var(--mar);color:var(--mar)}
 .lugar{border-top:1px solid var(--line)}
 .lugar:first-of-type{border-top:0}
 .lugar-cab{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;
@@ -281,7 +284,7 @@ const VIAJE = {
   ],
 
   guia: [
-    { zona:"Somiedo", arte:"lagos", nota:"Parque Natural desde 1988 y Reserva de la Biosfera desde 2000. Cinco valles glaciares, una docena de lagos y la mayor población de oso pardo de la cordillera Cantábrica.", lugares:[
+    { zona:"Somiedo", wl:["Somiedo","Lagos de Saliencia","Valle de Lago","Pigüeña"], arte:"lagos", nota:"Parque Natural desde 1988 y Reserva de la Biosfera desde 2000. Cinco valles glaciares, una docena de lagos y la mayor población de oso pardo de la cordillera Cantábrica.", lugares:[
 
       { id:"parque", n:"El parque, en general",
         t:"Somiedo son cinco valles que bajan en paralelo desde la divisoria con León: Saliencia, Valle, Pigüeña, Somiedo y Perlunes. Esa estructura explica el viaje: no se recorre en círculo, se entra y se sale de cada valle desde el eje de la AS-227.¶Es uno de los pocos sitios de la península donde la actividad ganadera de montaña sigue viva de verdad, no como decorado. En julio y agosto hay ganado en los pastos altos y gente trabajando en las brañas, y eso condiciona lo que os vais a encontrar: pistas con vacas, perros de rebaño y cierres que hay que dejar como estaban.",
@@ -333,7 +336,7 @@ const VIAJE = {
         m:"Centro Interpretación Parque Natural Somiedo" }
     ]},
 
-    { zona:"La costa occidental", arte:"costa", nota:"Acantilados altos cortados a pico, playas escondidas al final de un camino y puertos encajados en la roca. Mucho menos masificada que la costa oriental, incluso en agosto.", lugares:[
+    { zona:"La costa occidental", wl:["Cudillero","Luarca","Senda costera Valdés","Navia"], arte:"costa", nota:"Acantilados altos cortados a pico, playas escondidas al final de un camino y puertos encajados en la roca. Mucho menos masificada que la costa oriental, incluso en agosto.", lugares:[
 
       { id:"silencio", n:"Playa del Silencio", d:3,
         t:"El nombre real es Gavieiru, pero se impuso el otro y con razón. Es una cala cerrada por un anfiteatro de acantilados, con un rosario de islotes delante que rompen el oleaje. El suelo es de canto rodado grande, no de arena.¶No es playa de toalla y sombrilla: es playa de mirarla desde arriba y bajar un rato. Se aparca en Castañeras, arriba, y se baja por una senda con escalones de piedra que en la vuelta se nota. Está protegida y no hay ningún servicio.",
@@ -377,7 +380,7 @@ const VIAJE = {
         m:"Castro de Coaña" }
     ]},
 
-    { zona:"El interior del oeste", arte:"embalse", nota:"Valles muy profundos, embalses encajonados y carreteras vacías que cruzan de un concejo a otro por lo alto. La Asturias que no sale en las postales.", lugares:[
+    { zona:"El interior del oeste", wl:["Grandas de Salime","Villayón","Cangas del Narcea","Ibias"], arte:"embalse", nota:"Valles muy profundos, embalses encajonados y carreteras vacías que cruzan de un concejo a otro por lo alto. La Asturias que no sale en las postales.", lugares:[
 
       { id:"salime", n:"Embalse de Salime", d:4,
         t:"Un embalse largo y estrecho metido entre laderas casi verticales, con la carretera colgada por encima durante kilómetros. La subida desde el valle del Navia hasta Grandas es una de las mejores conducciones del viaje.¶La presa es una obra de los años cincuenta, enorme para su tiempo, y tiene algo poco habitual: el arquitecto Joaquín Vaquero Palacios integró arte en la propia central, con relieves y murales dentro de un edificio industrial. Cuando se construyó quedaron varios pueblos bajo el agua.",
@@ -692,7 +695,7 @@ function vistaGuia(){
     if (!ls.length) return;
     total += ls.length;
     html += `<div class="zona"><h2>${esc(z.zona)}</h2><p class="intro">${esc(z.nota)}</p>`
-         + ilustra(z.arte) + ls.map(ficha).join("") + `</div>`;
+         + ilustra(z.arte) + ls.map(ficha).join("") + rutasCercanas(z) + `</div>`;
   });
   if (!total) html += `<p class="vacio">Nada con ese nombre. Prueba con otra palabra.</p>`;
   document.getElementById("v-guia").innerHTML = html;
@@ -705,6 +708,18 @@ function vistaGuia(){
     const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos,pos);
   });
   activaFichas();
+}
+
+
+/* ---- Rutas cercanas en Wikiloc, por zona ---- */
+function rutasCercanas(z){
+  if (!z.wl || !z.wl.length) return "";
+  return `<div class="cercanas">
+    <span class="label">Rutas cercanas</span>
+    <p class="note" style="margin:4px 0 0">Abre Wikiloc con las rutas de la zona. Descargad el GPX antes de subir: allí no hay cobertura.</p>
+    <div class="btns">${z.wl.map(t =>
+      `<a class="btn wl" href="${wikiloc(t)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("")}</div>
+  </div>`;
 }
 
 function ficha(l){
