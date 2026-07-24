@@ -150,6 +150,7 @@ ul.plain li span{color:var(--papel-dim)}
 .cercanas{margin:16px 0 4px;padding:14px;border-radius:12px;
   background:rgba(90,169,196,.08);border:1px solid var(--mar)}
 .btn.wl{border-color:var(--mar);color:var(--mar)}
+.btn.civ{border-color:var(--teito);color:var(--teito)}
 .lugar{border-top:1px solid var(--line)}
 .lugar:first-of-type{border-top:0}
 .lugar-cab{width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;
@@ -389,13 +390,13 @@ const VIAJE = {
         tip:"Combina bien con la Playa del Silencio el mismo atardecer: están a diez minutos.",
         m:"Cabo Vidio Asturias" },
 
-      { id:"cudillero", xy:"43.562,-6.146", n:"Cudillero", d:4,
+      { id:"cudillero", civ:"https://www.civitatis.com/es/asturias/", xy:"43.562,-6.146", n:"Cudillero", d:4,
         t:"Casas de colores apiladas en un anfiteatro imposible sobre un puerto diminuto. Es de los pueblos más fotografiados de Asturias y en agosto se nota mucho: a mediodía no cabe un alfiler y las terrazas del puerto cobran la vista a precio de vista.¶Los pixuetos, sus habitantes, conservan una habla propia y una fiesta particular, la Amuravela, en la que se lee un pregón satírico sobre el año. El casco viejo se recorre subiendo callejas y escaleras, así que con calzado cómodo.",
         k:[["Aparcar","arriba, nunca abajo"],["Mejor hora","antes de las 11 o al atardecer"]],
         tip:"Unas calles por encima del puerto se come mejor y bastante más barato que en primera línea.",
         m:"Cudillero Asturias" },
 
-      { id:"luarca", xy:"43.542,-6.535", n:"Luarca", d:4,
+      { id:"luarca", civ:"https://www.civitatis.com/es/asturias/", xy:"43.542,-6.535", n:"Luarca", d:4,
         t:"La villa blanca de la costa verde, repartida en siete barrios alrededor de la desembocadura del río Negrillón, con un puerto pesquero todavía activo y puentes que cosen las dos orillas.¶Lo que casi todo el mundo recuerda es el cementerio: está en lo alto del acantilado, junto al faro, con las tumbas de mármol blanco mirando al Cantábrico. Ahí está enterrado Severo Ochoa, que era de aquí. Suena raro recomendarlo, pero es uno de los sitios más bonitos de la costa.",
         k:[["Barrios","siete"],["No perderse","faro y cementerio"]],
         m:"Luarca Asturias" },
@@ -1032,6 +1033,7 @@ function ficha(l){
         ${l.m ? `<a class="btn solid" href="${navegar(l.m)}" target="_blank" rel="noopener">Ir con ${comoNavego()}</a>
                  <a class="btn" href="${mapa(l.m)}" target="_blank" rel="noopener">Ver en Maps</a>` : ""}
         ${l.wl ? `<a class="btn wl" href="${wikiloc(l.wl)}" target="_blank" rel="noopener">Wikiloc</a>` : ""}
+        ${l.civ ? `<a class="btn civ" href="${l.civ}" target="_blank" rel="noopener">Free tours</a>` : ""}
       </div>
     </div>
   </div>`;
