@@ -33,6 +33,10 @@ a{color:var(--prau);text-decoration:none}
 header{position:sticky;top:0;z-index:20;
   background:linear-gradient(180deg,var(--monte) 72%,rgba(15,30,20,0));
   padding:calc(14px + env(safe-area-inset-top)) 20px 18px}
+.volver{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--papel-dim);text-decoration:none;margin:0 0 12px;
+  padding:5px 11px 5px 8px;border:1px solid var(--line);border-radius:999px}
+.volver:active{color:var(--prau)}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;
   color:var(--prau-dim);margin:0 0 4px}
 h1{font-size:27px;line-height:1.12;letter-spacing:-.025em;font-weight:800;margin:0}
@@ -207,6 +211,7 @@ body.claro .art{background:#DDE5DE}
 <body>
 
 <header>
+  <a class="volver" href="../">‹ Viajes</a>
   <p class="eyebrow" id="eyebrow">Asturias occidental</p>
   <h1 id="title">Cargando</h1>
   <p class="sub" id="subtitle"></p>
