@@ -613,7 +613,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v23 · 24/07 18:59";
+const VERSION = "v24 · 24/07 19:09";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const wikiloc = q => `https://es.wikiloc.com/wikiloc/map.do?q=${encodeURIComponent(q)}`;
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
@@ -712,7 +712,7 @@ const VIAS = [
 
 /* Enlace de navegación a un destino, según lo que tenga elegido */
 function navegar(q){
-  if (PREF.app === "waze") return `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+  if (PREF.app === "waze") return `waze://?q=${encodeURIComponent(q)}&navigate=yes`;
   const u = new URLSearchParams({ api:"1", destination:q, travelmode:"driving" });
   const ev = EVITAR[PREF.via];
   if (ev) u.set("avoid", ev);
@@ -812,7 +812,7 @@ async function compartirDiario(){
 }
 
 /* ---- Rutas del día ---- */
-const waze = q => `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+const waze = q => `waze://?q=${encodeURIComponent(q)}&navigate=yes`;
 
 function rutaDelDia(i){
   const d = VIAJE.dias[i];
