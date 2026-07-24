@@ -190,6 +190,18 @@ body.claro{--monte:#F4F6F2;--monte-2:#FFFFFF;--papel:#16261B;--papel-dim:#5C7263
 body.claro header{background:linear-gradient(180deg,var(--monte) 72%,rgba(255,255,255,0))}
 body.claro nav{background:rgba(255,255,255,.94)}
 body.claro .art{background:#DDE5DE}
+
+.mapa{background:var(--monte-2);border:1px solid var(--line);border-radius:14px;padding:10px 8px 12px;margin:6px 0 20px}
+.mapa svg{display:block;width:100%;height:auto}
+.mapa polyline{fill:none;stroke:var(--prau-dim);stroke-width:1.6;stroke-linejoin:round;
+  stroke-linecap:round;stroke-dasharray:3 4;opacity:.85}
+.mapa .par{fill:var(--prau-dim);opacity:.75}
+.mapa .par.act{fill:var(--teito);opacity:1}
+.mapa .cama circle{fill:var(--prau);stroke:var(--monte-2);stroke-width:2;cursor:pointer}
+.mapa .cama.act circle{fill:var(--teito)}
+.mapa .cama text{font-family:var(--mono);font-size:8.5px;fill:currentColor;opacity:.75;
+  text-anchor:middle;pointer-events:none}
+.mapa .cama.act text{opacity:1;font-weight:700}
 </style>
 </head>
 <body>
@@ -222,7 +234,7 @@ const VIAJE = {
   nombre: "Asturias occidental",
   salida: "San Miguel de las Dueñas",
   dias: [
-    { d:1, t:"Subida a Somiedo", arte:"puerto", base:"Zona alta de Somiedo", km:"150 km · 2 h 30",
+    { d:1, xy:"43.090,-6.250", t:"Subida a Somiedo", arte:"puerto", base:"Zona alta de Somiedo", km:"150 km · 2 h 30",
       dest:"Pola de Somiedo", paradas:[
       { h:"Mañana", txt:"San Miguel → Villablino → Puerto de Somiedo", c:"Pola de Somiedo",
         n:"Por la CL-631 y la AS-227. Carretera de puerto, sin prisa", mapa:"Pola de Somiedo", key:true },
@@ -235,7 +247,7 @@ const VIAJE = {
       { txt:"Buscar sitio para dormir", n:"Zona de La Farrapona o Valle de Lago. Cuanto más arriba, más fresco" }
     ]},
 
-    { d:2, t:"Lagos de Saliencia", arte:"lagos", base:"Somiedo", km:"25 km + ruta a pie",
+    { d:2, xy:"43.090,-6.250", t:"Lagos de Saliencia", arte:"lagos", base:"Somiedo", km:"25 km + ruta a pie",
       dest:"Pola de Somiedo", paradas:[
       { h:"Antes de las 9", txt:"Alto de La Farrapona", c:"Alto de La Farrapona",
         n:"1.708 m, el puerto asfaltado más alto de Asturias. Aquí empieza la ruta",
@@ -251,7 +263,7 @@ const VIAJE = {
       { txt:"Cena en Pola de Somiedo", n:"O en la furgo, que después de once kilómetros apetece poco bajar" }
     ]},
 
-    { d:3, t:"De la montaña al mar", arte:"costa", base:"Zona de Cudillero", km:"110 km · 1 h 45",
+    { d:3, xy:"43.562,-6.146", t:"De la montaña al mar", arte:"costa", base:"Zona de Cudillero", km:"110 km · 1 h 45",
       dest:"Cudillero", paradas:[
       { h:"Mañana", txt:"Braña de La Pornacal", c:"La Pornacal",
         n:"Desde Villar de Vildas. Treinta y tantas cabañas de teito juntas, la braña mejor conservada del parque. Unos 7 km ida y vuelta",
@@ -268,7 +280,7 @@ const VIAJE = {
       { txt:"Noche por la zona de Cudillero" }
     ]},
 
-    { d:4, t:"Costa occidental", arte:"puerto-mar", base:"Zona de Grandas o Navia", km:"120 km · 2 h",
+    { d:4, xy:"43.220,-6.870", t:"Costa occidental", arte:"puerto-mar", base:"Zona de Grandas o Navia", km:"120 km · 2 h",
       dest:"Grandas de Salime", paradas:[
       { h:"Mañana", txt:"Cudillero", c:"Cudillero",
         n:"El anfiteatro de casas de colores sobre el puerto. Aparcad arriba: abajo es imposible",
@@ -289,7 +301,7 @@ const VIAJE = {
         mapa:"Grandas de Salime", g:"salime", key:true }
     ]},
 
-    { d:5, t:"Vuelta por la montaña", arte:"vuelta", base:"Casa", km:"190 km · 3 h 30",
+    { d:5, xy:"42.580,-6.500", t:"Vuelta por la montaña", arte:"vuelta", base:"Casa", km:"190 km · 3 h 30",
       dest:"San Miguel de las Dueñas", paradas:[
       { h:"Mañana", txt:"Museo Etnográfico de Grandas", c:"Museo de Grandas",
         n:"Si abre el día que vais, es de los mejores museos etnográficos del país",
@@ -774,6 +786,53 @@ function activaDiario(){
 }
 
 
+const etiqueta = (d, i) => `Día ${d.d}`;
+
+/* ---- Mapa de la ruta, dibujado con las coordenadas reales ---- */
+function mapaRuta(){
+  const puntos = [];
+  VIAJE.dias.forEach((d, i) => {
+    d.paradas.forEach(p => {
+      const c = p.xy || (p.g && LUGARES[p.g] && LUGARES[p.g].xy);
+      if (c) puntos.push({ xy:c.split(",").map(Number), dia:i, tipo:"parada" });
+    });
+    if (d.xy) puntos.push({ xy:d.xy.split(",").map(Number), dia:i, tipo:"cama", d });
+  });
+  if (puntos.length < 3) return "";
+
+  const lats = puntos.map(p => p.xy[0]), lons = puntos.map(p => p.xy[1]);
+  const lat0 = (Math.min(...lats) + Math.max(...lats)) / 2;
+  const k = Math.cos(lat0 * Math.PI / 180);
+  const W = 400, H = 250, M = 26;
+  const xs = lons.map(l => l * k), ys = lats;
+  const [x0,x1,y0,y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const esc1 = Math.min((W - 2*M) / ((x1-x0) || 1), (H - 2*M) / ((y1-y0) || 1));
+  const cx = v => M + (v * k - x0) * esc1 + ((W - 2*M) - (x1-x0)*esc1) / 2;
+  const cy = v => H - M - (v - y0) * esc1 - ((H - 2*M) - (y1-y0)*esc1) / 2;
+
+  const linea = puntos.map(p => `${cx(p.xy[1]).toFixed(1)},${cy(p.xy[0]).toFixed(1)}`).join(" ");
+  const hoy = indiceHoy();
+
+  const marcas = puntos.map(p => {
+    const x = cx(p.xy[1]).toFixed(1), y = cy(p.xy[0]).toFixed(1);
+    const act = p.dia === hoy;
+    if (p.tipo === "cama") return `
+      <g class="cama${act ? " act" : ""}" data-dia="${p.dia}">
+        <circle cx="${x}" cy="${y}" r="${act ? 7 : 5}"/>
+        <text x="${x}" y="${(+y - (act ? 12 : 10)).toFixed(1)}">${esc(etiqueta(p.d, p.dia))}</text>
+      </g>`;
+    return `<circle class="par${act ? " act" : ""}" cx="${x}" cy="${y}" r="${act ? 4 : 2.6}"/>`;
+  }).join("");
+
+  return `<div class="mapa">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa de la ruta">
+      <polyline points="${linea}"/>
+      ${marcas}
+    </svg>
+    <p class="note" style="margin:8px 2px 0">Posiciones reales, unidas en el orden del viaje. Toca un punto para ir a ese día.</p>
+  </div>`;
+}
+
 /* ---- Vista HOY ---- */
 function vistaHoy(){
   const i = indiceHoy(), dia = VIAJE.dias[i], f = fechaDe(i);
@@ -817,7 +876,7 @@ function vistaHoy(){
 function vistaDias(){
   const hoy = indiceHoy();
   document.getElementById("v-dias").innerHTML =
-    `<div class="sec"><span class="label">Cinco días</span><h2>El recorrido</h2></div>` +
+    `<div class="sec"><span class="label">Cinco días</span><h2>El recorrido</h2></div>` + mapaRuta() +
     VIAJE.dias.map((d,i) => {
       const f = fechaDe(i);
       const cls = PREF.salida ? (i === hoy ? "today" : (f && f.iso < hoyISO() ? "past" : "")) : "";
@@ -836,6 +895,10 @@ function vistaDias(){
       <h2>${esc(d.t)}</h2></div>${ilustra(d.arte)}${botonesRuta(i)}${pintaParadas(d, i)}`;
     activaEnlacesGuia(); activaDiario();
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
+  }));
+  document.querySelectorAll(".mapa .cama").forEach(g => g.addEventListener("click", () => {
+    const b = document.querySelector(`.day[data-i="${g.dataset.dia}"]`);
+    if (b) b.click();
   }));
   const bf = document.getElementById("borrar-fecha");
   if (bf) bf.addEventListener("click", () => { PREF.salida = ""; vistaDias(); });
