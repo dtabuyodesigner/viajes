@@ -717,10 +717,10 @@ function rutasCercanas(z){
   if (!z.wl || !z.wl.length) return "";
   return `<div class="cercanas">
     <span class="label">Rutas cercanas</span>
-    <p class="note" style="margin:4px 0 0">Abre el mapa de Wikiloc en ese punto. Descargad el GPX y el mapa offline antes de subir.</p>
+    <p class="note" style="margin:4px 0 0">Los nombres abren la web en ese punto: sirven para mirar antes de ir. El botón de abajo abre la app centrada donde estéis. Descargad el GPX y el mapa offline antes de subir.</p>
     <div class="btns">${z.wl.map(t =>
       `<a class="btn wl" href="${wikiloc(t)}" target="_blank" rel="noopener">${esc(t)}</a>`).join("")}</div>
-    <div class="btns"><a class="btn app" href="wikiloc://">Abrir la app de Wikiloc</a></div>
+    <div class="btns"><a class="btn app" href="wikiloc://">Abrir Wikiloc donde estoy</a></div>
   </div>`;
 }
 
