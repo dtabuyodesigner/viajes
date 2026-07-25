@@ -247,6 +247,8 @@ body.claro header{background:linear-gradient(180deg,var(--karst) 72%,rgba(255,25
 body.claro nav{background:rgba(255,255,255,.94)}
 body.claro .art{background:#DDE5DE}
 
+.ilustrado{display:block;width:100%;height:auto;border-radius:14px;
+  border:1px solid var(--line);margin:0 0 6px}
 .mapa{background:var(--karst-2);border:1px solid var(--line);border-radius:14px;padding:10px 8px 12px;margin:6px 0 20px}
 .mapa svg{display:block;width:100%;height:auto}
 .mapa polyline{fill:none;stroke:var(--soca-dim);stroke-width:1.6;stroke-linejoin:round;
@@ -621,7 +623,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v29 · 25/07 05:47";
+const VERSION = "v31 · 25/07 06:03";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const wikiloc = q => `https://es.wikiloc.com/wikiloc/map.do?q=${encodeURIComponent(q)}`;
@@ -956,6 +958,8 @@ function vistaDias(){
   const h = hoyISO();
   document.getElementById("v-dias").innerHTML =
     `<div class="sec"><span class="label">18 → 29 julio</span><h2>Los doce días</h2></div>` + mapaRuta() +
+    `<img class="ilustrado" src="../img/eslovenia-ilustrado.jpg" alt="Mapa ilustrado de Eslovenia" loading="lazy">
+     <p class="pie">Mapa ilustrado · decorativo, las posiciones no son exactas</p>` +
     VIAJE.dias.map((d,i) => {
       const f = fecha(d.f);
       const cls = d.f === h ? "today" : (d.f < h ? "past" : "");
