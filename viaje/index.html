@@ -18,8 +18,6 @@
 body{margin:0;background:var(--f);color:var(--t);font-family:var(--sans);font-size:16px;
   line-height:1.5;-webkit-font-smoothing:antialiased;
   padding-bottom:calc(72px + env(safe-area-inset-bottom))}
-body.claro{--f:#F3F6F5;--f2:#FFF;--t:#0F2429;--td:#5A7078;--line:rgba(15,36,41,.14);
-  --ac:#177A6B;--acd:#1E8C7B;--am:#8A6412;--rj:#9B3B2C}
 a{color:var(--ac);text-decoration:none}
 :focus-visible{outline:2px solid var(--am);outline-offset:2px;border-radius:5px}
 
@@ -97,7 +95,6 @@ main{padding:0 20px 30px;max-width:640px;margin:0 auto}
 nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);
   background:rgba(16,28,34,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom)}
-body.claro nav{background:rgba(255,255,255,.94)}
 nav button{background:none;border:0;padding:11px 2px 12px;cursor:pointer;color:var(--td);
   font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase}
 nav button svg{display:block;margin:0 auto 5px;width:21px;height:21px;stroke:currentColor;
@@ -148,6 +145,14 @@ ul.plain li:first-child{border-top:0}
 .cerca-aviso .ic{flex:0 0 auto;color:var(--am);font-size:17px;line-height:1.2}
 .cerca-aviso b{display:block;font-size:15px}
 .cerca-aviso small{display:block;font-size:13px;color:var(--td);margin-top:3px;line-height:1.45}
+
+/* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
+body.claro{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
+  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;}
+@media (prefers-color-scheme: light){
+  body.auto{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
+  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;}
+}
 </style>
 </head>
 <body>
@@ -177,6 +182,34 @@ ul.plain li:first-child{border-top:0}
 
 <script src="../sync.js?v=42"></script>
 <script>
+
+/* ---- Modo de color, compartido por todas las apps ---- */
+const TEMA = {
+  get valor(){ try { return localStorage.getItem("tema_viajes") || "auto"; } catch { return "auto"; } },
+  set valor(v){ try { localStorage.setItem("tema_viajes", v); } catch {}; this.aplica(); },
+  aplica(){
+    const v = this.valor;
+    document.body.classList.toggle("claro", v === "claro");
+    document.body.classList.toggle("auto",  v === "auto");
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (!m) return;
+    const oscuro = m.dataset.oscuro || m.getAttribute("content");
+    if (!m.dataset.oscuro) m.dataset.oscuro = oscuro;
+    const claroDeVerdad = v === "claro" ||
+      (v === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches);
+    m.setAttribute("content", claroDeVerdad ? "#F4F6F7" : m.dataset.oscuro);
+  },
+  opciones(){
+    const v = this.valor;
+    const b = (id, t, sub) => `<button class="op${v === id ? " on" : ""}" data-tema="${id}"><b>${t}</b><small>${sub}</small></button>`;
+    return `<div class="ops">${b("auto","Automático","Como el móvil")}${b("claro","Claro","Para el sol")}${b("oscuro","Oscuro","Para la noche")}</div>`;
+  },
+  engancha(volver){
+    TEMA.engancha(vistaInfo);
+  }
+};
+if (window.matchMedia)
+  matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => TEMA.aplica());
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
@@ -186,6 +219,7 @@ const ID = new URLSearchParams(location.search).get("id");
 let VIAJE = null;
 try { VIAJE = (JSON.parse(localStorage.getItem("viajes_propios")) || []).find(v => v.id === ID); } catch {}
 
+TEMA.aplica();
 if (!VIAJE){
   document.getElementById("title").textContent = "No encontrado";
   document.getElementById("subtitle").textContent = "Ese viaje no está guardado en este móvil.";
@@ -222,10 +256,7 @@ const P = {
   set app(v){ try { localStorage.setItem("gen_app", v); } catch {} },
   get avisar(){ try { return localStorage.getItem("gen_avisar") !== "no"; } catch { return false; } },
   set avisar(v){ try { localStorage.setItem("gen_avisar", v ? "si" : "no"); } catch {} },
-  get tema(){ try { return localStorage.getItem("gen_tema") || "oscuro"; } catch { return "oscuro"; } },
-  set tema(v){ try { localStorage.setItem("gen_tema", v); } catch {}; aplicaTema(); }
 };
-function aplicaTema(){ document.body.classList.toggle("claro", P.tema === "claro"); }
 
 const waze = q => `waze://?q=${encodeURIComponent(q)}&navigate=yes`;
 const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
@@ -590,16 +621,12 @@ function vistaInfo(){
       </div>
     </div>
     <div class="sec"><span class="label">Pantalla</span><h2>Modo de color</h2></div>
-    <div class="card"><div class="ops">
-      ${op("tema","oscuro",P.tema,"Oscuro","Coche y noche")}
-      ${op("tema","claro",P.tema,"Claro","Sol de mediodía")}
-    </div></div>`;
+    <div class="card">${TEMA.opciones()}</div>`;
   document.querySelectorAll("[data-app]").forEach(b =>
     b.addEventListener("click", () => { P.app = b.dataset.app; vistaInfo(); }));
   document.querySelectorAll("[data-avisar]").forEach(b =>
     b.addEventListener("click", () => { P.avisar = b.dataset.avisar === "si"; vistaInfo(); }));
-  document.querySelectorAll("[data-tema]").forEach(b =>
-    b.addEventListener("click", () => { P.tema = b.dataset.tema; vistaInfo(); }));
+  TEMA.engancha(vistaInfo);
 }
 
 const vistas = { hoy:vistaHoy, dias:vistaDias, reservas:vistaReservas, cerca:vistaCerca, info:vistaInfo };
@@ -617,7 +644,7 @@ document.querySelectorAll("nav button").forEach(b => b.addEventListener("click",
   window.scrollTo({top:0});
 }));
 
-aplicaTema();
+TEMA.aplica();
 vistaHoy();
 
 if (typeof DIARIO_SYNC !== "undefined"){
