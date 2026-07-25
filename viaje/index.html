@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#101C22">
+<title>Viaje</title>
+<style>
+:root{
+  --f:#101C22; --f2:#1A2A32; --t:#E9F0F2; --td:#8FA5AD;
+  --line:rgba(91,200,180,.18); --ac:#5BC8B4; --acd:#3E8C7E; --am:#D9A233; --rj:#C0503F;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--f);color:var(--t);font-family:var(--sans);font-size:16px;
+  line-height:1.5;-webkit-font-smoothing:antialiased;
+  padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+body.claro{--f:#F3F6F5;--f2:#FFF;--t:#0F2429;--td:#5A7078;--line:rgba(15,36,41,.14);
+  --ac:#177A6B;--acd:#1E8C7B;--am:#8A6412;--rj:#9B3B2C}
+a{color:var(--ac);text-decoration:none}
+:focus-visible{outline:2px solid var(--am);outline-offset:2px;border-radius:5px}
+
+header{position:sticky;top:0;z-index:20;
+  background:linear-gradient(180deg,var(--f) 74%,transparent);
+  padding:calc(14px + env(safe-area-inset-top)) 20px 16px}
+.volver{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--td);padding:5px 11px 5px 8px;
+  border:1px solid var(--line);border-radius:999px;margin-bottom:11px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--acd);margin:0 0 4px}
+h1{font-size:26px;line-height:1.12;letter-spacing:-.025em;font-weight:800;margin:0}
+.sub{color:var(--td);font-size:14px;margin:6px 0 0}
+
+main{padding:0 20px 30px;max-width:640px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+
+.senda{position:relative;margin:8px 0 0;padding-left:28px}
+.senda::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:3px;
+  background:linear-gradient(180deg,var(--ac),var(--acd));border-radius:3px;opacity:.55}
+.stop{position:relative;padding:0 0 22px}
+.stop::before{content:"";position:absolute;left:-25px;top:7px;width:11px;height:11px;
+  border-radius:50%;background:var(--f);border:3px solid var(--ac)}
+.stop.hecho::before{background:var(--ac)}
+.stop.hecho > p{opacity:.45;text-decoration:line-through}
+.stop.hecho small{opacity:.45}
+.t{font-family:var(--mono);font-size:12px;color:var(--am);letter-spacing:.06em;display:block;margin-bottom:2px}
+.stop p{margin:0;font-size:16px}
+.stop small{display:block;color:var(--td);font-size:13.5px;margin-top:3px;line-height:1.45}
+.tick{margin-left:9px;width:22px;height:22px;border-radius:50%;vertical-align:middle;
+  border:1.5px solid var(--line);background:transparent;color:var(--ac);
+  font-size:12px;line-height:1;cursor:pointer;padding:0}
+
+.card{background:var(--f2);border:1px solid var(--line);border-radius:14px;padding:16px;margin:0 0 12px}
+.card h3{margin:0 0 8px;font-size:16px}
+.sec{margin:24px 0 10px}
+.label{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--acd)}
+.sec .label{display:block;margin-bottom:2px}
+.sec h2{margin:0;font-size:19px;letter-spacing:-.02em}
+.note{font-size:13.5px;color:var(--td);line-height:1.5;margin:10px 0 0}
+
+.day{width:100%;text-align:left;display:flex;gap:14px;align-items:baseline;background:none;
+  border:0;border-top:1px solid var(--line);padding:15px 2px;color:inherit;font:inherit;cursor:pointer}
+.day:first-of-type{border-top:0}
+.day .num{font-family:var(--mono);font-size:12.5px;color:var(--ac);flex:0 0 54px}
+.day .ttl{font-size:16px;font-weight:600}
+.day .wd{display:block;font-size:12.5px;color:var(--td);font-weight:400;margin-top:2px}
+.day.past{opacity:.42}
+.day.today .num{color:var(--am);font-weight:700}
+
+.ruta{background:var(--f2);border:1px solid var(--line);border-radius:14px;padding:15px;margin:6px 0 20px}
+.wz-lista{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.wz-par{display:inline-flex;align-items:stretch;border:1px solid var(--acd);
+  border-radius:999px;overflow:hidden;max-width:100%}
+.wz{display:inline-flex;align-items:center;gap:8px;padding:9px 13px 9px 9px;
+  border:0;color:var(--t);font-size:13.5px;font-weight:500}
+.wz b{flex:0 0 auto;width:21px;height:21px;border-radius:50%;background:var(--ac);color:var(--f);
+  font-family:var(--mono);font-size:11.5px;font-weight:700;display:grid;place-items:center}
+.wz-par.cama-par{border-color:var(--am)}
+.wz-par.cama-par .wz b{background:var(--am)}
+.wz-alt{display:inline-flex;align-items:center;padding:0 11px;flex:0 0 auto;
+  border-left:1px solid var(--acd);color:var(--td);font-family:var(--mono);
+  font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+
+.btn{display:inline-block;padding:9px 14px;border-radius:999px;border:1px solid var(--acd);
+  color:var(--ac);font-size:13.5px;font-weight:600;background:none;cursor:pointer;font-family:var(--sans)}
+.btn.solid{background:var(--ac);color:var(--f);border-color:var(--ac)}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+.diario{margin:4px 0 8px}
+.nota-txt{width:100%;margin-top:6px;padding:11px 13px;border-radius:12px;resize:none;overflow:hidden;
+  border:1px solid var(--line);background:var(--f2);color:var(--t);
+  font-family:var(--sans);font-size:14.5px;line-height:1.5}
+
+nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(3,1fr);
+  background:rgba(16,28,34,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom)}
+body.claro nav{background:rgba(255,255,255,.94)}
+nav button{background:none;border:0;padding:11px 4px 12px;cursor:pointer;color:var(--td);
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+nav button svg{display:block;margin:0 auto 5px;width:21px;height:21px;stroke:currentColor;
+  fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--ac)}
+.ops{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.op{flex:1 1 130px;text-align:left;padding:11px 13px;border-radius:12px;cursor:pointer;
+  background:transparent;border:1px solid var(--line);color:var(--t);font:inherit}
+.op b{display:block;font-size:14px;font-weight:600}
+.op small{display:block;font-size:11.5px;color:var(--td);margin-top:2px}
+.op.on{border-color:var(--ac);background:rgba(91,200,180,.11)}
+.op.on b{color:var(--ac)}
+.vacio{color:var(--td);font-size:15px;padding:30px 0;text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="volver" href="../">‹ Viajes</a>
+  <p class="eyebrow" id="eyebrow"></p>
+  <h1 id="title">Cargando</h1>
+  <p class="sub" id="subtitle"></p>
+</header>
+
+<main>
+  <section class="view on" id="v-hoy"></section>
+  <section class="view" id="v-dias"></section>
+  <section class="view" id="v-info"></section>
+</main>
+
+<nav>
+  <button class="on" data-v="hoy"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>Hoy</button>
+  <button data-v="dias"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Días</button>
+  <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
+</nav>
+
+<script>
+const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+/* ---- Cargar el viaje ---- */
+const ID = new URLSearchParams(location.search).get("id");
+let VIAJE = null;
+try { VIAJE = (JSON.parse(localStorage.getItem("viajes_propios")) || []).find(v => v.id === ID); } catch {}
+
+if (!VIAJE){
+  document.getElementById("title").textContent = "No encontrado";
+  document.getElementById("subtitle").textContent = "Ese viaje no está guardado en este móvil.";
+  document.getElementById("v-hoy").innerHTML =
+    `<p class="vacio">Puede que lo hayas borrado, o que lo crearas en otro teléfono.</p>
+     <div class="btns" style="justify-content:center"><a class="btn solid" href="../crear/">Crear un viaje</a></div>`;
+  document.querySelector("nav").style.display = "none";
+} else {
+  arrancar();
+}
+
+function arrancar(){
+
+const P = {
+  _g(k, d){ try { return JSON.parse(localStorage.getItem(`vp_${ID}_${k}`)) ?? d; } catch { return d; } },
+  _s(k, v){ try { localStorage.setItem(`vp_${ID}_${k}`, JSON.stringify(v)); } catch {} },
+  get hechas(){ return this._g("hechas", {}); },
+  marcar(c){ const h = this.hechas; h[c] ? delete h[c] : h[c] = 1; this._s("hechas", h); },
+  esta(c){ return !!this.hechas[c]; },
+  nota(i){ return this._g("notas", {})[i] || ""; },
+  guardarNota(i, t){ const n = this._g("notas", {}); t.trim() ? n[i] = t : delete n[i]; this._s("notas", n); },
+  get app(){ try { return localStorage.getItem("gen_app") || "waze"; } catch { return "waze"; } },
+  set app(v){ try { localStorage.setItem("gen_app", v); } catch {} },
+  get tema(){ try { return localStorage.getItem("gen_tema") || "oscuro"; } catch { return "oscuro"; } },
+  set tema(v){ try { localStorage.setItem("gen_tema", v); } catch {}; aplicaTema(); }
+};
+function aplicaTema(){ document.body.classList.toggle("claro", P.tema === "claro"); }
+
+const waze = q => `waze://?q=${encodeURIComponent(q)}&navigate=yes`;
+const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
+const navegar = q => P.app === "waze" ? waze(q) : mapsDe(q);
+const comoNavego = () => P.app === "waze" ? "Waze" : "Maps";
+const tiempoEn = q => `https://www.google.com/search?q=${encodeURIComponent("tiempo " + q)}`;
+
+function hoyISO(){ const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
+function fechaDe(i){
+  if (!VIAJE.desde) return null;
+  const d = new Date(VIAJE.desde + "T12:00:00"); d.setDate(d.getDate() + i);
+  return { wd:DIAS_SEM[d.getDay()], txt:`${d.getDate()} ${MESES[d.getMonth()]}`,
+           iso:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` };
+}
+function indiceHoy(){
+  if (!VIAJE.desde) return 0;
+  const h = hoyISO();
+  for (let i = 0; i < VIAJE.dias.length; i++) if (fechaDe(i)?.iso === h) return i;
+  return h < VIAJE.desde ? 0 : VIAJE.dias.length - 1;
+}
+
+function botonesRuta(i){
+  const d = VIAJE.dias[i];
+  const tramos = d.paradas.filter(p => (p.mapa || "").trim());
+  if (!tramos.length && !(d.dest || "").trim()) return "";
+  const chip = (destino, texto, n, cama) =>
+    `<span class="wz-par${cama ? " cama-par" : ""}"><a class="wz" href="${navegar(destino)}" target="_blank" rel="noopener">
+      <b>${n}</b>${esc(texto)}</a>${P.app === "waze"
+        ? `<a class="wz-alt" href="${mapsDe(destino)}" target="_blank" rel="noopener">map</a>` : ""}</span>`;
+  return `<div class="ruta">
+    <span class="label">Navegar con ${comoNavego()}</span>
+    <div class="wz-lista">
+      ${tramos.map((p, k) => chip(p.mapa, p.txt || p.mapa, k+1, false)).join("")}
+      ${(d.dest || "").trim() ? chip(d.dest, "Alojamiento", tramos.length+1, true) : ""}
+    </div>
+    ${(d.dest || "").trim() ? `<div class="btns">
+      <a class="btn" href="${tiempoEn(d.dest)}" target="_blank" rel="noopener">El tiempo hoy</a></div>` : ""}
+  </div>`;
+}
+
+function pintaParadas(d, i){
+  const con = d.paradas.filter(p => (p.txt || "").trim());
+  return (con.length ? `<div class="senda">` + con.map((p, k) => {
+    const c = `${i}:${k}`, ok = P.esta(c);
+    return `<div class="stop${ok ? " hecho" : ""}" data-marca="${c}">
+      ${(p.h||"").trim() ? `<span class="t">${esc(p.h)}</span>` : ""}
+      <p>${esc(p.txt)}<button class="tick" aria-label="Marcar">${ok ? "✓" : ""}</button></p>
+      ${(p.n||"").trim() ? `<small>${esc(p.n)}</small>` : ""}
+      ${(p.mapa||"").trim() ? `<small><a href="${navegar(p.mapa)}" target="_blank" rel="noopener">Ir con ${comoNavego()} →</a></small>` : ""}
+    </div>`; }).join("") + `</div>` : "")
+    + `<div class="diario"><span class="label">Notas del día</span>
+       <textarea class="nota-txt" data-dia="${i}" rows="2"
+         placeholder="Qué tal fue, dónde comisteis, cuánto costó…">${esc(P.nota(i))}</textarea></div>`;
+}
+
+function activaDiario(){
+  document.querySelectorAll("[data-marca] .tick").forEach(b => {
+    if (b.dataset.l) return; b.dataset.l = 1;
+    b.addEventListener("click", () => {
+      const box = b.closest("[data-marca]");
+      P.marcar(box.dataset.marca);
+      box.classList.toggle("hecho");
+      b.textContent = box.classList.contains("hecho") ? "✓" : "";
+    });
+  });
+  document.querySelectorAll(".nota-txt").forEach(t => {
+    if (t.dataset.l) return; t.dataset.l = 1;
+    const crece = () => { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; };
+    crece();
+    t.addEventListener("input", () => { crece(); P.guardarNota(+t.dataset.dia, t.value); });
+  });
+}
+
+function vistaHoy(){
+  if (!VIAJE.dias.length){
+    document.getElementById("eyebrow").textContent = VIAJE.nombre;
+    document.getElementById("title").textContent = "Sin días todavía";
+    document.getElementById("subtitle").textContent = "";
+    document.getElementById("v-hoy").innerHTML =
+      `<p class="vacio">Este viaje aún no tiene días.</p>
+       <div class="btns" style="justify-content:center">
+         <a class="btn solid" href="../crear/?id=${esc(ID)}">Añadir días</a></div>`;
+    return;
+  }
+  const i = indiceHoy(), d = VIAJE.dias[i], f = fechaDe(i);
+  document.getElementById("eyebrow").textContent = f ? `${f.wd} · ${f.txt}` : `Día ${i+1} de ${VIAJE.dias.length}`;
+  document.getElementById("title").textContent = d.t || `Día ${i+1}`;
+  document.getElementById("subtitle").textContent = (d.dest||"").trim() ? `Duermes en ${d.dest}` : VIAJE.nombre;
+
+  let h = botonesRuta(i) + pintaParadas(d, i);
+  const sig = VIAJE.dias[i+1];
+  if (sig) h += `<div class="sec"><span class="label">Día siguiente</span>
+    <h2>${esc(sig.t || "Día " + (i+2))}</h2></div>
+    <p class="note">${sig.paradas.filter(p=>p.txt).map(p => esc(p.txt)).join(" · ") || "Sin paradas"}</p>`;
+  document.getElementById("v-hoy").innerHTML = h;
+  activaDiario();
+}
+
+function vistaDias(){
+  const hoy = indiceHoy();
+  document.getElementById("v-dias").innerHTML =
+    `<div class="sec"><span class="label">${VIAJE.dias.length} día${VIAJE.dias.length===1?"":"s"}</span>
+      <h2>El recorrido</h2></div>` +
+    VIAJE.dias.map((d,i) => {
+      const f = fechaDe(i);
+      const cls = VIAJE.desde ? (i === hoy ? "today" : (f && f.iso < hoyISO() ? "past" : "")) : "";
+      return `<button class="day ${cls}" data-i="${i}">
+        <span class="num">${f ? esc(f.txt) : "Día " + (i+1)}</span>
+        <span class="ttl">${esc(d.t || "Sin título")}<span class="wd">${
+          f ? esc(f.wd) + (d.dest ? " · " : "") : ""}${esc(d.dest||"")}</span></span>
+      </button>`;
+    }).join("") +
+    `<div class="btns"><a class="btn" href="../crear/?id=${esc(ID)}">Editar el viaje</a></div>
+     <div id="detalle"></div>`;
+
+  document.querySelectorAll(".day").forEach(b => b.addEventListener("click", () => {
+    const i = +b.dataset.i, d = VIAJE.dias[i], f = fechaDe(i);
+    const det = document.getElementById("detalle");
+    det.innerHTML = `<div class="sec"><span class="label">${f ? esc(f.wd)+" "+esc(f.txt) : "Día "+(i+1)}</span>
+      <h2>${esc(d.t || "Día " + (i+1))}</h2></div>${botonesRuta(i)}${pintaParadas(d, i)}`;
+    activaDiario();
+    det.scrollIntoView?.({behavior:"smooth", block:"start"});
+  }));
+}
+
+function vistaInfo(){
+  const op = (g, val, act, t, sub) =>
+    `<button class="op${val === act ? " on" : ""}" data-${g}="${val}"><b>${t}</b><small>${sub}</small></button>`;
+  const f0 = fechaDe(0), fn = fechaDe(VIAJE.dias.length - 1);
+  document.getElementById("v-info").innerHTML = `
+    <div class="sec"><span class="label">El viaje</span><h2>${esc(VIAJE.nombre)}</h2></div>
+    <div class="card">
+      ${VIAJE.salida ? `<div class="note" style="margin:0 0 8px">Salida desde ${esc(VIAJE.salida)}</div>` : ""}
+      <div class="note" style="margin:0">${
+        f0 && fn ? `Del ${esc(f0.txt)} al ${esc(fn.txt)}` : "Sin fechas: los días van numerados"} ·
+        ${VIAJE.dias.length} día${VIAJE.dias.length===1?"":"s"}</div>
+      <div class="btns"><a class="btn" href="../crear/?id=${esc(ID)}">Editar</a></div>
+    </div>
+    <div class="sec"><span class="label">Ajustes</span><h2>Cómo navegar</h2></div>
+    <div class="card"><div class="ops">
+      ${op("app","waze",P.app,"Waze","Tráfico en vivo")}
+      ${op("app","maps",P.app,"Google Maps","Siempre abre")}
+    </div></div>
+    <div class="sec"><span class="label">Pantalla</span><h2>Modo de color</h2></div>
+    <div class="card"><div class="ops">
+      ${op("tema","oscuro",P.tema,"Oscuro","Coche y noche")}
+      ${op("tema","claro",P.tema,"Claro","Sol de mediodía")}
+    </div></div>`;
+  document.querySelectorAll("[data-app]").forEach(b =>
+    b.addEventListener("click", () => { P.app = b.dataset.app; vistaInfo(); }));
+  document.querySelectorAll("[data-tema]").forEach(b =>
+    b.addEventListener("click", () => { P.tema = b.dataset.tema; vistaInfo(); }));
+}
+
+const vistas = { hoy:vistaHoy, dias:vistaDias, info:vistaInfo };
+const TITULOS = { dias:"El recorrido", info:"Información" };
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
+  const v = b.dataset.v;
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".view").forEach(x => x.classList.toggle("on", x.id === "v-" + v));
+  vistas[v]();
+  if (v !== "hoy"){
+    document.getElementById("eyebrow").textContent = VIAJE.nombre;
+    document.getElementById("title").textContent = TITULOS[v];
+    document.getElementById("subtitle").textContent = "";
+  }
+  window.scrollTo({top:0});
+}));
+
+aplicaTema();
+vistaHoy();
+}
+
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", async () => {
+    try { const r = await navigator.serviceWorker.register("sw.js", {updateViaCache:"none"}); r.update(); } catch {}
+  });
+}
+</script>
+</body>
+</html>
