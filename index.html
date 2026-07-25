@@ -71,7 +71,7 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 </header>
 <main><div id="lista"></div><div id="pie"></div></main>
 
-<script src="sync.js?v=38"></script>
+<script src="sync.js?v=41"></script>
 <script>
 const VIAJES = [
   { id:"eslovenia", n:"Eslovenia y Venecia", ruta:"eslovenia/",
@@ -90,7 +90,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v40 · 25/07 10:46";
+const VERSION = "v41 · 25/07 11:42";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -241,6 +241,16 @@ function pintaLogin(){
 
 async function pintaNube(){
   if (typeof SYNC === "undefined") return ponEstado({txt:"solo en este móvil", ok:false});
+  // por si algo se quedara colgado pese a los topes
+  const red = setTimeout(() => {
+    const el = document.getElementById("nube");
+    if (el && el.textContent.startsWith("comprobando"))
+      ponEstado({txt:"la nube no responde · solo en este móvil", ok:false});
+  }, 15000);
+  try { await pintaNubeReal(); } finally { clearTimeout(red); }
+}
+
+async function pintaNubeReal(){
   try {
     const e = await SYNC.estado();
     ponEstado(e);
