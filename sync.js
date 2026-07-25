@@ -13,6 +13,14 @@ const SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const SB_CLAVE_VIAJES = "viajes_propios";
 const SB_PENDIENTES   = "viajes_pendientes";
 
+/* Ninguna espera es infinita: si no responde, se avisa */
+function conTope(promesa, ms, fallo){
+  return Promise.race([
+    promesa,
+    new Promise(r => setTimeout(() => r(fallo), ms))
+  ]);
+}
+
 const SYNC = {
   cliente: null,
   sesion: null,
@@ -76,10 +84,14 @@ const SYNC = {
     const c = await this.conectar();
     if (!c) return { ok:false, txt:"Sin conexión" };
     try {
-      const { data, error } = await c.auth.signInWithPassword({ email:correo, password:clave });
-      if (error) return { ok:false, txt: error.message === "Invalid login credentials"
-        ? "Correo o contraseña incorrectos" : error.message };
-      this.sesion = data.session;
+      const r = await conTope(
+        c.auth.signInWithPassword({ email:correo, password:clave }),
+        15000, { error:{ message:"__tardando__" } });
+      if (r.error) return { ok:false, txt: r.error.message === "Invalid login credentials"
+        ? "Correo o contraseña incorrectos"
+        : r.error.message === "__tardando__" ? "El servidor no responde. Reinténtalo."
+        : r.error.message };
+      this.sesion = r.data.session;
       return { ok:true };
     } catch (e){ return { ok:false, txt:"No se pudo entrar" }; }
   },
