@@ -159,6 +159,14 @@ input::placeholder,textarea::placeholder{color:#63757D}
   <div id="dias"></div>
   <div class="btns"><button class="btn" id="add-dia">+ Añadir día</button></div>
 
+  <p class="sec">Reservas</p>
+  <p class="nota" style="margin:0 0 12px">Lo que quieras tener a mano sin buscar en el correo.</p>
+  <div id="reservas"></div>
+  <div class="btns">
+    <button class="btn" id="add-vuelo">+ Vuelo</button>
+    <button class="btn" id="add-tel">+ Teléfono</button>
+  </div>
+
   <p class="sec">Guardar y compartir</p>
   <div id="aviso-nube"></div>
   <div class="btns">
@@ -206,6 +214,101 @@ document.getElementById("hasta").value  = viaje.hasta;
 document.getElementById("salida").value = viaje.salida;
 
 /* ---- Días y paradas ---- */
+function pintaReservas(){
+  viaje.reservas = viaje.reservas || { vuelos:[], coche:{}, telefonos:[] };
+  const r = viaje.reservas;
+  const c = r.coche || (r.coche = {});
+
+  document.getElementById("reservas").innerHTML =
+    r.vuelos.map((v, i) => `
+      <div class="dia">
+        <div class="dia-cab">
+          <span class="dia-num">✈</span>
+          <h2>${esc(v.ruta) || "Vuelo"}</h2>
+          <button class="btn fino borrar" data-borrar-vuelo="${i}">Quitar</button>
+        </div>
+        <div class="campo"><label>Trayecto</label>
+          <input type="text" class="v-ruta" data-i="${i}" value="${esc(v.ruta)}" placeholder="Madrid MAD → Zagreb ZAG"></div>
+        <div class="dos">
+          <div class="campo"><label>Fecha</label>
+            <input type="text" class="v-fecha" data-i="${i}" value="${esc(v.fecha)}" placeholder="18 jul"></div>
+          <div class="campo"><label>Hora</label>
+            <input type="text" class="v-hora" data-i="${i}" value="${esc(v.hora)}" placeholder="18:55"></div>
+        </div>
+        <div class="dos">
+          <div class="campo"><label>Compañía</label>
+            <input type="text" class="v-cia" data-i="${i}" value="${esc(v.cia)}" placeholder="Vueling"></div>
+          <div class="campo"><label>Localizador</label>
+            <input type="text" class="v-loc" data-i="${i}" value="${esc(v.loc)}" placeholder="ABC123"
+              autocapitalize="characters"></div>
+        </div>
+        <div class="campo"><label>Notas</label>
+          <input type="text" class="v-n" data-i="${i}" value="${esc(v.n)}" placeholder="Terminal 4, facturar equipaje…"></div>
+      </div>`).join("")
+
+    + `<div class="dia">
+        <div class="dia-cab"><span class="dia-num">🚗</span><h2>Coche de alquiler</h2></div>
+        <div class="dos">
+          <div class="campo"><label>Empresa</label>
+            <input type="text" id="c-emp" value="${esc(c.empresa)}" placeholder="Last Minute Rent"></div>
+          <div class="campo"><label>Reserva</label>
+            <input type="text" id="c-res" value="${esc(c.reserva)}" placeholder="D014608185"></div>
+        </div>
+        <div class="campo"><label>Recogida</label>
+          <input type="text" id="c-rec" value="${esc(c.recogida)}" placeholder="19 jul 15:00 · Aeropuerto"></div>
+        <div class="campo"><label>Devolución</label>
+          <input type="text" id="c-dev" value="${esc(c.devolucion)}" placeholder="28 jul 15:00 · Aeropuerto"></div>
+        <div class="campo"><label>Teléfono</label>
+          <input type="text" id="c-tel" value="${esc(c.telefono)}" placeholder="+39 342 013 8930" inputmode="tel"></div>
+      </div>`
+
+    + r.telefonos.map((t, i) => `
+      <div class="parada">
+        <div class="fila">
+          <input type="text" class="mini t-q" data-i="${i}" value="${esc(t.q)}" placeholder="Quién es">
+          <input type="text" class="mini t-n" data-i="${i}" value="${esc(t.n)}" placeholder="+34 600…" inputmode="tel">
+          <button class="btn fino borrar" data-borrar-tel="${i}">×</button>
+        </div>
+      </div>`).join("");
+
+  const liga = (sel, obj, campo) => document.querySelectorAll(sel).forEach(el =>
+    el.addEventListener("input", () => { obj(el)[campo] = el.value; sucio(); }));
+
+  liga(".v-ruta", el => r.vuelos[+el.dataset.i], "ruta");
+  liga(".v-fecha", el => r.vuelos[+el.dataset.i], "fecha");
+  liga(".v-hora", el => r.vuelos[+el.dataset.i], "hora");
+  liga(".v-cia", el => r.vuelos[+el.dataset.i], "cia");
+  liga(".v-loc", el => r.vuelos[+el.dataset.i], "loc");
+  liga(".v-n", el => r.vuelos[+el.dataset.i], "n");
+  liga(".t-q", el => r.telefonos[+el.dataset.i], "q");
+  liga(".t-n", el => r.telefonos[+el.dataset.i], "n");
+
+  [["c-emp","empresa"],["c-res","reserva"],["c-rec","recogida"],
+   ["c-dev","devolucion"],["c-tel","telefono"]].forEach(([id, campo]) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", () => { c[campo] = el.value; sucio(); });
+  });
+
+  document.querySelectorAll("[data-borrar-vuelo]").forEach(b => b.addEventListener("click", () => {
+    r.vuelos.splice(+b.dataset.borrarVuelo, 1); pintaReservas(); sucio(); }));
+  document.querySelectorAll("[data-borrar-tel]").forEach(b => b.addEventListener("click", () => {
+    r.telefonos.splice(+b.dataset.borrarTel, 1); pintaReservas(); sucio(); }));
+
+  document.querySelectorAll(".v-ruta").forEach(el => el.addEventListener("input", () => {
+    el.closest(".dia").querySelector("h2").textContent = el.value || "Vuelo"; }));
+}
+
+document.getElementById("add-vuelo").addEventListener("click", () => {
+  viaje.reservas = viaje.reservas || { vuelos:[], coche:{}, telefonos:[] };
+  viaje.reservas.vuelos.push({ruta:"",fecha:"",hora:"",cia:"",loc:"",n:""});
+  pintaReservas(); sucio();
+});
+document.getElementById("add-tel").addEventListener("click", () => {
+  viaje.reservas = viaje.reservas || { vuelos:[], coche:{}, telefonos:[] };
+  viaje.reservas.telefonos.push({q:"",n:""});
+  pintaReservas(); sucio();
+});
+
 function pintaDias(){
   const cont = document.getElementById("dias");
   if (!viaje.dias.length){
@@ -308,6 +411,7 @@ function engancha(){
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
   }));
   document.querySelectorAll("[data-borrar-par]").forEach(b => b.addEventListener("click", () => {
@@ -335,6 +439,7 @@ setTimeout(pintaAvisoNube, 300); sucio();
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
   }));
   document.querySelectorAll("[data-borrar-dia]").forEach(b => b.addEventListener("click", () => {
@@ -362,6 +467,7 @@ setTimeout(pintaAvisoNube, 300); sucio();
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
   }));
 }
@@ -426,6 +532,7 @@ function enganchaFotos(){
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
       } catch { eti.textContent = "+ Añadir una foto"; alert("No se pudo leer la imagen."); }
     });
@@ -457,6 +564,7 @@ setTimeout(pintaAvisoNube, 300); sucio();
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
     });
   });
@@ -579,6 +687,7 @@ function engancharResultados(){
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
     });
   });
@@ -615,6 +724,7 @@ setTimeout(pintaAvisoNube, 300); sucio();
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
       } catch { b.textContent = "No se pudo guardar"; }
     });
@@ -742,6 +852,7 @@ function abrirPedir(){
       <p class="nota" style="margin:0 0 10px">Si tenéis vuelos o coche reservado, ponlo aquí: es lo que manda sobre el resto.</p>
       <div class="campo"><label>Ida</label>
         <input type="text" id="p-ida" placeholder="Vuelo Madrid–Zagreb, sale 18:55, llega 21:30"></div>
+      <p class="nota" style="margin:-4px 0 10px">Los localizadores y teléfonos se apuntan luego, en «Reservas», abajo del todo.</p>
       <div class="campo"><label>Vuelta</label>
         <input type="text" id="p-vuelta" placeholder="Vuelo Zagreb–Madrid a las 06:00 del último día"></div>
       <div class="campo"><label>Coche de alquiler</label>
@@ -817,6 +928,7 @@ document.getElementById("add-dia").addEventListener("click", () => {
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
   const ds = document.querySelectorAll(".dia");
   ds[ds.length-1]?.scrollIntoView?.({behavior:"smooth", block:"center"});
@@ -1073,6 +1185,7 @@ async function pintaAvisoNube(){
 }
 
 pintaDias();
+pintaReservas();
 setTimeout(pintaAvisoNube, 300);
 </script>
 </body>
