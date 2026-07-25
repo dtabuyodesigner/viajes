@@ -621,37 +621,83 @@ setTimeout(pintaAvisoNube, 300); sucio();
 
 /* ---- Preparar la petición para una IA ---- */
 function plantilla(d){
-  return `Móntame un viaje y devuélvemelo en Markdown, siguiendo EXACTAMENTE el formato de abajo.
+  return `Móntame un viaje bien organizado y devuélvemelo en Markdown, con el formato exacto de abajo.
 
 DESTINO: ${d.destino}
 DÍAS: ${d.dias}
-SALGO DESDE: ${d.salida || "sin especificar"}
+SALGO Y VUELVO A: ${d.salida || "sin especificar"}
 CÓMO VIAJO: ${d.como || "sin especificar"}
 QUÉ ME INTERESA: ${d.interes || "un poco de todo"}
+RITMO: ${d.ritmo}
+MÁXIMO AL VOLANTE: unas ${d.coche} horas al día
 ${d.extra ? "OTRAS COSAS: " + d.extra : ""}
 
-FORMATO (respétalo carácter a carácter, es lo que lee mi app):
+═══ CÓMO QUIERO QUE ESTÉ ORGANIZADO ═══
+
+1. RECORRIDO COHERENTE
+   Traza un círculo, en un sentido o en el otro, o una línea limpia.
+   Nunca ir y volver por el mismo tramo, ni cruzar la zona de lado a lado
+   dos veces. Cada día debe dejarme más cerca del siguiente.
+
+2. POCAS BASES, MÁS NOCHES
+   Prioriza quedarte 2 o 3 noches en el mismo alojamiento y salir desde allí,
+   antes que cambiar de sitio cada noche. Cambiar de base cuesta media mañana.
+   Cambia solo cuando el salto geográfico lo justifique de verdad.
+   Los alojamientos, cerca de lo que se visita ese día, no a 40 minutos.
+
+3. TIEMPO AL VOLANTE
+   Ningún día debe pasar mucho de ${d.coche} horas de coche.
+   Escribe en cada día los kilómetros y el tiempo aproximados.
+   Cuenta que en carretera de montaña se va mucho más lento de lo que dice el mapa.
+
+4. LO DE HORA FIJA, PRIMERO
+   Si algo tiene visita guiada, entrada con hora, ferri o último teleférico,
+   colócalo como ancla del día y ordena lo demás alrededor. Dilo en la nota.
+
+5. UN IMPRESCINDIBLE POR DÍA
+   Marca con ★ al principio la parada que no habría que perderse ese día.
+
+6. RITMO ALTERNO
+   No pongas dos jornadas exigentes seguidas. Después de un día largo,
+   uno suave. Y evita amontonar: entre 2 y 4 paradas de verdad por día.
+
+7. PRIMERO Y ÚLTIMO DÍA REALISTAS
+   El día de llegada, poco y cerca. El de vuelta, con margen de sobra
+   y sin nada que no se pueda saltar.
+
+8. MASIFICACIÓN
+   En los sitios famosos, di a qué hora conviene ir para no coincidir con todos.
+
+9. PLAN B
+   En los días de montaña o de mar, añade al final una línea
+   «Si llueve:» con una alternativa cercana a cubierto o suave.
+
+10. LO PRÁCTICO
+    Dónde llenar la nevera, dónde repostar antes de meterse en zona vacía,
+    aparcamientos que se llenan pronto y si son de pago.
+
+═══ FORMATO (respétalo, es lo que lee mi app) ═══
 
 # Nombre del viaje
 Salida: punto de partida
 
 ## Día 1 — Título de la jornada
 Duermes en: pueblo o ciudad
+Coche: 120 km · 2 h
 
-- **Mañana** · Nombre del sitio — Una o dos frases con lo práctico. [Nombre exacto para el GPS]
-- **Tarde** · Otro sitio — Qué es y qué hay que saber. [Nombre para el GPS]
+- **Mañana** · ★ Nombre del sitio — Qué es y lo práctico que haya que saber. [Nombre exacto para el GPS]
+- **Tarde** · Otro sitio — Explicación breve. [Nombre para el GPS]
+- Si llueve: alternativa a cubierto por la zona.
 
 ## Día 2 — Título
-Duermes en: ...
+Duermes en: el mismo sitio si no hay que moverse
+Coche: 60 km · 1 h
 
-REGLAS:
+REGLAS DE FORMATO:
 - Exactamente ${d.dias} apartados «## Día».
-- Entre 2 y 5 paradas por día, en el orden real del recorrido.
-- Cada parada empieza por «- », lleva la hora en **negrita**, luego « · », el nombre, luego « — » y la explicación.
-- Entre corchetes al final, el nombre que un GPS encuentre (con topónimo local si ayuda).
-- En la explicación mete lo práctico: si hay que reservar, si el aparcamiento se llena, cuánto se anda.
-- Ruta circular o lineal, sin repetir tramos.
-- No inventes horarios ni precios exactos si no estás seguro.
+- Cada parada empieza por «- », hora en **negrita**, luego « · », nombre, « — » y la explicación.
+- Entre corchetes al final, el nombre que un GPS encuentre, con topónimo local si ayuda.
+- No inventes horarios ni precios exactos si no estás seguro: di «comprobar» en su lugar.
 - Nada de texto fuera de ese formato: ni introducción ni despedida.`;
 }
 
@@ -675,8 +721,22 @@ function abrirPedir(){
         <input type="text" id="p-como" placeholder="En furgo camper, durmiendo en ella, con dos perras"></div>
       <div class="campo"><label>Qué os interesa</label>
         <input type="text" id="p-interes" placeholder="Montaña, rutas a pie, pueblos, comer bien…"></div>
+      <div class="dos">
+        <div class="campo"><label>Ritmo</label>
+          <select id="p-ritmo">
+            <option value="tranquilo, sin madrugar y con tiempo en cada sitio">Tranquilo</option>
+            <option value="normal, equilibrado entre ver cosas y disfrutarlas" selected>Normal</option>
+            <option value="intenso, aprovechando el día de sol a sol">Intenso</option>
+          </select></div>
+        <div class="campo"><label>Horas de coche al día</label>
+          <select id="p-coche">
+            <option value="1,5">Poco · 1,5 h</option>
+            <option value="2,5" selected>Normal · 2,5 h</option>
+            <option value="4">Me da igual · 4 h</option>
+          </select></div>
+      </div>
       <div class="campo"><label>Algo más</label>
-        <input type="text" id="p-extra" placeholder="Evitar sitios masificados, en agosto…"></div>
+        <input type="text" id="p-extra" placeholder="En agosto, evitar masificación, vamos con perros…"></div>
       <button class="btn solid" id="copiar-pedir" style="width:100%">Copiar la petición</button>
       <ol class="pasos">
         <li><b>Pega la petición</b> en Claude, ChatGPT o Gemini.</li>
@@ -689,7 +749,8 @@ function abrirPedir(){
     const v = id => document.getElementById(id).value.trim();
     if (!v("p-destino")){ alert("Dime al menos a dónde queréis ir."); return; }
     const texto = plantilla({ destino:v("p-destino"), dias:v("p-dias") || "5",
-      salida:v("p-salida"), como:v("p-como"), interes:v("p-interes"), extra:v("p-extra") });
+      salida:v("p-salida"), como:v("p-como"), interes:v("p-interes"), extra:v("p-extra"),
+      ritmo:v("p-ritmo"), coche:v("p-coche") });
     const b = document.getElementById("copiar-pedir");
     try {
       if (navigator.share) await navigator.share({ text: texto });
@@ -812,15 +873,18 @@ function aMarkdown(v){
   (v.dias || []).forEach((d, i) => {
     L.push(`## Día ${i+1} — ${d.t || "Sin título"}`);
     if (d.dest) L.push(`Duermes en: ${d.dest}`);
+    if (d.km)   L.push(`Coche: ${d.km}`);
     L.push("");
     (d.paradas || []).forEach(p => {
       let l = "- ";
       if (p.h) l += `**${p.h}** · `;
+      if (p.key) l += "★ ";
       l += p.txt || "";
       if (p.n) l += ` — ${p.n}`;
       if (p.mapa && p.mapa !== p.txt) l += ` [${p.mapa}]`;
       L.push(l);
     });
+    if (d.lluvia) L.push(`- Si llueve: ${d.lluvia}`);
     L.push("");
   });
   return L.join("\n");
@@ -870,6 +934,9 @@ function leerMarkdown(texto){
     m = l.match(/^\**\s*(?:duermes?\s+en|noche|alojamiento)\s*:\**\s*(.+)$/i);
     if (m && dia){ dia.dest = m[1].replace(/\*/g,"").trim(); continue; }
 
+    m = l.match(/^\**\s*(?:coche|conducci[óo]n|trayecto|km)\s*:\**\s*(.+)$/i);
+    if (m && dia){ dia.km = m[1].replace(/\*/g,"").trim(); continue; }
+
     // - **Hora** · Sitio — Nota [GPS]
     m = l.match(/^[-*•]\s+(.*)$/);
     if (m && dia){
@@ -882,10 +949,16 @@ function leerMarkdown(texto){
       const hora = resto.match(/^\*\*([^*]+)\*\*\s*[·:.\-–—]?\s*/);
       if (hora){ h = hora[1].trim(); resto = resto.slice(hora[0].length); }
 
+      // "Si llueve:" es plan B del día, no una parada
+      const lluvia = resto.match(/^\**\s*si\s+llueve\s*:?\**\s*(.+)$/i);
+      if (lluvia){ dia.lluvia = lluvia[1].replace(/\*/g,"").trim(); continue; }
+
       const corte = resto.split(/\s+[—–]\s+|\s+-\s+/);
-      const txt = (corte.shift() || "").replace(/\*/g,"").trim();
+      let txt = (corte.shift() || "").replace(/\*/g,"").trim();
       n = corte.join(" — ").replace(/\*/g,"").trim();
-      if (txt) dia.paradas.push({ h, txt, n, mapa: mapa || txt });
+      const clave = /^[★*]\s*/.test(txt);
+      txt = txt.replace(/^[★*]\s*/, "");
+      if (txt) dia.paradas.push({ h, txt, n, mapa: mapa || txt, key: clave || undefined });
     }
   }
   v.dias = v.dias.filter(d => d.paradas.length || d.t);
@@ -904,11 +977,14 @@ function normalizar(v){
     dias: dias.map(d => ({
       t: texto(d.t || d.titulo || d.nombre || ""),
       dest: texto(d.dest || d.destino || d.duerme || ""),
+      km: texto(d.km || ""),
+      lluvia: texto(d.lluvia || ""),
       paradas: (Array.isArray(d.paradas) ? d.paradas : []).map(p => ({
         h: texto(p.h || p.hora || ""),
         txt: texto(p.txt || p.texto || p.nombre || p.titulo || ""),
         n: texto(p.n || p.nota || p.descripcion || ""),
-        mapa: texto(p.mapa || p.gps || p.buscar || p.txt || p.nombre || "")
+        mapa: texto(p.mapa || p.gps || p.buscar || p.txt || p.nombre || ""),
+        key: !!p.key
       })).filter(p => p.txt)
     }))
   };
