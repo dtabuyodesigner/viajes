@@ -215,6 +215,25 @@ async function estadoSobrevive(){
   comprobar("y al volver a cambiarlo", valido(tras2), `«${tras2}»`);
 }
 
+/* ═══ 5. Toda función usada existe ═══ */
+function funcionesDefinidas(){
+  console.log(`\n${gris("──")} No se usa ninguna función sin definir`);
+  const archivos = ["index.html","crear/index.html","viaje/index.html",
+                    "eslovenia/index.html","asturias/index.html"];
+  // funciones propias del proyecto que se llaman en plantillas
+  const vigiladas = ["navegar","navegarXY","mapsDe","mapsXY","wazeXY","waze","wikiloc",
+                     "tiempoEn","distancia","distKm","ubicacion","pedirUbicacion",
+                     "esc","mapa","xyDeParada","buscarServicios","lanzarServicios"];
+  for (const a of archivos){
+    const src = fs.readFileSync(path.join(RAIZ, a), "utf8");
+    const usadas = vigiladas.filter(f => new RegExp("[^\\w.]" + f + "\\s*\\(").test(src));
+    const sinDefinir = usadas.filter(f =>
+      !new RegExp("(const|let|var|function)\\s+" + f + "\\b").test(src));
+    comprobar(`${a}: todas definidas`, sinDefinir.length === 0,
+              sinDefinir.length ? "falta: " + sinDefinir.join(", ") : "");
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -239,6 +258,7 @@ async function estadoSobrevive(){
   await editorFunciona();
   await nubeAguanta();
   await estadoSobrevive();
+  funcionesDefinidas();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);
