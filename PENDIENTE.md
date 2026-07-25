@@ -117,6 +117,21 @@ app arranca sola en el día que toca.
 
 ---
 
+## 8 · Enchufar Organic Maps
+
+App de mapas que funciona entera sin conexión, con datos de OpenStreetMap: trae
+caminos de montaña, fuentes y refugios que Google no tiene. Gratuita y sin
+cuentas. Resuelve el punto 3 sin pelearse con las teselas.
+
+**Qué falta.** Comprobar en un iPhone si responde al esquema `om://`. Si abre,
+añadir un botón por parada como se hizo con Waze y park4night. Si no, dejar solo
+el aviso de «descárgate la zona antes de salir».
+
+**Cuidado con:** no está documentado. Igual que `p4n://`, hay que probarlo a
+mano y anotar aquí el resultado.
+
+---
+
 ## Ideas sin decidir
 
 - **Presupuesto por viaje.** La app de gastos ya existe y está enlazada. Podría
