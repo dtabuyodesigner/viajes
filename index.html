@@ -48,6 +48,13 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .btn-act{width:100%;padding:12px;border-radius:999px;border:0;background:var(--tinta);color:var(--fondo);
   font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer}
 .mantenimiento .nota{margin:0}
+.ops{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
+.op{flex:1 1 92px;text-align:left;padding:10px 11px;border-radius:11px;cursor:pointer;
+  background:transparent;border:1px solid var(--linea);color:var(--tinta);font:inherit}
+.op b{display:block;font-size:13.5px;font-weight:600}
+.op small{display:block;font-size:11px;color:var(--tinta-dim);margin-top:2px;line-height:1.3}
+.op.on{border-color:#5BC8B4;background:rgba(91,200,180,.12)}
+.op.on b{color:#5BC8B4}
 .crear{display:flex;align-items:center;gap:13px;padding:16px;margin:0 0 14px;
   border:1px dashed var(--linea);border-radius:18px;color:inherit;text-decoration:none}
 .crear .mas{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--fondo-2);
@@ -62,6 +69,14 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
   font-family:var(--sans);font-size:15px}
 .login input::placeholder{color:#63757D}
 #err-login{color:#E08A72}
+
+/* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
+body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
+  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);}
+@media (prefers-color-scheme: light){
+  body.auto{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
+  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);}
+}
 </style>
 </head>
 <body>
@@ -73,6 +88,35 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 
 <script src="sync.js?v=41"></script>
 <script>
+
+/* ---- Modo de color, compartido por todas las apps ---- */
+const TEMA = {
+  get valor(){ try { return localStorage.getItem("tema_viajes") || "auto"; } catch { return "auto"; } },
+  set valor(v){ try { localStorage.setItem("tema_viajes", v); } catch {}; this.aplica(); },
+  aplica(){
+    const v = this.valor;
+    document.body.classList.toggle("claro", v === "claro");
+    document.body.classList.toggle("auto",  v === "auto");
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (!m) return;
+    const oscuro = m.dataset.oscuro || m.getAttribute("content");
+    if (!m.dataset.oscuro) m.dataset.oscuro = oscuro;
+    const claroDeVerdad = v === "claro" ||
+      (v === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches);
+    m.setAttribute("content", claroDeVerdad ? "#F4F6F7" : m.dataset.oscuro);
+  },
+  opciones(){
+    const v = this.valor;
+    const b = (id, t, sub) => `<button class="op${v === id ? " on" : ""}" data-tema="${id}"><b>${t}</b><small>${sub}</small></button>`;
+    return `<div class="ops">${b("auto","Automático","Como el móvil")}${b("claro","Claro","Para el sol")}${b("oscuro","Oscuro","Para la noche")}</div>`;
+  },
+  engancha(volver){
+    document.querySelectorAll("[data-tema]").forEach(x =>
+      x.addEventListener("click", () => { TEMA.valor = x.dataset.tema; volver && volver(); }));
+  }
+};
+if (window.matchMedia)
+  matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => TEMA.aplica());
 const VIAJES = [
   { id:"eslovenia", n:"Eslovenia y Venecia", ruta:"eslovenia/",
     desde:"2026-07-18", hasta:"2026-07-29", acento:"#4FC3B8",
@@ -90,7 +134,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v49 · 25/07 20:05";
+const VERSION = "v50 · 25/07 20:33";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -156,9 +200,12 @@ function pintaPie(){
       <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
       <p class="nota" style="margin-top:10px">Actualiza esta portada y los viajes a la vez.</p>
       <div id="cuenta"></div>
+      <p class="ver" style="margin:18px 0 0">Modo de color</p>
+      ${TEMA.opciones()}
     </div>
     <p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera a la pantalla de inicio por separado.</p>`;
 
+  TEMA.engancha(pintaPie);
   document.getElementById("btn-actualizar").addEventListener("click", async e => {
     const b = e.target;
     b.textContent = "Limpiando…";
@@ -262,6 +309,7 @@ async function pintaNubeReal(){
   } catch { ponEstado({txt:"solo en este móvil", ok:false}); }
 }
 
+TEMA.aplica();
 pintaLista();
 pintaPie();
 setTimeout(pintaNube, 300);
