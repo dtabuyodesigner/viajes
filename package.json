@@ -1,0 +1,11 @@
+{
+  "name": "viajes",
+  "private": true,
+  "description": "Apps de viaje que funcionan sin cobertura",
+  "scripts": {
+    "test": "node tests/probar.js"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
