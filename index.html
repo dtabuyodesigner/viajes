@@ -86,6 +86,12 @@ header{position:relative}
   cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
   color:currentColor;font-family:var(--sans)}
 .tm.on{opacity:1;background:rgba(127,127,127,.18)}
+
+/* La barra y la cabecera siguen el color de fondo, sea cual sea el tema */
+@supports not (background: color-mix(in srgb, red 50%, transparent)){
+  nav{background:var(--fondo)}
+  header{background:var(--fondo)}
+}
 </style>
 </head>
 <body>
@@ -157,7 +163,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v53 · 25/07 21:46";
+const VERSION = "v54 · 25/07 22:03";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
