@@ -29,7 +29,7 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .viaje{display:block;position:relative;overflow:hidden;text-decoration:none;color:inherit;
   background:var(--fondo-2);border:1px solid var(--linea);border-radius:18px;
   padding:0;margin:0 0 14px}
-.viaje .art{display:block;width:100%;height:104px}
+.viaje .art{display:block;width:100%;height:150px;object-fit:cover;background:#0E2A28}
 .viaje .cuerpo{padding:15px 17px 17px}
 .viaje h2{margin:0;font-size:21px;letter-spacing:-.02em}
 .viaje .fechas{font-family:var(--mono);font-size:12px;letter-spacing:.05em;
@@ -61,15 +61,7 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 const VIAJES = [
   { id:"eslovenia", n:"Eslovenia y Venecia", ruta:"eslovenia/",
     desde:"2026-07-18", hasta:"2026-07-29", acento:"#4FC3B8",
-    art:`<svg viewBox="0 0 400 104" preserveAspectRatio="xMidYMid slice">
-      <rect width="400" height="104" fill="#0E2A28"/>
-      <path d="M0 54l80-32 70 28 80-28 90 32 80-18v18H0z" fill="#163B37"/>
-      <path d="M0 54h400v50H0z" fill="#2C7C76" opacity=".5"/>
-      <ellipse cx="180" cy="76" rx="42" ry="11" fill="#163B37"/>
-      <path d="M170 68V50h20v18z" fill="#0E2A28"/><path d="M168 50l12-10 12 10z" fill="#0E2A28"/>
-      <path d="M198 68V40h9v28z" fill="#0E2A28"/><path d="M197 40l5-10 5 10z" fill="#D9A233"/>
-      <g stroke="#4FC3B8" stroke-width="2" opacity=".45" stroke-linecap="round">
-        <path d="M40 90h60M250 84h70M60 98h80"/></g></svg>` },
+    img:"img/eslovenia-portada.svg" },
 
   { id:"asturias", n:"Asturias occidental", ruta:"asturias/",
     desde:"", hasta:"", acento:"#7FB069",
@@ -83,7 +75,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v29 · 25/07 05:47";
+const VERSION = "v30 · 25/07 05:59";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -104,7 +96,7 @@ function estado(v){
 document.getElementById("lista").innerHTML = VIAJES.map(v => {
   const [cls, txt] = estado(v);
   return `<a class="viaje ${cls}" href="${v.ruta}" style="--acento:${v.acento}">
-    <span class="art">${v.art}</span>
+    ${v.img ? `<img class="art" src="${v.img}" alt="${v.n}" loading="lazy">` : `<span class="art">${v.art}</span>`}
     <span class="cuerpo">
       <h2>${v.n}</h2>
       <p class="fechas">${textoFechas(v)}</p>
