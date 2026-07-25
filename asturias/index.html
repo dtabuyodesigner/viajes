@@ -205,10 +205,6 @@ ul.plain li span{color:var(--papel-dim)}
 .btn.grabando{background:var(--oso);border-color:var(--oso);color:#fff}
 .km{float:right;font-family:var(--mono);font-size:12px;color:var(--papel-dim)}
 
-body.claro{--monte:#F4F6F2;--monte-2:#FFFFFF;--papel:#16261B;--papel-dim:#5C7263;--line:rgba(22,38,27,.14);--prau:#3E7A3F;--prau-dim:#4E8F50;--mar:#2C7A93;--teito:#96701C;--oso:#9C3F27}
-body.claro header{background:linear-gradient(180deg,var(--monte) 72%,rgba(255,255,255,0))}
-body.claro nav{background:rgba(255,255,255,.94)}
-body.claro .art{background:#DDE5DE}
 
 .mapa{background:var(--monte-2);border:1px solid var(--line);border-radius:14px;padding:10px 8px 12px;margin:6px 0 20px}
 .mapa svg{display:block;width:100%;height:auto}
@@ -222,6 +218,16 @@ body.claro .art{background:#DDE5DE}
 .mapa .cama text{font-family:var(--mono);font-size:8.5px;fill:currentColor;opacity:.75;
   text-anchor:middle;pointer-events:none}
 .mapa .cama.act text{opacity:1;font-weight:700}
+
+/* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
+body.claro{--monte:#F4F6F1;--monte-2:#FFFFFF;--papel:#132218;--papel-dim:#4C6153;
+  --line:rgba(19,34,24,.15);--prau:#2F6B31;--prau-dim:#3B8040;
+  --mar:#1E6C82;--teito:#84620F;--oso:#8F3821;}
+@media (prefers-color-scheme: light){
+  body.auto{--monte:#F4F6F1;--monte-2:#FFFFFF;--papel:#132218;--papel-dim:#4C6153;
+  --line:rgba(19,34,24,.15);--prau:#2F6B31;--prau-dim:#3B8040;
+  --mar:#1E6C82;--teito:#84620F;--oso:#8F3821;}
+}
 </style>
 </head>
 <body>
@@ -249,6 +255,34 @@ body.claro .art{background:#DDE5DE}
 
 <script src="../sync.js?v=42"></script>
 <script>
+
+/* ---- Modo de color, compartido por todas las apps ---- */
+const TEMA = {
+  get valor(){ try { return localStorage.getItem("tema_viajes") || "auto"; } catch { return "auto"; } },
+  set valor(v){ try { localStorage.setItem("tema_viajes", v); } catch {}; this.aplica(); },
+  aplica(){
+    const v = this.valor;
+    document.body.classList.toggle("claro", v === "claro");
+    document.body.classList.toggle("auto",  v === "auto");
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (!m) return;
+    const oscuro = m.dataset.oscuro || m.getAttribute("content");
+    if (!m.dataset.oscuro) m.dataset.oscuro = oscuro;
+    const claroDeVerdad = v === "claro" ||
+      (v === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches);
+    m.setAttribute("content", claroDeVerdad ? "#F4F6F7" : m.dataset.oscuro);
+  },
+  opciones(){
+    const v = this.valor;
+    const b = (id, t, sub) => `<button class="op${v === id ? " on" : ""}" data-tema="${id}"><b>${t}</b><small>${sub}</small></button>`;
+    return `<div class="ops">${b("auto","Automático","Como el móvil")}${b("claro","Claro","Para el sol")}${b("oscuro","Oscuro","Para la noche")}</div>`;
+  },
+  engancha(volver){
+    TEMA.engancha(vistaInfo);
+  }
+};
+if (window.matchMedia)
+  matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => TEMA.aplica());
 /* =========================================================
    DATOS DEL VIAJE
    ========================================================= */
@@ -526,7 +560,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v43 · 25/07 11:55";
+const VERSION = "v50 · 25/07 20:33";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -664,15 +698,8 @@ const DIARIO = {
     if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.anotar("asturias", i, t);
     const n = this._leer("notas", {}); t.trim() ? n[i] = t : delete n[i]; this._escribir("notas", n);
   },
-  get tema(){ try { return localStorage.getItem("astu_tema") || "oscuro"; } catch { return "oscuro"; } },
-  set tema(v){ try { localStorage.setItem("astu_tema", v); } catch {}; aplicaTema(); }
 };
 
-function aplicaTema(){
-  document.body.classList.toggle("claro", DIARIO.tema === "claro");
-  const m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.setAttribute("content", DIARIO.tema === "claro" ? "#F4F6F3" : m.dataset.oscuro || m.getAttribute("content"));
-}
 
 /* ---- Dónde estamos ---- */
 let MIPOS = null;
@@ -1095,15 +1122,8 @@ function activaEnlacesGuia(){
 /* ---- Vista INFO ---- */
 
 function panelTema(){
-  const op = (v, t, sub) =>
-    `<button class="op${DIARIO.tema === v ? " on" : ""}" data-tema="${v}"><b>${t}</b><small>${sub}</small></button>`;
   return `<div class="sec"><span class="label">Pantalla</span><h2>Modo de color</h2></div>
-    <div class="card">
-      <div class="ops">
-        ${op("oscuro","Oscuro","Para el coche y la noche")}
-        ${op("claro","Claro","Para el sol de mediodía")}
-      </div>
-    </div>`;
+    <div class="card">${TEMA.opciones()}</div>`;
 }
 
 function panelNav(){
@@ -1184,8 +1204,7 @@ function vistaInfo(){
     sessionStorage.removeItem("recargado");
     location.replace(location.pathname + "?v=" + Date.now());
   });
-  document.querySelectorAll("[data-tema]").forEach(b =>
-    b.addEventListener("click", () => { DIARIO.tema = b.dataset.tema; vistaInfo(); }));
+  TEMA.engancha(vistaInfo);
   document.querySelectorAll("[data-via]").forEach(b =>
     b.addEventListener("click", () => { PREF.via = b.dataset.via; vistaInfo(); }));
 }
@@ -1210,7 +1229,7 @@ function vePestana(v){
 document.querySelectorAll("nav button").forEach(b =>
   b.addEventListener("click", () => vePestana(b.dataset.v)));
 
-aplicaTema();
+TEMA.aplica();
 vistaHoy();
 
 if (typeof DIARIO_SYNC !== "undefined"){
