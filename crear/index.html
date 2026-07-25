@@ -83,6 +83,10 @@ input::placeholder,textarea::placeholder{color:#63757D}
   border-radius:12px;color:var(--acento);font-size:14px;cursor:pointer}
 .foto-zona img{display:block;width:100%;border-radius:12px;margin-bottom:8px}
 .buscador-zona{margin-top:10px}
+.fuentes{display:flex;gap:6px;margin-top:8px}
+.fuente{flex:1;padding:8px 10px;border-radius:10px;border:1px solid var(--linea);
+  background:transparent;color:var(--tinta-dim);font-family:var(--sans);font-size:13px;cursor:pointer}
+.fuente.on{border-color:var(--acento);color:var(--acento);background:rgba(91,200,180,.1)}
 .busca-caja{background:var(--fondo-3);border-radius:12px;padding:12px;margin-top:8px}
 .res{background:var(--fondo-2);border:1px solid var(--linea);border-radius:12px;
   padding:12px;margin-top:9px}
@@ -312,8 +316,10 @@ function enganchaFotos(){
 }
 
 /* ---- Buscar un sitio en Wikipedia ---- */
-async function buscarSitio(texto){
-  const base = "https://es.wikipedia.org/w/api.php";
+async function buscarSitio(texto, fuente = "wikipedia"){
+  const base = fuente === "wikivoyage"
+    ? "https://es.wikivoyage.org/w/api.php"
+    : "https://es.wikipedia.org/w/api.php";
   const url = base + "?" + new URLSearchParams({
     action:"query", format:"json", origin:"*",
     generator:"search", gsrsearch:texto, gsrlimit:"3",
@@ -351,19 +357,28 @@ function abreBuscador(i){
   z.dataset.abierto = "1";
   z.innerHTML = `<div class="busca-caja">
       <input type="text" class="mini" id="q-${i}" placeholder="Lago Bled, Cudillero, Somiedo…">
+      <div class="fuentes" id="fu-${i}">
+        <button class="fuente on" data-fuente="wikipedia">Qué es</button>
+        <button class="fuente" data-fuente="wikivoyage">Qué hacer</button>
+      </div>
       <div class="btns" style="margin-top:8px">
         <button class="btn fino solid" id="go-${i}">Buscar</button>
       </div>
       <div id="rs-${i}"></div>
     </div>`;
+  z.querySelectorAll(".fuente").forEach(b => b.addEventListener("click", () => {
+    z.querySelectorAll(".fuente").forEach(x => x.classList.toggle("on", x === b));
+  }));
   const lanzar = async () => {
     const q = document.getElementById("q-" + i).value.trim();
     if (!q) return;
     const rs = document.getElementById("rs-" + i);
-    rs.innerHTML = `<p class="cargando">Buscando en Wikipedia…</p>`;
+    const fuente = document.querySelector(`#fu-${i} .fuente.on`)?.dataset.fuente || "wikipedia";
+    rs.innerHTML = `<p class="cargando">Buscando en ${fuente === "wikivoyage" ? "Wikivoyage" : "Wikipedia"}…</p>`;
     try {
-      const res = await buscarSitio(q);
-      if (!res.length){ rs.innerHTML = `<p class="cargando">Nada con ese nombre.</p>`; return; }
+      const res = await buscarSitio(q, fuente);
+      if (!res.length){ rs.innerHTML = `<p class="cargando">Nada con ese nombre${
+        fuente === "wikivoyage" ? " en la guía de viajes. Prueba con «Qué es»." : ""}.</p>`; return; }
       rs.innerHTML = res.map((r, k) => `
         <div class="res">
           ${r.imagen ? `<img src="${r.imagen}" alt="">` : ""}
