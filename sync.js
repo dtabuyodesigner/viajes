@@ -65,7 +65,7 @@ const SYNC = {
     if (!navigator.onLine) return { ok:false, txt:"Sin conexión · solo en este móvil" };
     const c = await this.conectar();
     if (!c) return { ok:false, txt:"No se pudo conectar · solo en este móvil" };
-    if (!this.sesion) return { ok:false, txt:"Sin sesión · entra en Gastos compartidos para sincronizar", login:true };
+    if (!this.sesion) return { ok:false, txt:"Sin sesión en este navegador", login:true };
     const p = this.pendientes().length;
     return { ok:true, txt: p ? `${p} viaje${p===1?"":"s"} por subir` : "Sincronizado", sesion:this.sesion };
   },
