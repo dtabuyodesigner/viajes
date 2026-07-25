@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#12181C">
+<title>Crear viaje</title>
+<style>
+:root{
+  --fondo:#12181C; --fondo-2:#1C252A; --fondo-3:#232E34;
+  --tinta:#EDF1F3; --tinta-dim:#93A3AA; --linea:rgba(237,241,243,.13);
+  --acento:#5BC8B4; --acento-dim:#3E8C7E; --ambar:#D9A233; --rojo:#C0503F;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--fondo);color:var(--tinta);font-family:var(--sans);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+a{color:var(--acento);text-decoration:none}
+:focus-visible{outline:2px solid var(--ambar);outline-offset:2px;border-radius:6px}
+
+header{position:sticky;top:0;z-index:20;background:var(--fondo);
+  padding:calc(14px + env(safe-area-inset-top)) 20px 14px;border-bottom:1px solid var(--linea)}
+.volver{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--tinta-dim);padding:5px 11px 5px 8px;
+  border:1px solid var(--linea);border-radius:999px;margin-bottom:10px}
+h1{font-size:24px;line-height:1.15;letter-spacing:-.02em;font-weight:800;margin:0}
+.sub{color:var(--tinta-dim);font-size:13.5px;margin:5px 0 0}
+
+main{padding:18px 20px 20px;max-width:640px;margin:0 auto}
+.campo{margin:0 0 15px}
+.campo label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--tinta-dim);margin-bottom:6px}
+input[type=text],input[type=date],textarea,select{
+  width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--linea);
+  background:var(--fondo-2);color:var(--tinta);font-family:var(--sans);font-size:15.5px}
+textarea{resize:none;overflow:hidden;line-height:1.5}
+input::placeholder,textarea::placeholder{color:#63757D}
+.dos{display:flex;gap:10px}
+.dos .campo{flex:1}
+
+.dia{background:var(--fondo-2);border:1px solid var(--linea);border-radius:16px;
+  padding:15px;margin:0 0 14px}
+.dia-cab{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.dia-num{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--acento);
+  color:var(--fondo);font-family:var(--mono);font-size:12px;font-weight:700;
+  display:grid;place-items:center}
+.dia-cab h2{margin:0;font-size:16px;flex:1;letter-spacing:-.01em}
+.parada{background:var(--fondo-3);border-radius:12px;padding:12px;margin:0 0 9px}
+.parada .fila{display:flex;gap:8px;align-items:flex-start}
+.parada .fila input:first-child{flex:0 0 82px}
+.mini{font-size:13.5px !important;padding:9px 11px !important}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 15px;border-radius:999px;border:1px solid var(--acento-dim);
+  color:var(--acento);font-size:13.5px;font-weight:600;background:none;
+  cursor:pointer;font-family:var(--sans)}
+.btn.solid{background:var(--acento);color:var(--fondo);border-color:var(--acento)}
+.btn.fino{padding:7px 12px;font-size:12.5px}
+.btn.borrar{border-color:var(--rojo);color:var(--rojo)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+
+.barra{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;
+  padding:12px 20px calc(12px + env(safe-area-inset-bottom));
+  background:rgba(18,24,28,.95);backdrop-filter:blur(14px);border-top:1px solid var(--linea)}
+.barra .btn{flex:1}
+
+.aviso{display:flex;gap:11px;padding:13px 14px;border-radius:12px;margin:0 0 18px;
+  background:rgba(217,162,51,.11);border:1px solid rgba(217,162,51,.32)}
+.aviso .ic{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:var(--ambar);
+  color:var(--fondo);font-family:var(--mono);font-size:12px;font-weight:700;
+  display:grid;place-items:center;margin-top:1px}
+.aviso p{margin:0;font-size:13px;line-height:1.5;color:#E4D6B8}
+.nota{font-size:13px;color:var(--tinta-dim);line-height:1.5;margin:10px 0 0}
+.sec{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--tinta-dim);margin:26px 0 10px}
+.vacio{color:var(--tinta-dim);font-size:14px;padding:14px 0}
+.ok{color:var(--acento)}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="volver" href="../">‹ Viajes</a>
+  <h1 id="titulo">Nuevo viaje</h1>
+  <p class="sub" id="sub">Rellena lo que sepas. Lo demás se puede añadir luego.</p>
+</header>
+
+<main>
+  <div class="campo">
+    <label>Nombre del viaje</label>
+    <input type="text" id="nombre" placeholder="Portugal en furgo" autocomplete="off">
+  </div>
+
+  <div class="dos">
+    <div class="campo"><label>Salida</label><input type="date" id="desde"></div>
+    <div class="campo"><label>Vuelta</label><input type="date" id="hasta"></div>
+  </div>
+  <p class="nota" style="margin-top:-6px">Si aún no las sabéis, déjalas en blanco: los días saldrán como «Día 1», «Día 2»…</p>
+
+  <div class="campo" style="margin-top:16px">
+    <label>Punto de partida</label>
+    <input type="text" id="salida" placeholder="San Miguel de las Dueñas" autocomplete="off">
+  </div>
+
+  <p class="sec">Los días</p>
+  <div id="dias"></div>
+  <div class="btns"><button class="btn" id="add-dia">+ Añadir día</button></div>
+
+  <p class="sec">Guardar y compartir</p>
+  <div class="aviso"><span class="ic">!</span>
+    <p>El viaje se guarda en este móvil. Para que lo vea otra persona hay que exportarlo y publicarlo.</p></div>
+  <div class="btns">
+    <button class="btn" id="exportar">Exportar viaje</button>
+    <button class="btn" id="importar">Importar</button>
+    <button class="btn borrar" id="eliminar">Eliminar viaje</button>
+  </div>
+  <p class="nota" id="estado"></p>
+</main>
+
+<div class="barra">
+  <button class="btn" id="previsualizar">Ver cómo queda</button>
+  <button class="btn solid" id="guardar">Guardar</button>
+</div>
+
+<script>
+const CLAVE = "viajes_propios";
+const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const nuevoId = () => "v" + Date.now().toString(36);
+
+function leerTodos(){
+  try { return JSON.parse(localStorage.getItem(CLAVE)) || []; } catch { return []; }
+}
+function guardarTodos(v){
+  try { localStorage.setItem(CLAVE, JSON.stringify(v)); return true; } catch { return false; }
+}
+
+/* ---- Viaje en edición ---- */
+const params = new URLSearchParams(location.search);
+let viaje = null;
+const idExistente = params.get("id");
+if (idExistente) viaje = leerTodos().find(v => v.id === idExistente) || null;
+if (!viaje) viaje = { id:nuevoId(), nombre:"", desde:"", hasta:"", salida:"", dias:[] };
+
+if (idExistente && viaje.nombre){
+  document.getElementById("titulo").textContent = viaje.nombre;
+  document.getElementById("sub").textContent = "Editando un viaje que ya tenías.";
+}
+
+document.getElementById("nombre").value = viaje.nombre;
+document.getElementById("desde").value  = viaje.desde;
+document.getElementById("hasta").value  = viaje.hasta;
+document.getElementById("salida").value = viaje.salida;
+
+/* ---- Días y paradas ---- */
+function pintaDias(){
+  const cont = document.getElementById("dias");
+  if (!viaje.dias.length){
+    cont.innerHTML = `<p class="vacio">Todavía no hay ningún día. Añade el primero.</p>`;
+    return;
+  }
+  cont.innerHTML = viaje.dias.map((d, i) => `
+    <div class="dia" data-dia="${i}">
+      <div class="dia-cab">
+        <span class="dia-num">${i+1}</span>
+        <h2>${esc(d.t) || "Sin título"}</h2>
+        <button class="btn fino borrar" data-borrar-dia="${i}">Quitar</button>
+      </div>
+      <div class="campo">
+        <label>Qué se hace ese día</label>
+        <input type="text" class="d-t" data-i="${i}" value="${esc(d.t)}" placeholder="Subida a Somiedo">
+      </div>
+      <div class="campo">
+        <label>Dónde se duerme</label>
+        <input type="text" class="d-dest" data-i="${i}" value="${esc(d.dest)}" placeholder="Pola de Somiedo">
+      </div>
+
+      <label style="font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+        text-transform:uppercase;color:var(--tinta-dim);display:block;margin:14px 0 7px">Paradas</label>
+      ${d.paradas.map((p, k) => `
+        <div class="parada">
+          <div class="fila">
+            <input type="text" class="mini p-h" data-i="${i}" data-k="${k}" value="${esc(p.h)}" placeholder="Mañana">
+            <input type="text" class="mini p-txt" data-i="${i}" data-k="${k}" value="${esc(p.txt)}" placeholder="Qué se visita">
+            <button class="btn fino borrar" data-borrar-par="${i}:${k}">×</button>
+          </div>
+          <input type="text" class="mini p-n" data-i="${i}" data-k="${k}" value="${esc(p.n)}"
+            placeholder="Nota: horarios, avisos…" style="margin-top:7px">
+          <input type="text" class="mini p-mapa" data-i="${i}" data-k="${k}" value="${esc(p.mapa)}"
+            placeholder="Nombre para el navegador" style="margin-top:7px">
+        </div>`).join("")}
+      <div class="btns"><button class="btn fino" data-add-par="${i}">+ Parada</button></div>
+    </div>`).join("");
+  engancha();
+}
+
+function engancha(){
+  const set = (sel, campo) => document.querySelectorAll(sel).forEach(el =>
+    el.addEventListener("input", () => { viaje.dias[+el.dataset.i][campo] = el.value; sucio(); }));
+  set(".d-t", "t"); set(".d-dest", "dest");
+
+  const setP = (sel, campo) => document.querySelectorAll(sel).forEach(el =>
+    el.addEventListener("input", () => {
+      viaje.dias[+el.dataset.i].paradas[+el.dataset.k][campo] = el.value; sucio(); }));
+  setP(".p-h","h"); setP(".p-txt","txt"); setP(".p-n","n"); setP(".p-mapa","mapa");
+
+  document.querySelectorAll(".d-t").forEach(el => el.addEventListener("input", () => {
+    const h = el.closest(".dia").querySelector("h2");
+    h.textContent = el.value || "Sin título";
+  }));
+
+  document.querySelectorAll("[data-add-par]").forEach(b => b.addEventListener("click", () => {
+    viaje.dias[+b.dataset.addPar].paradas.push({h:"", txt:"", n:"", mapa:""});
+    pintaDias(); sucio();
+  }));
+  document.querySelectorAll("[data-borrar-par]").forEach(b => b.addEventListener("click", () => {
+    const [i,k] = b.dataset.borrarPar.split(":").map(Number);
+    viaje.dias[i].paradas.splice(k,1); pintaDias(); sucio();
+  }));
+  document.querySelectorAll("[data-borrar-dia]").forEach(b => b.addEventListener("click", () => {
+    if (!confirm("¿Quitar este día entero?")) return;
+    viaje.dias.splice(+b.dataset.borrarDia,1); pintaDias(); sucio();
+  }));
+}
+
+document.getElementById("add-dia").addEventListener("click", () => {
+  viaje.dias.push({ t:"", dest:"", paradas:[{h:"", txt:"", n:"", mapa:""}] });
+  pintaDias(); sucio();
+  const ds = document.querySelectorAll(".dia");
+  ds[ds.length-1]?.scrollIntoView?.({behavior:"smooth", block:"center"});
+});
+
+/* ---- Cabecera ---- */
+["nombre","desde","hasta","salida"].forEach(id =>
+  document.getElementById(id).addEventListener("input", e => { viaje[id] = e.target.value; sucio(); }));
+
+let pendiente = false;
+function sucio(){
+  pendiente = true;
+  document.getElementById("estado").textContent = "Hay cambios sin guardar.";
+}
+
+/* ---- Guardar ---- */
+function guardar(){
+  if (!viaje.nombre.trim()){
+    alert("Ponle un nombre al viaje antes de guardar.");
+    document.getElementById("nombre").focus();
+    return false;
+  }
+  const todos = leerTodos();
+  const i = todos.findIndex(v => v.id === viaje.id);
+  if (i >= 0) todos[i] = viaje; else todos.push(viaje);
+  if (!guardarTodos(todos)){ alert("No se pudo guardar en este móvil."); return false; }
+  pendiente = false;
+  const e = document.getElementById("estado");
+  e.innerHTML = `<span class="ok">Guardado.</span> Ya aparece en la portada.`;
+  history.replaceState(null, "", "?id=" + viaje.id);
+  return true;
+}
+document.getElementById("guardar").addEventListener("click", guardar);
+
+document.getElementById("previsualizar").addEventListener("click", () => {
+  if (guardar()) location.href = "../viaje/?id=" + viaje.id;
+});
+
+/* ---- Exportar e importar ---- */
+document.getElementById("exportar").addEventListener("click", async () => {
+  guardar();
+  const txt = JSON.stringify(viaje, null, 2);
+  try {
+    if (navigator.share) await navigator.share({ title: viaje.nombre || "Viaje", text: txt });
+    else { await navigator.clipboard.writeText(txt); alert("Copiado al portapapeles."); }
+  } catch {}
+});
+
+document.getElementById("importar").addEventListener("click", () => {
+  const txt = prompt("Pega aquí el viaje exportado:");
+  if (!txt) return;
+  try {
+    const v = JSON.parse(txt);
+    if (!v.nombre || !Array.isArray(v.dias)) throw new Error("formato");
+    v.id = nuevoId();
+    const todos = leerTodos(); todos.push(v); guardarTodos(todos);
+    location.href = "?id=" + v.id;
+  } catch { alert("Eso no parece un viaje exportado."); }
+});
+
+document.getElementById("eliminar").addEventListener("click", () => {
+  if (!confirm("¿Eliminar este viaje del móvil? No se puede deshacer.")) return;
+  guardarTodos(leerTodos().filter(v => v.id !== viaje.id));
+  location.href = "../";
+});
+
+window.addEventListener("beforeunload", e => {
+  if (pendiente){ e.preventDefault(); e.returnValue = ""; }
+});
+
+pintaDias();
+</script>
+</body>
+</html>
