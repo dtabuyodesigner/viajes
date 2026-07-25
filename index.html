@@ -48,6 +48,12 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .btn-act{width:100%;padding:12px;border-radius:999px;border:0;background:var(--tinta);color:var(--fondo);
   font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer}
 .mantenimiento .nota{margin:0}
+.crear{display:flex;align-items:center;gap:13px;padding:16px;margin:0 0 14px;
+  border:1px dashed var(--linea);border-radius:18px;color:inherit;text-decoration:none}
+.crear .mas{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--fondo-2);
+  border:1px solid var(--linea);color:#5BC8B4;font-size:20px;display:grid;place-items:center}
+.crear b{display:block;font-size:15.5px}
+.crear small{display:block;font-size:12.5px;color:var(--tinta-dim);margin-top:2px}
 </style>
 </head>
 <body>
@@ -75,7 +81,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v30 · 25/07 05:59";
+const VERSION = "v34 · 25/07 07:43";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -93,18 +99,41 @@ function estado(v){
   return ["curso", `En curso · día ${d}`];
 }
 
-document.getElementById("lista").innerHTML = VIAJES.map(v => {
+function propios(){
+  try { return (JSON.parse(localStorage.getItem("viajes_propios")) || []).map(v => ({
+    id:v.id, n:v.nombre, ruta:`viaje/?id=${v.id}`, desde:v.desde||"", hasta:v.hasta||"",
+    acento:"#5BC8B4", propio:true, ndias:(v.dias||[]).length,
+    art:`<svg viewBox="0 0 400 104" preserveAspectRatio="xMidYMid slice">
+      <rect width="400" height="104" fill="#101C22"/>
+      <path d="M0 104L120 34l70 42 60-26 150 54z" fill="#1A2A32"/>
+      <path d="M0 104L160 58l140 46z" fill="#223A42"/>
+      <g stroke="#5BC8B4" stroke-width="2.4" fill="none" stroke-linecap="round"
+         stroke-dasharray="3 6" opacity=".85"><path d="M40 92 L130 60 L230 74 L340 40"/></g>
+      <g fill="#5BC8B4"><circle cx="40" cy="92" r="4"/><circle cx="130" cy="60" r="4"/>
+        <circle cx="230" cy="74" r="4"/><circle cx="340" cy="40" r="4"/></g></svg>` })); }
+  catch { return []; }
+}
+
+const TODOS = VIAJES.concat(propios());
+
+document.getElementById("lista").innerHTML = TODOS.map(v => {
   const [cls, txt] = estado(v);
+  const txt2 = v.propio && !v.desde
+    ? `${v.ndias} día${v.ndias === 1 ? "" : "s"} · sin fechas` : txt;
   return `<a class="viaje ${cls}" href="${v.ruta}" style="--acento:${v.acento}">
     ${v.img ? `<img class="art" src="${v.img}" alt="${v.n}" loading="lazy">` : `<span class="art">${v.art}</span>`}
     <span class="cuerpo">
       <h2>${v.n}</h2>
       <p class="fechas">${textoFechas(v)}</p>
-      <span class="estado"><span class="punto"></span>${txt}</span>
+      <span class="estado"><span class="punto"></span>${txt2}</span>
       <span class="flecha">→</span>
     </span>
   </a>`;
 }).join("") + `
+  <a class="crear" href="crear/">
+    <span class="mas">+</span>
+    <span><b>Crear un viaje</b><small>Días, paradas y navegación, montado por ti</small></span>
+  </a>
   <div class="mantenimiento">
     <p class="ver">Versión <span id="ver"></span></p>
     <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
@@ -130,7 +159,7 @@ document.getElementById("btn-actualizar").addEventListener("click", async e => {
   location.replace(location.pathname + "?v=" + Date.now());
 });
 
-const enCurso = VIAJES.find(v => estado(v)[0] === "curso");
+const enCurso = TODOS.find(v => estado(v)[0] === "curso");
 document.getElementById("saludo").textContent = enCurso ? "Viaje en curso" : "Viajes";
 
 if ("serviceWorker" in navigator){
