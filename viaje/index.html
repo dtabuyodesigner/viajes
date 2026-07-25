@@ -155,6 +155,7 @@ ul.plain li:first-child{border-top:0}
   <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
 </nav>
 
+<script src="../sync.js?v=42"></script>
 <script>
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
@@ -181,11 +182,22 @@ function arrancar(){
 const P = {
   _g(k, d){ try { return JSON.parse(localStorage.getItem(`vp_${ID}_${k}`)) ?? d; } catch { return d; } },
   _s(k, v){ try { localStorage.setItem(`vp_${ID}_${k}`, JSON.stringify(v)); } catch {} },
-  get hechas(){ return this._g("hechas", {}); },
-  marcar(c){ const h = this.hechas; h[c] ? delete h[c] : h[c] = 1; this._s("hechas", h); },
-  esta(c){ return !!this.hechas[c]; },
-  nota(i){ return this._g("notas", {})[i] || ""; },
-  guardarNota(i, t){ const n = this._g("notas", {}); t.trim() ? n[i] = t : delete n[i]; this._s("notas", n); },
+  marcar(c){
+    if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.marcar(ID, c, !this.esta(c));
+    const h = this._g("hechas", {}); h[c] ? delete h[c] : h[c] = 1; this._s("hechas", h);
+  },
+  esta(c){
+    if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.estaHecha(ID, c);
+    return !!this._g("hechas", {})[c];
+  },
+  nota(i){
+    if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.nota(ID, i);
+    return this._g("notas", {})[i] || "";
+  },
+  guardarNota(i, t){
+    if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.anotar(ID, i, t);
+    const n = this._g("notas", {}); t.trim() ? n[i] = t : delete n[i]; this._s("notas", n);
+  },
   get app(){ try { return localStorage.getItem("gen_app") || "waze"; } catch { return "waze"; } },
   set app(v){ try { localStorage.setItem("gen_app", v); } catch {} },
   get tema(){ try { return localStorage.getItem("gen_tema") || "oscuro"; } catch { return "oscuro"; } },
@@ -477,6 +489,18 @@ document.querySelectorAll("nav button").forEach(b => b.addEventListener("click",
 
 aplicaTema();
 vistaHoy();
+
+if (typeof DIARIO_SYNC !== "undefined"){
+  setTimeout(async () => {
+    try {
+      const r = await DIARIO_SYNC.sincronizar(ID);
+      if (r.cambios){
+        const activa = document.querySelector("nav button.on")?.dataset.v || "hoy";
+        vistas[activa]();
+      }
+    } catch {}
+  }, 600);
+}
 }
 
 if ("serviceWorker" in navigator){
