@@ -520,7 +520,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v28 · 25/07 05:44";
+const VERSION = "v29 · 25/07 05:47";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -1132,8 +1132,8 @@ function vistaInfo(){
     `<div class="sec"><span class="label">Mantenimiento</span><h2>Actualizar</h2></div>
      <div class="card">
        <div class="row"><span class="k">Versión instalada</span><span class="v mono">${VERSION}</span></div>
-       <p class="note">Desde el icono de la pantalla de inicio no se puede recargar tirando hacia abajo. Usa este botón.</p>
-       <div class="btns"><button class="btn solid" id="btn-actualizar">Buscar actualización</button></div>
+       <p class="note">Para actualizar, ve a <a href="../">Viajes</a> y pulsa «Buscar actualización». Desde ahí se refrescan los dos viajes a la vez.</p>
+       <div class="btns"><a class="btn solid" href="../">Ir a Viajes</a></div>
      </div>`;
 
   document.querySelectorAll("[data-app]").forEach(b =>
