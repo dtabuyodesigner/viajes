@@ -101,6 +101,22 @@ input::placeholder,textarea::placeholder{color:#63757D}
 .res .btns{margin-top:10px}
 .cargando{color:var(--tinta-dim);font-size:13.5px;padding:10px 0}
 .peso{font-size:12px;color:var(--tinta-dim);margin-top:6px}
+.pedir{background:linear-gradient(135deg,rgba(91,200,180,.13),rgba(91,200,180,.04));
+  border:1px solid rgba(91,200,180,.3);border-radius:18px;padding:16px;margin:0 0 22px}
+.pedir-cab{display:flex;gap:12px;align-items:flex-start}
+.chispa{flex:0 0 auto;width:32px;height:32px;border-radius:50%;background:var(--acento);
+  color:var(--fondo);display:grid;place-items:center;font-size:16px}
+.pedir-cab b{display:block;font-size:15.5px}
+.pedir-cab small{display:block;font-size:12.5px;color:var(--tinta-dim);margin-top:2px;line-height:1.4}
+.pedir-form{margin-top:14px}
+.pedir-form .campo{margin-bottom:11px}
+.pasos{counter-reset:p;margin:14px 0 0;padding:0;list-style:none}
+.pasos li{counter-increment:p;position:relative;padding:0 0 12px 34px;font-size:13.5px;
+  color:var(--tinta-dim);line-height:1.5}
+.pasos li::before{content:counter(p);position:absolute;left:0;top:0;width:23px;height:23px;
+  border-radius:50%;background:var(--fondo-3);color:var(--acento);font-family:var(--mono);
+  font-size:12px;display:grid;place-items:center}
+.pasos li b{color:var(--tinta);font-weight:600}
 </style>
 </head>
 <body>
@@ -112,6 +128,15 @@ input::placeholder,textarea::placeholder{color:#63757D}
 </header>
 
 <main>
+  <div class="pedir">
+    <div class="pedir-cab">
+      <span class="chispa">✦</span>
+      <div><b>Que te lo monte una IA</b><small>Le dices dónde y cuántos días, y ella rellena el viaje</small></div>
+    </div>
+    <button class="btn solid" id="abrir-pedir" style="width:100%;margin-top:12px">Preparar la petición</button>
+    <div id="zona-pedir"></div>
+  </div>
+
   <div class="campo">
     <label>Nombre del viaje</label>
     <input type="text" id="nombre" placeholder="Portugal en furgo" autocomplete="off">
@@ -593,6 +618,96 @@ setTimeout(pintaAvisoNube, 300); sucio();
   });
 }
 
+/* ---- Preparar la petición para una IA ---- */
+function plantilla(d){
+  return `Móntame un viaje y devuélvemelo SOLO como JSON, sin explicaciones ni texto alrededor.
+
+DESTINO: ${d.destino}
+DÍAS: ${d.dias}
+SALGO DESDE: ${d.salida || "sin especificar"}
+CÓMO VIAJO: ${d.como || "sin especificar"}
+QUÉ ME INTERESA: ${d.interes || "un poco de todo"}
+${d.extra ? "OTRAS COSAS: " + d.extra : ""}
+
+FORMATO EXACTO que debes devolver:
+
+{
+  "nombre": "nombre corto del viaje",
+  "salida": "punto de partida",
+  "dias": [
+    {
+      "t": "título corto de la jornada",
+      "dest": "pueblo o ciudad donde se duerme esa noche",
+      "paradas": [
+        {
+          "h": "Mañana",
+          "txt": "nombre del sitio",
+          "n": "una o dos frases: qué es, cuánto se tarda, avisos prácticos",
+          "mapa": "nombre exacto para buscar en un navegador GPS"
+        }
+      ]
+    }
+  ]
+}
+
+REGLAS:
+- Exactamente ${d.dias} objetos dentro de "dias".
+- Entre 2 y 5 paradas por día, en el orden real del recorrido.
+- "h" es opcional: usa "Mañana", "Mediodía", "Tarde" o una hora concreta.
+- "mapa" debe ser un nombre que un GPS encuentre, con el topónimo local si ayuda.
+- En "n" mete lo práctico: si hay que reservar, si el aparcamiento se llena, cuánto se anda.
+- Que la ruta sea circular o lineal, sin ir y volver por el mismo sitio dos veces.
+- No inventes horarios ni precios exactos si no estás seguro.
+- Responde solo el JSON.`;
+}
+
+function abrirPedir(){
+  const z = document.getElementById("zona-pedir");
+  if (z.dataset.abierto){ z.innerHTML = ""; delete z.dataset.abierto;
+    document.getElementById("abrir-pedir").textContent = "Preparar la petición"; return; }
+  z.dataset.abierto = "1";
+  document.getElementById("abrir-pedir").textContent = "Cerrar";
+  z.innerHTML = `
+    <div class="pedir-form">
+      <div class="campo"><label>A dónde</label>
+        <input type="text" id="p-destino" placeholder="Norte de Portugal, Dolomitas, Picos de Europa…"></div>
+      <div class="dos">
+        <div class="campo"><label>Cuántos días</label>
+          <input type="text" id="p-dias" value="5" inputmode="numeric"></div>
+        <div class="campo"><label>Desde dónde salís</label>
+          <input type="text" id="p-salida" placeholder="San Miguel de las Dueñas"></div>
+      </div>
+      <div class="campo"><label>Cómo viajáis</label>
+        <input type="text" id="p-como" placeholder="En furgo camper, durmiendo en ella, con dos perras"></div>
+      <div class="campo"><label>Qué os interesa</label>
+        <input type="text" id="p-interes" placeholder="Montaña, rutas a pie, pueblos, comer bien…"></div>
+      <div class="campo"><label>Algo más</label>
+        <input type="text" id="p-extra" placeholder="Evitar sitios masificados, en agosto…"></div>
+      <button class="btn solid" id="copiar-pedir" style="width:100%">Copiar la petición</button>
+      <ol class="pasos">
+        <li><b>Pega la petición</b> en Claude, ChatGPT o Gemini.</li>
+        <li><b>Copia la respuesta</b> entera, tal cual venga.</li>
+        <li>Vuelve aquí y dale a <b>Importar</b>, abajo del todo.</li>
+      </ol>
+    </div>`;
+
+  document.getElementById("copiar-pedir").addEventListener("click", async () => {
+    const v = id => document.getElementById(id).value.trim();
+    if (!v("p-destino")){ alert("Dime al menos a dónde queréis ir."); return; }
+    const texto = plantilla({ destino:v("p-destino"), dias:v("p-dias") || "5",
+      salida:v("p-salida"), como:v("p-como"), interes:v("p-interes"), extra:v("p-extra") });
+    const b = document.getElementById("copiar-pedir");
+    try {
+      if (navigator.share) await navigator.share({ text: texto });
+      else { await navigator.clipboard.writeText(texto); }
+      b.textContent = "Copiado. Pégalo en la IA.";
+      setTimeout(() => { b.textContent = "Copiar la petición"; }, 3000);
+    } catch {}
+  });
+}
+
+document.getElementById("abrir-pedir").addEventListener("click", abrirPedir);
+
 document.getElementById("add-dia").addEventListener("click", () => {
   viaje.dias.push({ t:"", dest:"", paradas:[{h:"", txt:"", n:"", mapa:""}] });
   async function pintaAvisoNube(){
@@ -677,16 +792,63 @@ document.getElementById("exportar").addEventListener("click", async () => {
   } catch {}
 });
 
-document.getElementById("importar").addEventListener("click", () => {
-  const txt = prompt("Pega aquí el viaje exportado:");
-  if (!txt) return;
+/* ---- Importar: aguanta lo que devuelva cualquier IA ---- */
+function extraerJSON(texto){
+  let t = String(texto || "").trim();
+  // quita bloques de código y preámbulos del tipo "Aquí tienes tu viaje:"
+  const bloque = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (bloque) t = bloque[1].trim();
+  const abre = t.indexOf("{"), cierra = t.lastIndexOf("}");
+  if (abre === -1 || cierra === -1 || cierra < abre) return null;
+  t = t.slice(abre, cierra + 1);
+  try { return JSON.parse(t); } catch {}
+  // último intento: comillas tipográficas y comas colgando
   try {
-    const v = JSON.parse(txt);
-    if (!v.nombre || !Array.isArray(v.dias)) throw new Error("formato");
-    v.id = nuevoId();
-    const todos = leerTodos(); todos.push(v); guardarTodos(todos);
-    location.href = "?id=" + v.id;
-  } catch { alert("Eso no parece un viaje exportado."); }
+    return JSON.parse(t.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'")
+                       .replace(/,\s*([}\]])/g, "$1"));
+  } catch { return null; }
+}
+
+function normalizar(v){
+  const texto = x => typeof x === "string" ? x : (x == null ? "" : String(x));
+  const dias = Array.isArray(v.dias) ? v.dias : [];
+  return {
+    id: nuevoId(),
+    nombre: texto(v.nombre || v.titulo || "Viaje sin nombre"),
+    desde: texto(v.desde || ""), hasta: texto(v.hasta || ""),
+    salida: texto(v.salida || v.origen || ""),
+    actualizado: new Date().toISOString(),
+    dias: dias.map(d => ({
+      t: texto(d.t || d.titulo || d.nombre || ""),
+      dest: texto(d.dest || d.destino || d.duerme || ""),
+      paradas: (Array.isArray(d.paradas) ? d.paradas : []).map(p => ({
+        h: texto(p.h || p.hora || ""),
+        txt: texto(p.txt || p.texto || p.nombre || p.titulo || ""),
+        n: texto(p.n || p.nota || p.descripcion || ""),
+        mapa: texto(p.mapa || p.gps || p.buscar || p.txt || p.nombre || "")
+      })).filter(p => p.txt)
+    }))
+  };
+}
+
+document.getElementById("importar").addEventListener("click", () => {
+  const txt = prompt("Pega aquí lo que te haya devuelto la IA (o un viaje exportado):");
+  if (!txt) return;
+  const crudo = extraerJSON(txt);
+  if (!crudo){
+    alert("No he encontrado ningún viaje en ese texto.\n\nAsegúrate de copiar la respuesta entera, incluidas las llaves { }.");
+    return;
+  }
+  const v = normalizar(crudo);
+  if (!v.dias.length){
+    alert("He leído el texto pero no trae ningún día con paradas.");
+    return;
+  }
+  const paradas = v.dias.reduce((n,d) => n + d.paradas.length, 0);
+  if (!confirm(`Voy a importar «${v.nombre}»: ${v.dias.length} días y ${paradas} paradas.\n\n¿Lo añado?`)) return;
+  const todos = leerTodos(); todos.push(v); guardarTodos(todos);
+  if (typeof SYNC !== "undefined") SYNC.subir(v).catch(()=>{});
+  location.href = "?id=" + v.id;
 });
 
 document.getElementById("eliminar").addEventListener("click", async () => {
