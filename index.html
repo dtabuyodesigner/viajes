@@ -134,7 +134,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v50 · 25/07 20:33";
+const VERSION = "v51 · 25/07 20:49";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -196,7 +196,7 @@ function pintaPie(){
       <span><b>Crear un viaje</b><small>Días, paradas y navegación, montado por ti</small></span>
     </a>
     <div class="mantenimiento">
-      <p class="ver">Versión ${VERSION} · <span id="nube">comprobando…</span></p>
+      <p class="ver">Versión ${VERSION} · <span id="nube"></span></p>
       <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
       <p class="nota" style="margin-top:10px">Actualiza esta portada y los viajes a la vez.</p>
       <div id="cuenta"></div>
@@ -205,7 +205,11 @@ function pintaPie(){
     </div>
     <p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera a la pantalla de inicio por separado.</p>`;
 
-  TEMA.engancha(pintaPie);
+  TEMA.engancha(() => {
+    pintaPie();
+    if (!ultimoEstado.ok && ultimoEstado.txt.startsWith("comprobando")) pintaNube();
+  });
+  ponEstado(ultimoEstado);
   document.getElementById("btn-actualizar").addEventListener("click", async e => {
     const b = e.target;
     b.textContent = "Limpiando…";
@@ -225,7 +229,10 @@ function pintaPie(){
 }
 
 /* ---- Nube ---- */
+let ultimoEstado = { txt:"comprobando…", ok:false };
+
 function ponEstado(e){
+  ultimoEstado = e;
   const el = document.getElementById("nube");
   if (!el) return;
   el.innerHTML = e.login ? `${e.txt} · <button class="lnk" id="abrir-login">entrar</button>` : e.txt;
