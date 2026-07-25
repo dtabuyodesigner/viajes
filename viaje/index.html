@@ -93,7 +93,7 @@ main{padding:0 20px 30px;max-width:640px;margin:0 auto}
   font-family:var(--sans);font-size:14.5px;line-height:1.5}
 
 nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);
-  background:rgba(16,28,34,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  background:color-mix(in srgb, var(--f) 94%, transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom)}
 nav button{background:none;border:0;padding:11px 2px 12px;cursor:pointer;color:var(--td);
   font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase}
@@ -162,6 +162,12 @@ header{position:relative}
   cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
   color:currentColor;font-family:var(--sans)}
 .tm.on{opacity:1;background:rgba(127,127,127,.18)}
+
+/* La barra y la cabecera siguen el color de fondo, sea cual sea el tema */
+@supports not (background: color-mix(in srgb, red 50%, transparent)){
+  nav{background:var(--f)}
+  header{background:var(--f)}
+}
 </style>
 </head>
 <body>
