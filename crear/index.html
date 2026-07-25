@@ -164,6 +164,7 @@ input::placeholder,textarea::placeholder{color:#63757D}
     <button class="btn" id="importar">Importar</button>
     <button class="btn borrar" id="eliminar">Eliminar viaje</button>
   </div>
+  <div id="zona-exportar"></div>
   <p class="nota" id="estado"></p>
 </main>
 
@@ -620,7 +621,7 @@ setTimeout(pintaAvisoNube, 300); sucio();
 
 /* ---- Preparar la petición para una IA ---- */
 function plantilla(d){
-  return `Móntame un viaje y devuélvemelo SOLO como JSON, sin explicaciones ni texto alrededor.
+  return `Móntame un viaje y devuélvemelo en Markdown, siguiendo EXACTAMENTE el formato de abajo.
 
 DESTINO: ${d.destino}
 DÍAS: ${d.dias}
@@ -629,36 +630,29 @@ CÓMO VIAJO: ${d.como || "sin especificar"}
 QUÉ ME INTERESA: ${d.interes || "un poco de todo"}
 ${d.extra ? "OTRAS COSAS: " + d.extra : ""}
 
-FORMATO EXACTO que debes devolver:
+FORMATO (respétalo carácter a carácter, es lo que lee mi app):
 
-{
-  "nombre": "nombre corto del viaje",
-  "salida": "punto de partida",
-  "dias": [
-    {
-      "t": "título corto de la jornada",
-      "dest": "pueblo o ciudad donde se duerme esa noche",
-      "paradas": [
-        {
-          "h": "Mañana",
-          "txt": "nombre del sitio",
-          "n": "una o dos frases: qué es, cuánto se tarda, avisos prácticos",
-          "mapa": "nombre exacto para buscar en un navegador GPS"
-        }
-      ]
-    }
-  ]
-}
+# Nombre del viaje
+Salida: punto de partida
+
+## Día 1 — Título de la jornada
+Duermes en: pueblo o ciudad
+
+- **Mañana** · Nombre del sitio — Una o dos frases con lo práctico. [Nombre exacto para el GPS]
+- **Tarde** · Otro sitio — Qué es y qué hay que saber. [Nombre para el GPS]
+
+## Día 2 — Título
+Duermes en: ...
 
 REGLAS:
-- Exactamente ${d.dias} objetos dentro de "dias".
+- Exactamente ${d.dias} apartados «## Día».
 - Entre 2 y 5 paradas por día, en el orden real del recorrido.
-- "h" es opcional: usa "Mañana", "Mediodía", "Tarde" o una hora concreta.
-- "mapa" debe ser un nombre que un GPS encuentre, con el topónimo local si ayuda.
-- En "n" mete lo práctico: si hay que reservar, si el aparcamiento se llena, cuánto se anda.
-- Que la ruta sea circular o lineal, sin ir y volver por el mismo sitio dos veces.
+- Cada parada empieza por «- », lleva la hora en **negrita**, luego « · », el nombre, luego « — » y la explicación.
+- Entre corchetes al final, el nombre que un GPS encuentre (con topónimo local si ayuda).
+- En la explicación mete lo práctico: si hay que reservar, si el aparcamiento se llena, cuánto se anda.
+- Ruta circular o lineal, sin repetir tramos.
 - No inventes horarios ni precios exactos si no estás seguro.
-- Responde solo el JSON.`;
+- Nada de texto fuera de ese formato: ni introducción ni despedida.`;
 }
 
 function abrirPedir(){
@@ -783,14 +777,54 @@ document.getElementById("previsualizar").addEventListener("click", () => {
 });
 
 /* ---- Exportar e importar ---- */
-document.getElementById("exportar").addEventListener("click", async () => {
-  guardar();
-  const txt = JSON.stringify(viaje, null, 2);
+async function compartir(texto, titulo){
   try {
-    if (navigator.share) await navigator.share({ title: viaje.nombre || "Viaje", text: txt });
-    else { await navigator.clipboard.writeText(txt); alert("Copiado al portapapeles."); }
+    if (navigator.share) await navigator.share({ title: titulo, text: texto });
+    else { await navigator.clipboard.writeText(texto); alert("Copiado al portapapeles."); }
   } catch {}
+}
+
+document.getElementById("exportar").addEventListener("click", () => {
+  guardar();
+  const z = document.getElementById("zona-exportar");
+  if (z.dataset.abierto){ z.innerHTML = ""; delete z.dataset.abierto; return; }
+  z.dataset.abierto = "1";
+  z.innerHTML = `<div class="busca-caja">
+      <p class="nota" style="margin:0 0 10px">¿Para qué lo quieres?</p>
+      <div class="btns">
+        <button class="btn fino solid" id="ex-leer">Para leer o imprimir</button>
+        <button class="btn fino" id="ex-copia">Copia de seguridad</button>
+      </div>
+      <p class="nota" style="margin-top:10px">Lo primero sale como texto con formato, listo para pegar en Notas o mandar por WhatsApp. Lo segundo es el archivo exacto, para volver a importarlo tal cual.</p>
+    </div>`;
+  document.getElementById("ex-leer").addEventListener("click", () =>
+    compartir(aMarkdown(viaje), viaje.nombre || "Viaje"));
+  document.getElementById("ex-copia").addEventListener("click", () =>
+    compartir(JSON.stringify(viaje, null, 2), viaje.nombre || "Viaje"));
 });
+
+/* ---- El viaje, como documento legible ---- */
+function aMarkdown(v){
+  const L = [`# ${v.nombre || "Viaje"}`];
+  if (v.salida) L.push(`Salida: ${v.salida}`);
+  if (v.desde)  L.push(`Fechas: ${v.desde}${v.hasta ? " a " + v.hasta : ""}`);
+  L.push("");
+  (v.dias || []).forEach((d, i) => {
+    L.push(`## Día ${i+1} — ${d.t || "Sin título"}`);
+    if (d.dest) L.push(`Duermes en: ${d.dest}`);
+    L.push("");
+    (d.paradas || []).forEach(p => {
+      let l = "- ";
+      if (p.h) l += `**${p.h}** · `;
+      l += p.txt || "";
+      if (p.n) l += ` — ${p.n}`;
+      if (p.mapa && p.mapa !== p.txt) l += ` [${p.mapa}]`;
+      L.push(l);
+    });
+    L.push("");
+  });
+  return L.join("\n");
+}
 
 /* ---- Importar: aguanta lo que devuelva cualquier IA ---- */
 function extraerJSON(texto){
@@ -807,6 +841,55 @@ function extraerJSON(texto){
     return JSON.parse(t.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'")
                        .replace(/,\s*([}\]])/g, "$1"));
   } catch { return null; }
+}
+
+function leerMarkdown(texto){
+  const lineas = String(texto || "").split("\n");
+  const v = { nombre:"", salida:"", desde:"", hasta:"", dias:[] };
+  let dia = null;
+
+  for (let cruda of lineas){
+    const l = cruda.trim();
+    if (!l) continue;
+
+    // # Nombre del viaje
+    let m = l.match(/^#\s+(.+)$/);
+    if (m && !l.startsWith("##")){ v.nombre = m[1].trim(); continue; }
+
+    // ## Día 1 — Título
+    m = l.match(/^##+\s*(?:d[ií]a\s*\d+\s*[—–\-:.]?\s*)?(.*)$/i);
+    if (m && /^##/.test(l)){
+      dia = { t: m[1].trim(), dest:"", paradas:[] };
+      v.dias.push(dia);
+      continue;
+    }
+
+    // Salida: / Duermes en:
+    m = l.match(/^\**\s*salida\s*:\**\s*(.+)$/i);
+    if (m){ v.salida = m[1].replace(/\*/g,"").trim(); continue; }
+    m = l.match(/^\**\s*(?:duermes?\s+en|noche|alojamiento)\s*:\**\s*(.+)$/i);
+    if (m && dia){ dia.dest = m[1].replace(/\*/g,"").trim(); continue; }
+
+    // - **Hora** · Sitio — Nota [GPS]
+    m = l.match(/^[-*•]\s+(.*)$/);
+    if (m && dia){
+      let resto = m[1];
+      let h = "", mapa = "", n = "";
+
+      const gps = resto.match(/\[([^\]]+)\]\s*$/);
+      if (gps){ mapa = gps[1].trim(); resto = resto.slice(0, gps.index).trim(); }
+
+      const hora = resto.match(/^\*\*([^*]+)\*\*\s*[·:.\-–—]?\s*/);
+      if (hora){ h = hora[1].trim(); resto = resto.slice(hora[0].length); }
+
+      const corte = resto.split(/\s+[—–]\s+|\s+-\s+/);
+      const txt = (corte.shift() || "").replace(/\*/g,"").trim();
+      n = corte.join(" — ").replace(/\*/g,"").trim();
+      if (txt) dia.paradas.push({ h, txt, n, mapa: mapa || txt });
+    }
+  }
+  v.dias = v.dias.filter(d => d.paradas.length || d.t);
+  return v.dias.length ? v : null;
 }
 
 function normalizar(v){
@@ -834,9 +917,9 @@ function normalizar(v){
 document.getElementById("importar").addEventListener("click", () => {
   const txt = prompt("Pega aquí lo que te haya devuelto la IA (o un viaje exportado):");
   if (!txt) return;
-  const crudo = extraerJSON(txt);
+  const crudo = extraerJSON(txt) || leerMarkdown(txt);
   if (!crudo){
-    alert("No he encontrado ningún viaje en ese texto.\n\nAsegúrate de copiar la respuesta entera, incluidas las llaves { }.");
+    alert("No he encontrado ningún viaje en ese texto.\n\nCopia la respuesta entera de la IA, desde el título hasta el último día.");
     return;
   }
   const v = normalizar(crudo);
