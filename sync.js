@@ -191,5 +191,110 @@ const SYNC = {
   }
 };
 
+
+/* ═══════════════════════════════════════════════════════════
+   Diario compartido: paradas marcadas y notas de cada día.
+
+   Cada entrada lleva su marca de tiempo, así que si los dos
+   anotáis cosas distintas sin cobertura, al juntarse no se
+   pierde ninguna: para cada parada gana el gesto más reciente.
+   ═══════════════════════════════════════════════════════════ */
+
+const DIARIO_SYNC = {
+  clave(viaje){ return `diario_${viaje}`; },
+
+  local(viaje){
+    try { return JSON.parse(localStorage.getItem(this.clave(viaje)))
+      || { hechas:{}, desmarcadas:{}, notas:{} }; }
+    catch { return { hechas:{}, desmarcadas:{}, notas:{} }; }
+  },
+
+  guardarLocal(viaje, d){
+    try { localStorage.setItem(this.clave(viaje), JSON.stringify(d)); } catch {}
+  },
+
+  /* ---- Gestos ---- */
+  marcar(viaje, parada, marcada){
+    const d = this.local(viaje), ahora = Date.now();
+    if (marcada){ d.hechas[parada] = ahora; delete d.desmarcadas[parada]; }
+    else { d.desmarcadas[parada] = ahora; delete d.hechas[parada]; }
+    this.guardarLocal(viaje, d);
+    this.subir(viaje).catch(()=>{});
+  },
+
+  anotar(viaje, dia, texto){
+    const d = this.local(viaje);
+    d.notas[dia] = { t: texto, ts: Date.now() };
+    this.guardarLocal(viaje, d);
+    clearTimeout(this._espera);
+    this._espera = setTimeout(() => this.subir(viaje).catch(()=>{}), 2500);
+  },
+
+  /* ---- Consultas ---- */
+  estaHecha(viaje, parada){ return !!this.local(viaje).hechas[parada]; },
+  nota(viaje, dia){ return this.local(viaje).notas[dia]?.t || ""; },
+
+  /* ---- Fundir dos versiones sin perder nada ---- */
+  fundir(a, b){
+    const r = { hechas:{}, desmarcadas:{}, notas:{} };
+    const claves = new Set([
+      ...Object.keys(a.hechas||{}), ...Object.keys(a.desmarcadas||{}),
+      ...Object.keys(b.hechas||{}), ...Object.keys(b.desmarcadas||{})
+    ]);
+    for (const k of claves){
+      const marcada   = Math.max(a.hechas?.[k] || 0, b.hechas?.[k] || 0);
+      const desmarcada = Math.max(a.desmarcadas?.[k] || 0, b.desmarcadas?.[k] || 0);
+      if (marcada === 0 && desmarcada === 0) continue;
+      if (marcada >= desmarcada) r.hechas[k] = marcada;
+      else r.desmarcadas[k] = desmarcada;
+    }
+    const dias = new Set([...Object.keys(a.notas||{}), ...Object.keys(b.notas||{})]);
+    for (const k of dias){
+      const na = a.notas?.[k], nb = b.notas?.[k];
+      if (!na) { r.notas[k] = nb; continue; }
+      if (!nb) { r.notas[k] = na; continue; }
+      r.notas[k] = (nb.ts || 0) > (na.ts || 0) ? nb : na;
+    }
+    return r;
+  },
+
+  async subir(viaje){
+    const c = await SYNC.conectar();
+    if (!c || !SYNC.sesion) return false;
+    const d = this.local(viaje);
+    try {
+      const { error } = await c.from("viaje_diario").upsert({
+        viaje, hechas:d.hechas, desmarcadas:d.desmarcadas, notas:d.notas,
+        actualizado: new Date().toISOString()
+      });
+      return !error;
+    } catch { return false; }
+  },
+
+  /* Baja lo del otro móvil, lo funde y devuelve si algo cambió */
+  async sincronizar(viaje){
+    const c = await SYNC.conectar();
+    if (!c || !SYNC.sesion) return { ok:false, cambios:false };
+    let remoto = null;
+    try {
+      const { data, error } = await c.from("viaje_diario")
+        .select("*").eq("viaje", viaje).maybeSingle();
+      if (error) throw error;
+      remoto = data;
+    } catch { return { ok:false, cambios:false }; }
+
+    const antes = this.local(viaje);
+    if (!remoto){ await this.subir(viaje); return { ok:true, cambios:false }; }
+
+    const fundido = this.fundir(antes, {
+      hechas: remoto.hechas || {}, desmarcadas: remoto.desmarcadas || {}, notas: remoto.notas || {}
+    });
+    const cambios = JSON.stringify(fundido) !== JSON.stringify(antes);
+    this.guardarLocal(viaje, fundido);
+    if (cambios) await this.subir(viaje);
+    return { ok:true, cambios };
+  }
+};
+
 // Reintento automático al recuperar la cobertura
 window.addEventListener("online", () => { SYNC.sincronizar().catch(()=>{}); });
