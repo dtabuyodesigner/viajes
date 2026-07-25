@@ -160,6 +160,9 @@ ul.plain li span{color:var(--papel-dim)}
   background:rgba(90,169,196,.08);border:1px solid var(--mar)}
 .btn.wl{border-color:var(--mar);color:var(--mar)}
 .btn.p4n{border-color:#E8552D;color:#E8552D}
+.p4n-par{border-color:#E8552D !important}
+.p4n-par .btn.p4n{border:0;border-radius:0;padding:9px 14px}
+.p4n-par .wz-alt{border-left-color:#E8552D}
 .btn.p4n.solid{background:#E8552D;border-color:#E8552D;color:#fff}
 .btn.civ{border-color:#F70759;color:#F70759}
 .lugar{border-top:1px solid var(--line)}
@@ -522,7 +525,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v32 · 25/07 06:24";
+const VERSION = "v33 · 25/07 07:05";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -742,7 +745,7 @@ function botonesRuta(i){
     <div class="wz-lista">${chips}</div>
     <div class="btns">
       <a class="btn" href="${tiempoEn(d.dest)}" target="_blank" rel="noopener">El tiempo hoy</a>
-      <a class="btn p4n" href="https://park4night.com/es/search" target="_blank" rel="noopener">Dónde dormir</a>
+      <span class="wz-par p4n-par"><a class="btn p4n" href="p4n://">Dónde dormir</a><a class="wz-alt" href="https://park4night.com/es/search" target="_blank" rel="noopener">web</a></span>
     </div>
     <p class="note" style="margin:10px 0 0">Un destino por vez: dale al siguiente número según vayáis llegando.</p>
   </div>`;
@@ -1135,8 +1138,11 @@ function vistaInfo(){
     bloque("Dormir y conducir", "La furgo", VIAJE.info.furgo) +
     `<div class="card" style="margin-top:12px">
        <h3>park4night</h3>
-       <p class="note" style="margin-top:0">Abre el mapa de sitios para pernoctar. Si tienes la app instalada, se abre ella; si no, la web.</p>
-       <div class="btns"><a class="btn p4n solid" href="https://park4night.com/es/search" target="_blank" rel="noopener">Buscar dónde dormir</a></div>
+       <p class="note" style="margin-top:0">El primer botón abre la app en vuestra ubicación. El segundo, el mapa web, por si no la tenéis a mano.</p>
+       <div class="btns">
+         <a class="btn p4n solid" href="p4n://">Abrir park4night</a>
+         <a class="btn" href="https://park4night.com/es/search" target="_blank" rel="noopener">Mapa web</a>
+       </div>
      </div>` +
     bloque("Día a día", "Práctico", VIAJE.info.practico) +
     `<div class="sec"><span class="label">Mantenimiento</span><h2>Actualizar</h2></div>
