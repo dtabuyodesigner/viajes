@@ -111,6 +111,10 @@ nav button.on{color:var(--ac)}
 .op.on{border-color:var(--ac);background:rgba(91,200,180,.11)}
 .op.on b{color:var(--ac)}
 .vacio{color:var(--td);font-size:15px;padding:30px 0;text-align:center}
+.foto-dia{display:block;width:100%;height:auto;border-radius:14px;
+  border:1px solid var(--line);margin:6px 0 16px}
+.mini-foto{width:42px;height:42px;object-fit:cover;border-radius:9px;flex:0 0 auto}
+.day{align-items:center}
 </style>
 </head>
 <body>
@@ -261,7 +265,8 @@ function vistaHoy(){
   document.getElementById("title").textContent = d.t || `Día ${i+1}`;
   document.getElementById("subtitle").textContent = (d.dest||"").trim() ? `Duermes en ${d.dest}` : VIAJE.nombre;
 
-  let h = botonesRuta(i) + pintaParadas(d, i);
+  let h = (d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : "")
+        + botonesRuta(i) + pintaParadas(d, i);
   const sig = VIAJE.dias[i+1];
   if (sig) h += `<div class="sec"><span class="label">Día siguiente</span>
     <h2>${esc(sig.t || "Día " + (i+2))}</h2></div>
@@ -279,6 +284,7 @@ function vistaDias(){
       const f = fechaDe(i);
       const cls = VIAJE.desde ? (i === hoy ? "today" : (f && f.iso < hoyISO() ? "past" : "")) : "";
       return `<button class="day ${cls}" data-i="${i}">
+        ${d.foto ? `<img class="mini-foto" src="${d.foto}" alt="">` : ""}
         <span class="num">${f ? esc(f.txt) : "Día " + (i+1)}</span>
         <span class="ttl">${esc(d.t || "Sin título")}<span class="wd">${
           f ? esc(f.wd) + (d.dest ? " · " : "") : ""}${esc(d.dest||"")}</span></span>
@@ -291,7 +297,9 @@ function vistaDias(){
     const i = +b.dataset.i, d = VIAJE.dias[i], f = fechaDe(i);
     const det = document.getElementById("detalle");
     det.innerHTML = `<div class="sec"><span class="label">${f ? esc(f.wd)+" "+esc(f.txt) : "Día "+(i+1)}</span>
-      <h2>${esc(d.t || "Día " + (i+1))}</h2></div>${botonesRuta(i)}${pintaParadas(d, i)}`;
+      <h2>${esc(d.t || "Día " + (i+1))}</h2></div>
+      ${d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : ""}
+      ${botonesRuta(i)}${pintaParadas(d, i)}`;
     activaDiario();
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
