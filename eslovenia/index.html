@@ -288,6 +288,7 @@ body.claro .art{background:#DDE5DE}
   <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
 </nav>
 
+<script src="../sync.js?v=42"></script>
 <script>
 /* =========================================================
    DATOS DEL VIAJE — edita solo este bloque para otro viaje
@@ -623,7 +624,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v31 · 25/07 06:03";
+const VERSION = "v43 · 25/07 11:55";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const wikiloc = q => `https://es.wikiloc.com/wikiloc/map.do?q=${encodeURIComponent(q)}`;
@@ -737,10 +738,22 @@ const DIARIO = {
   _leer(k, def){ try { return JSON.parse(localStorage.getItem("eslo_" + k)) ?? def; } catch { return def; } },
   _escribir(k, v){ try { localStorage.setItem("eslo_" + k, JSON.stringify(v)); } catch {} },
   get hechas(){ return this._leer("hechas", {}); },
-  marcar(clave){ const h = this.hechas; h[clave] = !h[clave]; if (!h[clave]) delete h[clave]; this._escribir("hechas", h); },
-  esta(clave){ return !!this.hechas[clave]; },
-  nota(i){ return this._leer("notas", {})[i] || ""; },
-  guardarNota(i, t){ const n = this._leer("notas", {}); t.trim() ? n[i] = t : delete n[i]; this._escribir("notas", n); },
+  marcar(clave){
+    if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.marcar("eslovenia", clave, !this.esta(clave));
+    const h = this.hechas; h[clave] = !h[clave]; if (!h[clave]) delete h[clave]; this._escribir("hechas", h);
+  },
+  esta(clave){
+    if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.estaHecha("eslovenia", clave);
+    return !!this.hechas[clave];
+  },
+  nota(i){
+    if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.nota("eslovenia", i);
+    return this._leer("notas", {})[i] || "";
+  },
+  guardarNota(i, t){
+    if (typeof DIARIO_SYNC !== "undefined") return DIARIO_SYNC.anotar("eslovenia", i, t);
+    const n = this._leer("notas", {}); t.trim() ? n[i] = t : delete n[i]; this._escribir("notas", n);
+  },
   get tema(){ try { return localStorage.getItem("eslo_tema") || "oscuro"; } catch { return "oscuro"; } },
   set tema(v){ try { localStorage.setItem("eslo_tema", v); } catch {}; aplicaTema(); }
 };
@@ -1565,6 +1578,15 @@ document.querySelectorAll("nav button").forEach(b =>
 
 aplicaTema();
 vistaHoy();
+
+if (typeof DIARIO_SYNC !== "undefined"){
+  setTimeout(async () => {
+    try {
+      const r = await DIARIO_SYNC.sincronizar("eslovenia");
+      if (r.cambios) vePestana(document.querySelector("nav button.on")?.dataset.v || "hoy");
+    } catch {}
+  }, 700);
+}
 
 /* ---- Funcionamiento sin cobertura ---- */
 if ("serviceWorker" in navigator){
