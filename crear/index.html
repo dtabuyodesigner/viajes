@@ -136,11 +136,21 @@ body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
   --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;}
 }
+
+/* Selector de color, arriba a la derecha */
+header{position:relative}
+.tema-mini{position:absolute;top:calc(10px + env(safe-area-inset-top));right:17px;
+  display:flex;gap:2px;padding:2px;border-radius:999px;z-index:2}
+.tm{width:28px;height:28px;border-radius:50%;border:0;background:transparent;
+  cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
+  color:currentColor;font-family:var(--sans)}
+.tm.on{opacity:1;background:rgba(127,127,127,.18)}
 </style>
 </head>
 <body>
 
 <header>
+  <div id="tema-zona"></div>
   <a class="volver" href="../">‹ Viajes</a>
   <h1 id="titulo">Nuevo viaje</h1>
   <p class="sub" id="sub">Rellena lo que sepas. Lo demás se puede añadir luego.</p>
@@ -193,8 +203,6 @@ body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
   </div>
   <div id="zona-exportar"></div>
 
-  <p class="sec">Pantalla</p>
-  <div id="zona-tema"></div>
   <p class="nota" id="estado"></p>
 </main>
 
@@ -210,6 +218,13 @@ body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
 const TEMA = {
   get valor(){ try { return localStorage.getItem("tema_viajes") || "auto"; } catch { return "auto"; } },
   set valor(v){ try { localStorage.setItem("tema_viajes", v); } catch {}; this.aplica(); },
+  pintaMini(){
+    const z = document.getElementById("tema-zona");
+    if (!z) return;
+    z.innerHTML = this.mini();
+    z.querySelectorAll("[data-tema]").forEach(b =>
+      b.addEventListener("click", () => { TEMA.valor = b.dataset.tema; TEMA.pintaMini(); }));
+  },
   aplica(){
     const v = this.valor;
     document.body.classList.toggle("claro", v === "claro");
@@ -221,6 +236,12 @@ const TEMA = {
     const claroDeVerdad = v === "claro" ||
       (v === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches);
     m.setAttribute("content", claroDeVerdad ? "#F4F6F7" : m.dataset.oscuro);
+  },
+  mini(){
+    const v = this.valor;
+    const b = (id, t, etiqueta) =>
+      `<button class="tm${v === id ? " on" : ""}" data-tema="${id}" aria-label="${etiqueta}" title="${etiqueta}">${t}</button>`;
+    return `<div class="tema-mini">${b("auto","◐","Automático")}${b("claro","☀","Claro")}${b("oscuro","☾","Oscuro")}</div>`;
   },
   opciones(){
     const v = this.valor;
@@ -1222,13 +1243,8 @@ async function pintaAvisoNube(){
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-function pintaTema(){
-  document.getElementById("zona-tema").innerHTML = TEMA.opciones();
-  TEMA.engancha(pintaTema);
-}
-
 TEMA.aplica();
-pintaTema();
+TEMA.pintaMini();
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300);
