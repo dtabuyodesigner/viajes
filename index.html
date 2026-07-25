@@ -71,7 +71,7 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 </header>
 <main><div id="lista"></div><div id="pie"></div></main>
 
-<script src="sync.js"></script>
+<script src="sync.js?v=38"></script>
 <script>
 const VIAJES = [
   { id:"eslovenia", n:"Eslovenia y Venecia", ruta:"eslovenia/",
@@ -90,7 +90,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v37 · 25/07 08:30";
+const VERSION = "v38 · 25/07 08:35";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -220,7 +220,16 @@ function pintaLogin(){
     const clave = document.getElementById("clave").value;
     if (!correo || !clave){ err.textContent = "Falta el correo o la contraseña."; return; }
     b.textContent = "Entrando…"; err.textContent = "";
-    const r = await SYNC.entrar(correo, clave);
+    let r;
+    try {
+      if (typeof SYNC.entrar !== "function")
+        throw new Error("La app está desactualizada. Pulsa «Buscar actualización».");
+      r = await SYNC.entrar(correo, clave);
+    } catch (ex){
+      b.textContent = "Entrar";
+      err.textContent = ex.message || "No se pudo entrar.";
+      return;
+    }
     if (!r.ok){ b.textContent = "Entrar"; err.textContent = r.txt; return; }
     z.innerHTML = "";
     pintaNube();
