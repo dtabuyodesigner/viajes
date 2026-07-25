@@ -130,6 +130,13 @@ ul.plain li:first-child{border-top:0}
 .lugar-fila b{font-size:15px;font-weight:600}
 .lugar-fila small{display:block;font-size:12.5px;color:var(--td);margin-top:2px}
 .km{font-family:var(--mono);font-size:12px;color:var(--td);flex:0 0 auto}
+.stop.key::before{background:var(--am);border-color:var(--am)}
+.stop.key > p{font-weight:600}
+.lluvia{display:flex;gap:10px;align-items:flex-start;margin:2px 0 14px;padding:11px 13px;
+  border-radius:12px;background:rgba(90,169,196,.1);border:1px solid rgba(90,169,196,.3)}
+.lluvia .ic{flex:0 0 auto;color:#7FC4D8;font-size:15px;line-height:1.4}
+.lluvia p{margin:0;font-size:13.5px;line-height:1.5;color:#C6DDE5}
+.lluvia b{color:#E9F0F2}
 </style>
 </head>
 <body>
@@ -238,7 +245,7 @@ function botonesRuta(i){
       <b>${n}</b>${esc(texto)}</a>${P.app === "waze"
         ? `<a class="wz-alt" href="${mapsDe(destino)}" target="_blank" rel="noopener">map</a>` : ""}</span>`;
   return `<div class="ruta">
-    <span class="label">Navegar con ${comoNavego()}</span>
+    <span class="label">Navegar con ${comoNavego()}${d.km ? " · " + esc(d.km) : ""}</span>
     <div class="wz-lista">
       ${tramos.map((p, k) => chip(p.mapa, p.txt || p.mapa, k+1, false)).join("")}
       ${(d.dest || "").trim() ? chip(d.dest, "Alojamiento", tramos.length+1, true) : ""}
@@ -252,12 +259,13 @@ function pintaParadas(d, i){
   const con = d.paradas.filter(p => (p.txt || "").trim());
   return (con.length ? `<div class="senda">` + con.map((p, k) => {
     const c = `${i}:${k}`, ok = P.esta(c);
-    return `<div class="stop${ok ? " hecho" : ""}" data-marca="${c}">
+    return `<div class="stop${p.key ? " key" : ""}${ok ? " hecho" : ""}" data-marca="${c}">
       ${(p.h||"").trim() ? `<span class="t">${esc(p.h)}</span>` : ""}
       <p>${esc(p.txt)}<button class="tick" aria-label="Marcar">${ok ? "✓" : ""}</button></p>
       ${(p.n||"").trim() ? `<small>${esc(p.n)}</small>` : ""}
       ${(p.mapa||"").trim() ? `<small><a href="${navegar(p.mapa)}" target="_blank" rel="noopener">Ir con ${comoNavego()} →</a></small>` : ""}
     </div>`; }).join("") + `</div>` : "")
+    + (d.lluvia ? `<div class="lluvia"><span class="ic">☂</span><p><b>Si llueve:</b> ${esc(d.lluvia)}</p></div>` : "")
     + `<div class="diario"><span class="label">Notas del día</span>
        <textarea class="nota-txt" data-dia="${i}" rows="2"
          placeholder="Qué tal fue, dónde comisteis, cuánto costó…">${esc(P.nota(i))}</textarea></div>`;
@@ -319,7 +327,8 @@ function vistaDias(){
         ${d.foto ? `<img class="mini-foto" src="${d.foto}" alt="">` : ""}
         <span class="num">${f ? esc(f.txt) : "Día " + (i+1)}</span>
         <span class="ttl">${esc(d.t || "Sin título")}<span class="wd">${
-          f ? esc(f.wd) + (d.dest ? " · " : "") : ""}${esc(d.dest||"")}</span></span>
+          f ? esc(f.wd) + (d.dest ? " · " : "") : ""}${esc(d.dest||"")}${
+          d.km ? " · " + esc(d.km) : ""}</span></span>
       </button>`;
     }).join("") +
     `<div class="btns"><a class="btn" href="../crear/?id=${esc(ID)}">Editar el viaje</a></div>
