@@ -41,7 +41,7 @@ a{color:var(--soca);text-decoration:none}
 /* ---------- Cabecera ---------- */
 header{
   position:sticky;top:0;z-index:20;
-  background:linear-gradient(180deg,var(--karst) 72%,rgba(14,42,40,0));
+  background:linear-gradient(180deg,var(--karst) 72%,transparent);
   padding:calc(14px + env(safe-area-inset-top)) 20px 18px;
 }
 .volver{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
@@ -126,7 +126,7 @@ main{padding:0 20px 32px;max-width:640px;margin:0 auto}
 nav{
   position:fixed;left:0;right:0;bottom:0;z-index:30;
   display:grid;grid-template-columns:repeat(5,1fr);
-  background:rgba(14,42,40,.94);backdrop-filter:blur(14px);
+  background:color-mix(in srgb, var(--karst) 94%, transparent);backdrop-filter:blur(14px);
   border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom);
 }
@@ -294,6 +294,12 @@ header{position:relative}
 .cerca-aviso .ic{flex:0 0 auto;color:var(--panel);font-size:17px;line-height:1.2}
 .cerca-aviso b{display:block;font-size:15px;color:var(--paper)}
 .cerca-aviso small{display:block;font-size:13px;color:var(--paper-dim);margin-top:3px;line-height:1.45}
+
+/* La barra y la cabecera siguen el color de fondo, sea cual sea el tema */
+@supports not (background: color-mix(in srgb, red 50%, transparent)){
+  nav{background:var(--karst)}
+  header{background:var(--karst)}
+}
 </style>
 </head>
 <body>
@@ -698,7 +704,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v53 · 25/07 21:46";
+const VERSION = "v54 · 25/07 22:03";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
