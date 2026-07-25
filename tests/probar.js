@@ -234,6 +234,40 @@ function funcionesDefinidas(){
   }
 }
 
+/* ═══ 6. El tema claro llega a todas partes ═══ */
+function temaClaroCompleto(){
+  console.log(`\n${gris("──")} Nada se queda oscuro en modo claro`);
+  const archivos = ["index.html","crear/index.html","viaje/index.html",
+                    "eslovenia/index.html","asturias/index.html"];
+  // Lo estructural: si esto no sigue al tema, la app se ve mal con sol
+  const estructura = ["body", "nav", "header", ".barra", ".card", "main"];
+
+  for (const a of archivos){
+    const src = fs.readFileSync(path.join(RAIZ, a), "utf8");
+    const css = (src.match(/<style>([\s\S]*?)<\/style>/) || ["",""])[1];
+
+    const culpables = [];
+    for (const sel of estructura){
+      // regla que empieza al principio de una línea (aunque haya comentarios antes)
+      const re = new RegExp("^\\s*" + sel.replace(".","\\.") +
+                            "\\s*\\{([^}]*)\\}", "gm");
+      let m;
+      while ((m = re.exec(css))){
+        const cuerpo = m[1];
+        const fondo = /background(?:-color)?:\s*([^;]+)/.exec(cuerpo);
+        if (!fondo) continue;
+        const v = fondo[1].trim();
+        // vale si usa variable, color-mix, transparente o degradado con variable
+        if (/var\(|color-mix|transparent|inherit|none/.test(v)) continue;
+        culpables.push(`${sel} → ${v.slice(0,30)}`);
+      }
+    }
+    comprobar(`${a}: barra, cabecera y tarjetas siguen el tema`,
+              culpables.length === 0, culpables[0]);
+    comprobar(`${a}: define el modo claro`, /body\.claro\s*\{/.test(css));
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -259,6 +293,7 @@ function funcionesDefinidas(){
   await nubeAguanta();
   await estadoSobrevive();
   funcionesDefinidas();
+  temaClaroCompleto();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);
