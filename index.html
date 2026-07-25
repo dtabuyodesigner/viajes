@@ -42,6 +42,12 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .viaje.hecho{opacity:.62}
 .viaje .flecha{position:absolute;right:17px;bottom:17px;font-size:20px;color:var(--acento)}
 .nota{font-size:13px;color:var(--tinta-dim);line-height:1.55;margin:22px 2px 0}
+.mantenimiento{margin:26px 0 0;padding:16px;border:1px solid var(--linea);border-radius:16px;
+  background:var(--fondo-2)}
+.ver{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--tinta-dim);margin:0 0 11px}
+.btn-act{width:100%;padding:12px;border-radius:999px;border:0;background:var(--tinta);color:var(--fondo);
+  font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer}
+.mantenimiento .nota{margin:0}
 </style>
 </head>
 <body>
@@ -77,6 +83,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
+const VERSION = "v29 · 25/07 05:47";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -105,13 +112,42 @@ document.getElementById("lista").innerHTML = VIAJES.map(v => {
       <span class="flecha">→</span>
     </span>
   </a>`;
-}).join("") + `<p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera de ellos a la pantalla de inicio por separado.</p>`;
+}).join("") + `
+  <div class="mantenimiento">
+    <p class="ver">Versión <span id="ver"></span></p>
+    <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
+    <p class="nota" style="margin-top:10px">Actualiza esta portada y los dos viajes a la vez.</p>
+  </div>` + `<p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera de ellos a la pantalla de inicio por separado.</p>`;
+
+document.getElementById("ver").textContent = VERSION;
+
+document.getElementById("btn-actualizar").addEventListener("click", async e => {
+  const b = e.target;
+  b.textContent = "Limpiando…";
+  try {
+    if ("serviceWorker" in navigator){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));   // portada y ambos viajes
+    }
+    if (window.caches){
+      const ks = await caches.keys();
+      await Promise.all(ks.map(k => caches.delete(k)));
+    }
+  } catch {}
+  b.textContent = "Recargando…";
+  location.replace(location.pathname + "?v=" + Date.now());
+});
 
 const enCurso = VIAJES.find(v => estado(v)[0] === "curso");
 document.getElementById("saludo").textContent = enCurso ? "Viaje en curso" : "Viajes";
 
 if ("serviceWorker" in navigator){
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
+      reg.update();
+    } catch {}
+  });
 }
 </script>
 </body>
