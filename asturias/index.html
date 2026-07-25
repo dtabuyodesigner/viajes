@@ -159,6 +159,8 @@ ul.plain li span{color:var(--papel-dim)}
 .cercanas{margin:16px 0 4px;padding:14px;border-radius:12px;
   background:rgba(90,169,196,.08);border:1px solid var(--mar)}
 .btn.wl{border-color:var(--mar);color:var(--mar)}
+.btn.p4n{border-color:#E8552D;color:#E8552D}
+.btn.p4n.solid{background:#E8552D;border-color:#E8552D;color:#fff}
 .btn.civ{border-color:#F70759;color:#F70759}
 .lugar{border-top:1px solid var(--line)}
 .lugar:first-of-type{border-top:0}
@@ -520,7 +522,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v29 · 25/07 05:47";
+const VERSION = "v32 · 25/07 06:24";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -738,7 +740,10 @@ function botonesRuta(i){
   return `<div class="ruta">
     <span class="label">Navegar con ${comoNavego()} · ${esc(d.km)}</span>
     <div class="wz-lista">${chips}</div>
-    <div class="btns"><a class="btn" href="${tiempoEn(d.dest)}" target="_blank" rel="noopener">El tiempo hoy</a></div>
+    <div class="btns">
+      <a class="btn" href="${tiempoEn(d.dest)}" target="_blank" rel="noopener">El tiempo hoy</a>
+      <a class="btn p4n" href="https://park4night.com/es/search" target="_blank" rel="noopener">Dónde dormir</a>
+    </div>
     <p class="note" style="margin:10px 0 0">Un destino por vez: dale al siguiente número según vayáis llegando.</p>
   </div>`;
 }
@@ -1128,6 +1133,11 @@ function vistaInfo(){
     tarjetaGastos() + panelNav() + panelTema() +
     bloque("Bella y Lisboa", "Con las perras", VIAJE.info.perras) +
     bloque("Dormir y conducir", "La furgo", VIAJE.info.furgo) +
+    `<div class="card" style="margin-top:12px">
+       <h3>park4night</h3>
+       <p class="note" style="margin-top:0">Abre el mapa de sitios para pernoctar. Si tienes la app instalada, se abre ella; si no, la web.</p>
+       <div class="btns"><a class="btn p4n solid" href="https://park4night.com/es/search" target="_blank" rel="noopener">Buscar dónde dormir</a></div>
+     </div>` +
     bloque("Día a día", "Práctico", VIAJE.info.practico) +
     `<div class="sec"><span class="label">Mantenimiento</span><h2>Actualizar</h2></div>
      <div class="card">
