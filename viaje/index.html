@@ -143,6 +143,11 @@ ul.plain li:first-child{border-top:0}
 .row .v{text-align:right;font-size:15px}
 .mono{font-family:var(--mono);letter-spacing:.04em}
 .num-tel{font-family:var(--mono);font-size:16px;color:var(--ac);margin:0}
+.cerca-aviso{display:flex;gap:11px;align-items:flex-start;margin:0 0 16px;padding:13px 14px;
+  border-radius:13px;background:rgba(217,162,51,.13);border:1px solid rgba(217,162,51,.36)}
+.cerca-aviso .ic{flex:0 0 auto;color:var(--am);font-size:17px;line-height:1.2}
+.cerca-aviso b{display:block;font-size:15px}
+.cerca-aviso small{display:block;font-size:13px;color:var(--td);margin-top:3px;line-height:1.45}
 </style>
 </head>
 <body>
@@ -215,6 +220,8 @@ const P = {
   },
   get app(){ try { return localStorage.getItem("gen_app") || "waze"; } catch { return "waze"; } },
   set app(v){ try { localStorage.setItem("gen_app", v); } catch {} },
+  get avisar(){ try { return localStorage.getItem("gen_avisar") !== "no"; } catch { return false; } },
+  set avisar(v){ try { localStorage.setItem("gen_avisar", v ? "si" : "no"); } catch {} },
   get tema(){ try { return localStorage.getItem("gen_tema") || "oscuro"; } catch { return "oscuro"; } },
   set tema(v){ try { localStorage.setItem("gen_tema", v); } catch {}; aplicaTema(); }
 };
@@ -297,6 +304,30 @@ function activaDiario(){
   });
 }
 
+/* ---- Aviso al estar cerca de una parada ---- */
+async function avisoCerca(i){
+  const z = document.getElementById("aviso-cerca");
+  if (!z) return;
+  const d = VIAJE.dias[i];
+  const conXY = (d.paradas || []).map((p, k) => ({ p, k })).filter(x => x.p.xy);
+  if (!conXY.length) return;
+  try {
+    const pos = await ubicacion();
+    let mejor = null;
+    for (const { p, k } of conXY){
+      const km = distKm(pos, p.xy.split(",").map(Number));
+      if (!mejor || km < mejor.km) mejor = { p, k, km };
+    }
+    if (!mejor || mejor.km > 5) return;
+    const dist = mejor.km < 1 ? Math.round(mejor.km * 1000) + " m" : mejor.km.toFixed(1) + " km";
+    z.innerHTML = `<div class="cerca-aviso">
+      <span class="ic">◎</span>
+      <div><b>Estás a ${dist} de ${esc(mejor.p.txt)}</b>
+      ${mejor.p.n ? `<small>${esc(mejor.p.n)}</small>` : ""}</div>
+    </div>`;
+  } catch {}
+}
+
 function vistaHoy(){
   if (!VIAJE.dias.length){
     document.getElementById("eyebrow").textContent = VIAJE.nombre;
@@ -313,7 +344,8 @@ function vistaHoy(){
   document.getElementById("title").textContent = d.t || `Día ${i+1}`;
   document.getElementById("subtitle").textContent = (d.dest||"").trim() ? `Duermes en ${d.dest}` : VIAJE.nombre;
 
-  let h = (d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : "")
+  let h = `<div id="aviso-cerca"></div>`
+        + (d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : "")
         + botonesRuta(i) + pintaParadas(d, i);
   const sig = VIAJE.dias[i+1];
   if (sig) h += `<div class="sec"><span class="label">Día siguiente</span>
@@ -321,6 +353,7 @@ function vistaHoy(){
     <p class="note">${sig.paradas.filter(p=>p.txt).map(p => esc(p.txt)).join(" · ") || "Sin paradas"}</p>`;
   document.getElementById("v-hoy").innerHTML = h;
   activaDiario();
+  if (P.avisar) avisoCerca(i);
 }
 
 function vistaDias(){
@@ -548,6 +581,14 @@ function vistaInfo(){
       ${op("app","waze",P.app,"Waze","Tráfico en vivo")}
       ${op("app","maps",P.app,"Google Maps","Siempre abre")}
     </div></div>
+    <div class="sec"><span class="label">Ubicación</span><h2>Avisos de cercanía</h2></div>
+    <div class="card">
+      <p class="note" style="margin-top:0">Al abrir el día, te dice si tienes alguna parada a menos de 5 km. Solo mira la posición cuando la app está abierta.</p>
+      <div class="ops">
+        ${op("avisar","si", P.avisar ? "si" : "no","Activados","Comprueba al abrir")}
+        ${op("avisar","no", P.avisar ? "si" : "no","Desactivados","No usa la ubicación")}
+      </div>
+    </div>
     <div class="sec"><span class="label">Pantalla</span><h2>Modo de color</h2></div>
     <div class="card"><div class="ops">
       ${op("tema","oscuro",P.tema,"Oscuro","Coche y noche")}
@@ -555,6 +596,8 @@ function vistaInfo(){
     </div></div>`;
   document.querySelectorAll("[data-app]").forEach(b =>
     b.addEventListener("click", () => { P.app = b.dataset.app; vistaInfo(); }));
+  document.querySelectorAll("[data-avisar]").forEach(b =>
+    b.addEventListener("click", () => { P.avisar = b.dataset.avisar === "si"; vistaInfo(); }));
   document.querySelectorAll("[data-tema]").forEach(b =>
     b.addEventListener("click", () => { P.tema = b.dataset.tema; vistaInfo(); }));
 }
