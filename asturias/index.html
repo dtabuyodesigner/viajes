@@ -237,6 +237,24 @@ header{position:relative}
   cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
   color:currentColor;font-family:var(--sans)}
 .tm.on{opacity:1;background:rgba(127,127,127,.18)}
+
+.cats{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.cat{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;
+  color:var(--papel);font-family:var(--sans);font-size:13px;cursor:pointer}
+.cat.on{border-color:var(--prau);background:rgba(127,176,105,.13);color:var(--prau);font-weight:600}
+.radios{display:flex;gap:6px;margin:0 0 12px}
+.radio{flex:1;padding:6px;border-radius:8px;border:1px solid var(--line);background:transparent;
+  color:var(--papel-dim);font-family:var(--mono);font-size:11.5px;cursor:pointer}
+.radio.on{border-color:var(--teito);color:var(--teito)}
+.serv-fila{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.serv-fila b{font-size:15px;font-weight:600}
+.serv-fila small{display:block;font-size:12.5px;color:var(--papel-dim);margin-top:2px}
+
+.cerca-aviso{display:flex;gap:11px;align-items:flex-start;margin:0 0 16px;padding:13px 14px;
+  border-radius:13px;background:rgba(200,155,60,.14);border:1px solid rgba(200,155,60,.38)}
+.cerca-aviso .ic{flex:0 0 auto;color:var(--teito);font-size:17px;line-height:1.2}
+.cerca-aviso b{display:block;font-size:15px;color:var(--papel)}
+.cerca-aviso small{display:block;font-size:13px;color:var(--papel-dim);margin-top:3px;line-height:1.45}
 </style>
 </head>
 <body>
@@ -582,10 +600,13 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v52 · 25/07 21:15";
+const VERSION = "v53 · 25/07 21:46";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
+const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
+const mapsXY = (la, lo) => `https://www.google.com/maps/dir/?api=1&destination=${la},${lo}&travelmode=driving`;
+const navegarXY = (la, lo) => PREF.app === "waze" ? wazeXY(la, lo) : mapsXY(la, lo);
 const wikiloc = q => `https://es.wikiloc.com/wikiloc/map.do?q=${encodeURIComponent(q)}`;
 
 /* ---- Preferencias, guardadas en este móvil ---- */
@@ -593,6 +614,8 @@ const PREF = {
   get app(){ try { return localStorage.getItem("ast_app") || "waze"; } catch { return "waze"; } },
   set app(v){ try { localStorage.setItem("ast_app", v); } catch {} },
   get via(){ try { return localStorage.getItem("ast_via") || "rapido"; } catch { return "rapido"; } },
+  get avisar(){ try { return localStorage.getItem("ast_avisar") !== "no"; } catch { return false; } },
+  set avisar(v){ try { localStorage.setItem("ast_avisar", v ? "si" : "no"); } catch {} },
   set via(v){ try { localStorage.setItem("ast_via", v); } catch {} },
   get salida(){ try { return localStorage.getItem("ast_salida") || ""; } catch { return ""; } },
   set salida(v){ try { v ? localStorage.setItem("ast_salida", v) : localStorage.removeItem("ast_salida"); } catch {} }
@@ -949,6 +972,34 @@ function rotulo(dias){
   return "Día " + partes.join(" · ");
 }
 
+
+/* ---- Aviso si tienes una parada al lado ---- */
+function xyDeParada(p){
+  if (p.xy) return p.xy;
+  if (p.g && LUGARES[p.g] && LUGARES[p.g].xy) return LUGARES[p.g].xy;
+  return null;
+}
+
+async function avisoCerca(i){
+  const z = document.getElementById("aviso-cerca");
+  if (!z) return;
+  const conXY = (VIAJE.dias[i].paradas || []).map(p => ({ p, xy: xyDeParada(p) })).filter(x => x.xy);
+  if (!conXY.length) return;
+  try {
+    const pos = MIPOS || await pedirUbicacion();
+    let mejor = null;
+    for (const { p, xy } of conXY){
+      const km = distancia(pos, xy.split(",").map(Number));
+      if (!mejor || km < mejor.km) mejor = { p, km };
+    }
+    if (!mejor || mejor.km > 5) return;
+    const d = mejor.km < 1 ? Math.round(mejor.km * 1000) + " m" : mejor.km.toFixed(1) + " km";
+    z.innerHTML = `<div class="cerca-aviso"><span class="ic">◎</span>
+      <div><b>Estás a ${d} de ${esc(mejor.p.c || mejor.p.txt)}</b>
+      ${mejor.p.n ? `<small>${esc(mejor.p.n)}</small>` : ""}</div></div>`;
+  } catch {}
+}
+
 /* ---- Vista HOY ---- */
 function vistaHoy(){
   const i = indiceHoy(), dia = VIAJE.dias[i], f = fechaDe(i);
@@ -977,6 +1028,7 @@ function vistaHoy(){
 
   document.getElementById("v-hoy").innerHTML = h;
   activaDiario();
+  if (PREF.avisar) avisoCerca(i);
 
   const bt = document.getElementById("salir-hoy");
   if (bt) bt.addEventListener("click", () => { PREF.salida = hoyISO(); vistaHoy(); });
@@ -1028,7 +1080,7 @@ let filtroGuia = "";
 function vistaGuia(){
   const q = filtroGuia.trim().toLowerCase();
   const ok = l => !q || (l.n + " " + l.t + " " + l.zona).toLowerCase().includes(q);
-  let html = `<input class="buscador" id="q" type="search" placeholder="Buscar un sitio…" value="${esc(filtroGuia)}">` + bloqueCerca();
+  let html = `<input class="buscador" id="q" type="search" placeholder="Buscar un sitio…" value="${esc(filtroGuia)}">` + bloqueCerca() + bloqueServicios();
   let total = 0;
   VIAJE.guia.forEach(z => {
     const ls = z.lugares.filter(ok);
@@ -1047,7 +1099,7 @@ function vistaGuia(){
     vistaGuia();
     const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos,pos);
   });
-  activaFichas(); activaCerca(); activaEnlacesGuia();
+  activaFichas(); activaCerca(); activaServicios(); activaEnlacesGuia();
 }
 
 
@@ -1066,6 +1118,82 @@ function rutasCercanas(z){
 
 /* ---- Lo que tengo más cerca ---- */
 let ordenCercania = false;
+
+
+/* ---- Servicios cerca, con OpenStreetMap ---- */
+const CATEGORIAS = [
+  { id:"comer",  n:"Comer",         q:'node["amenity"="restaurant"];node["amenity"="cafe"]' },
+  { id:"super",  n:"Supermercado",  q:'node["shop"="supermarket"];node["shop"="convenience"]' },
+  { id:"fuel",   n:"Gasolinera",    q:'node["amenity"="fuel"]' },
+  { id:"agua",   n:"Agua potable",  q:'node["amenity"="drinking_water"]' },
+  { id:"farm",   n:"Farmacia",      q:'node["amenity"="pharmacy"]' },
+  { id:"vista",  n:"Miradores",     q:'node["tourism"="viewpoint"]' },
+  { id:"camper", n:"Autocaravanas", q:'node["tourism"="caravan_site"];way["tourism"="caravan_site"]' }
+];
+let catActiva = null, radioKm = 5;
+
+async function buscarServicios(cat, pos, km){
+  const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
+  const consulta = `[out:json][timeout:25];(${partes});out center 40;`;
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 28000);
+  try {
+    const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(consulta),
+                          { signal: ctrl.signal });
+    clearTimeout(corte);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    return (d.elements || []).map(e => {
+      const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
+      if (la == null) return null;
+      return { nombre: e.tags?.name || cat.n,
+               detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
+               xy:[la, lo], km: distancia(pos, [la, lo]) };
+    }).filter(Boolean).sort((a,b) => a.km - b.km).slice(0, 12);
+  } catch (e){ clearTimeout(corte); throw e; }
+}
+
+function bloqueServicios(){
+  if (!MIPOS) return "";
+  return `<div class="card" id="c-servicios">
+    <h3>Servicios cerca</h3>
+    <p class="note" style="margin-top:0">Gasolineras, tiendas y sitios para comer alrededor.</p>
+    <div class="cats">${CATEGORIAS.map(c =>
+      `<button class="cat${catActiva === c.id ? " on" : ""}" data-cat="${c.id}">${c.n}</button>`).join("")}</div>
+    <div class="radios">${[2,5,10,25].map(k =>
+      `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>
+    <div id="res-serv"></div>
+  </div>`;
+}
+
+async function lanzarServicios(){
+  const cont = document.getElementById("res-serv");
+  const cat = CATEGORIAS.find(c => c.id === catActiva);
+  if (!cont || !cat) return;
+  cont.innerHTML = `<p class="note">Buscando ${cat.n.toLowerCase()} en ${radioKm} km…</p>`;
+  try {
+    const r = await buscarServicios(cat, MIPOS, radioKm);
+    if (!r.length){ cont.innerHTML = `<p class="note">Nada en ${radioKm} km. Prueba a ampliar el radio.</p>`; return; }
+    cont.innerHTML = `<ul class="plain">${r.map(x => `
+      <li><div class="serv-fila">
+        <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
+        <span class="km">${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}</span>
+      </div>
+      <div class="btns" style="margin-top:6px">
+        <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
+      </div></li>`).join("")}</ul>
+      <p class="note">Datos de OpenStreetMap: los mantienen voluntarios, puede faltar algo.</p>`;
+  } catch {
+    cont.innerHTML = `<p class="note">No se pudo consultar. ¿Hay cobertura?</p>`;
+  }
+}
+
+function activaServicios(){
+  document.querySelectorAll("[data-cat]").forEach(x => x.addEventListener("click", () => {
+    catActiva = x.dataset.cat; vistaGuia(); lanzarServicios(); }));
+  document.querySelectorAll("[data-km]").forEach(x => x.addEventListener("click", () => {
+    radioKm = +x.dataset.km; vistaGuia(); if (catActiva) lanzarServicios(); }));
+}
 
 function bloqueCerca(){
   if (!MIPOS) return `<div class="card" id="c-cerca">
@@ -1146,7 +1274,15 @@ function activaEnlacesGuia(){
 function panelNav(){
   const op = (g, val, act, t, sub) =>
     `<button class="op${val === act ? " on" : ""}" data-${g}="${val}"><b>${t}</b><small>${sub}</small></button>`;
-  return `<div class="sec"><span class="label">Ajustes</span><h2>Cómo navegar</h2></div>
+  return `<div class="sec"><span class="label">Ubicación</span><h2>Avisos de cercanía</h2></div>
+    <div class="card">
+      <p class="note" style="margin-top:0">Al abrir el día, te dice si tienes alguna parada a menos de 5 km. Solo mira la posición cuando la app está abierta.</p>
+      <div class="ops">
+        ${op("avisar","si", PREF.avisar ? "si" : "no","Activados","Comprueba al abrir")}
+        ${op("avisar","no", PREF.avisar ? "si" : "no","Desactivados","No usa la ubicación")}
+      </div>
+    </div>
+    <div class="sec"><span class="label">Ajustes</span><h2>Cómo navegar</h2></div>
     <div class="card">
       <span class="label">Abrir las rutas en</span>
       <div class="ops">
@@ -1221,6 +1357,8 @@ function vistaInfo(){
     sessionStorage.removeItem("recargado");
     location.replace(location.pathname + "?v=" + Date.now());
   });
+  document.querySelectorAll("[data-avisar]").forEach(b =>
+    b.addEventListener("click", () => { PREF.avisar = b.dataset.avisar === "si"; vistaInfo(); }));
   document.querySelectorAll("[data-via]").forEach(b =>
     b.addEventListener("click", () => { PREF.via = b.dataset.via; vistaInfo(); }));
 }
