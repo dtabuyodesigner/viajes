@@ -65,7 +65,7 @@ input::placeholder,textarea::placeholder{color:#63757D}
 
 .barra{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;
   padding:12px 20px calc(12px + env(safe-area-inset-bottom));
-  background:rgba(18,24,28,.95);backdrop-filter:blur(14px);border-top:1px solid var(--linea)}
+  background:color-mix(in srgb, var(--fondo) 94%, transparent);backdrop-filter:blur(14px);border-top:1px solid var(--linea)}
 .barra .btn{flex:1}
 
 .aviso{display:flex;gap:11px;padding:13px 14px;border-radius:12px;margin:0 0 18px;
@@ -145,6 +145,12 @@ header{position:relative}
   cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
   color:currentColor;font-family:var(--sans)}
 .tm.on{opacity:1;background:rgba(127,127,127,.18)}
+
+/* La barra y la cabecera siguen el color de fondo, sea cual sea el tema */
+@supports not (background: color-mix(in srgb, red 50%, transparent)){
+  nav{background:var(--fondo)}
+  header{background:var(--fondo)}
+}
 </style>
 </head>
 <body>
