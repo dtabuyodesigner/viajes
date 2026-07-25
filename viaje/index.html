@@ -153,11 +153,21 @@ body.claro{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
   body.auto{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
   --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;}
 }
+
+/* Selector de color, arriba a la derecha */
+header{position:relative}
+.tema-mini{position:absolute;top:calc(10px + env(safe-area-inset-top));right:17px;
+  display:flex;gap:2px;padding:2px;border-radius:999px;z-index:2}
+.tm{width:28px;height:28px;border-radius:50%;border:0;background:transparent;
+  cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
+  color:currentColor;font-family:var(--sans)}
+.tm.on{opacity:1;background:rgba(127,127,127,.18)}
 </style>
 </head>
 <body>
 
 <header>
+  <div id="tema-zona"></div>
   <a class="volver" href="../">‹ Viajes</a>
   <p class="eyebrow" id="eyebrow"></p>
   <h1 id="title">Cargando</h1>
@@ -187,6 +197,13 @@ body.claro{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
 const TEMA = {
   get valor(){ try { return localStorage.getItem("tema_viajes") || "auto"; } catch { return "auto"; } },
   set valor(v){ try { localStorage.setItem("tema_viajes", v); } catch {}; this.aplica(); },
+  pintaMini(){
+    const z = document.getElementById("tema-zona");
+    if (!z) return;
+    z.innerHTML = this.mini();
+    z.querySelectorAll("[data-tema]").forEach(b =>
+      b.addEventListener("click", () => { TEMA.valor = b.dataset.tema; TEMA.pintaMini(); }));
+  },
   aplica(){
     const v = this.valor;
     document.body.classList.toggle("claro", v === "claro");
@@ -199,13 +216,18 @@ const TEMA = {
       (v === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches);
     m.setAttribute("content", claroDeVerdad ? "#F4F6F7" : m.dataset.oscuro);
   },
+  mini(){
+    const v = this.valor;
+    const b = (id, t, etiqueta) =>
+      `<button class="tm${v === id ? " on" : ""}" data-tema="${id}" aria-label="${etiqueta}" title="${etiqueta}">${t}</button>`;
+    return `<div class="tema-mini">${b("auto","◐","Automático")}${b("claro","☀","Claro")}${b("oscuro","☾","Oscuro")}</div>`;
+  },
   opciones(){
     const v = this.valor;
     const b = (id, t, sub) => `<button class="op${v === id ? " on" : ""}" data-tema="${id}"><b>${t}</b><small>${sub}</small></button>`;
     return `<div class="ops">${b("auto","Automático","Como el móvil")}${b("claro","Claro","Para el sol")}${b("oscuro","Oscuro","Para la noche")}</div>`;
   },
   engancha(volver){
-    TEMA.engancha(vistaInfo);
   }
 };
 if (window.matchMedia)
@@ -220,6 +242,7 @@ let VIAJE = null;
 try { VIAJE = (JSON.parse(localStorage.getItem("viajes_propios")) || []).find(v => v.id === ID); } catch {}
 
 TEMA.aplica();
+TEMA.pintaMini();
 if (!VIAJE){
   document.getElementById("title").textContent = "No encontrado";
   document.getElementById("subtitle").textContent = "Ese viaje no está guardado en este móvil.";
@@ -619,14 +642,11 @@ function vistaInfo(){
         ${op("avisar","si", P.avisar ? "si" : "no","Activados","Comprueba al abrir")}
         ${op("avisar","no", P.avisar ? "si" : "no","Desactivados","No usa la ubicación")}
       </div>
-    </div>
-    <div class="sec"><span class="label">Pantalla</span><h2>Modo de color</h2></div>
-    <div class="card">${TEMA.opciones()}</div>`;
+    </div>`;
   document.querySelectorAll("[data-app]").forEach(b =>
     b.addEventListener("click", () => { P.app = b.dataset.app; vistaInfo(); }));
   document.querySelectorAll("[data-avisar]").forEach(b =>
     b.addEventListener("click", () => { P.avisar = b.dataset.avisar === "si"; vistaInfo(); }));
-  TEMA.engancha(vistaInfo);
 }
 
 const vistas = { hoy:vistaHoy, dias:vistaDias, reservas:vistaReservas, cerca:vistaCerca, info:vistaInfo };
