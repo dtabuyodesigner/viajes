@@ -54,6 +54,14 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
   border:1px solid var(--linea);color:#5BC8B4;font-size:20px;display:grid;place-items:center}
 .crear b{display:block;font-size:15.5px}
 .crear small{display:block;font-size:12.5px;color:var(--tinta-dim);margin-top:2px}
+.lnk{background:none;border:0;padding:0;font:inherit;color:#5BC8B4;
+  cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.login{margin-top:12px}
+.login input{width:100%;padding:11px 13px;margin-bottom:8px;border-radius:12px;
+  border:1px solid var(--linea);background:var(--fondo);color:var(--tinta);
+  font-family:var(--sans);font-size:15px}
+.login input::placeholder{color:#63757D}
+#err-login{color:#E08A72}
 </style>
 </head>
 <body>
@@ -82,7 +90,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v36 · 25/07 08:27";
+const VERSION = "v37 · 25/07 08:30";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -147,6 +155,7 @@ function pintaPie(){
       <p class="ver">Versión ${VERSION} · <span id="nube">comprobando…</span></p>
       <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
       <p class="nota" style="margin-top:10px">Actualiza esta portada y los viajes a la vez.</p>
+      <div id="cuenta"></div>
     </div>
     <p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera a la pantalla de inicio por separado.</p>`;
 
@@ -169,26 +178,69 @@ function pintaPie(){
 }
 
 /* ---- Nube ---- */
-function ponEstado(txt, ok, login){
+function ponEstado(e){
   const el = document.getElementById("nube");
   if (!el) return;
-  el.innerHTML = login
-    ? `${txt} · <a href="../splitwise/" style="color:#5BC8B4">entrar</a>`
-    : txt;
-  el.style.color = ok ? "#5BC8B4" : "";
+  el.innerHTML = e.login ? `${e.txt} · <button class="lnk" id="abrir-login">entrar</button>` : e.txt;
+  el.style.color = e.ok ? "#5BC8B4" : "";
+  const b = document.getElementById("abrir-login");
+  if (b) b.addEventListener("click", pintaLogin);
+  pintaSalir(e);
+}
+
+function pintaSalir(e){
+  const z = document.getElementById("cuenta");
+  if (!z) return;
+  z.innerHTML = e.ok && e.correo
+    ? `<p class="nota" style="margin:8px 0 0">Conectado como ${e.correo} ·
+       <button class="lnk" id="salir">salir</button></p>` : "";
+  const s = document.getElementById("salir");
+  if (s) s.addEventListener("click", async () => {
+    await SYNC.salir();
+    pintaNube();
+  });
+}
+
+function pintaLogin(){
+  const z = document.getElementById("cuenta");
+  z.innerHTML = `
+    <div class="login">
+      <p class="nota" style="margin:0 0 10px">Entra con la misma cuenta de Gastos compartidos.
+        En iOS, cada app de la pantalla de inicio guarda su sesión aparte.</p>
+      <input type="email" id="correo" placeholder="tu@correo.com" autocomplete="username"
+             autocapitalize="none" spellcheck="false">
+      <input type="password" id="clave" placeholder="Contraseña" autocomplete="current-password">
+      <button class="btn-act" id="hacer-login">Entrar</button>
+      <p class="nota" id="err-login" style="margin:9px 0 0"></p>
+    </div>`;
+  document.getElementById("hacer-login").addEventListener("click", async () => {
+    const b = document.getElementById("hacer-login");
+    const err = document.getElementById("err-login");
+    const correo = document.getElementById("correo").value.trim();
+    const clave = document.getElementById("clave").value;
+    if (!correo || !clave){ err.textContent = "Falta el correo o la contraseña."; return; }
+    b.textContent = "Entrando…"; err.textContent = "";
+    const r = await SYNC.entrar(correo, clave);
+    if (!r.ok){ b.textContent = "Entrar"; err.textContent = r.txt; return; }
+    z.innerHTML = "";
+    pintaNube();
+  });
+  document.getElementById("clave").addEventListener("keydown", ev => {
+    if (ev.key === "Enter") document.getElementById("hacer-login").click();
+  });
 }
 
 async function pintaNube(){
-  if (typeof SYNC === "undefined") return ponEstado("solo en este móvil", false);
+  if (typeof SYNC === "undefined") return ponEstado({txt:"solo en este móvil", ok:false});
   try {
     const e = await SYNC.estado();
-    ponEstado(e.txt, e.ok, e.login);
+    ponEstado(e);
     if (!e.ok) return;
     const r = await SYNC.sincronizar();
     if (r.cambios){ TODOS = VIAJES.concat(propios()); pintaLista(); }
     const e2 = await SYNC.estado();
-    ponEstado(e2.txt, e2.ok, e2.login);
-  } catch { ponEstado("solo en este móvil", false); }
+    ponEstado(e2);
+  } catch { ponEstado({txt:"solo en este móvil", ok:false}); }
 }
 
 pintaLista();
