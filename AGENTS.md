@@ -97,6 +97,12 @@ Están aquí para que no se repitan:
 | El botón de entrar se quedaba colgado | `sync.js` viejo en caché, sin la función nueva | Versionar `sync.js` en la URL |
 | La portada decía «comprobando…» para siempre | `getSession()` sin tope de tiempo | Todo con `conTope()` |
 | Se dio por hecho que la sesión se compartía | En iOS cada app de la pantalla de inicio tiene su almacén | No suponer: comprobar |
+| Al cambiar de tema, el estado volvía a «comprobando…» | Repintar el pie destruía el elemento y nadie recalculaba | Guardar el último estado y repintarlo |
+| Una prueba daba verde con el fallo puesto | Comprobaba «no empieza por comprobando», y el texto vacío también cumple | Escribir la prueba, meter el fallo a propósito y ver que salta |
 
 El patrón se repite: **dar algo por bueno sin ejecutarlo**. Por eso existen las
 pruebas.
+
+Y un aviso sobre las pruebas mismas: **una prueba que nunca has visto fallar no
+sirve de nada**. Después de escribirla, reintroduce el fallo a propósito y
+comprueba que salta. Si pasa igual, la prueba está mal.
