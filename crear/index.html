@@ -117,8 +117,25 @@ input::placeholder,textarea::placeholder{color:#63757D}
   border-radius:50%;background:var(--fondo-3);color:var(--acento);font-family:var(--mono);
   font-size:12px;display:grid;place-items:center}
 .pasos li b{color:var(--tinta);font-weight:600}
+.ops{display:flex;flex-wrap:wrap;gap:7px}
+.op{flex:1 1 92px;text-align:left;padding:10px 11px;border-radius:11px;cursor:pointer;
+  background:transparent;border:1px solid var(--linea);color:var(--tinta);font:inherit}
+.op b{display:block;font-size:13.5px;font-weight:600}
+.op small{display:block;font-size:11px;color:var(--tinta-dim);margin-top:2px;line-height:1.3}
+.op.on{border-color:var(--acento);background:rgba(91,200,180,.12)}
+.op.on b{color:var(--acento)}
 .sub-sec{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
   color:var(--acento);margin:20px 0 4px;padding-top:14px;border-top:1px solid var(--linea)}
+
+/* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
+body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
+  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
+  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;}
+@media (prefers-color-scheme: light){
+  body.auto{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
+  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
+  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;}
+}
 </style>
 </head>
 <body>
@@ -175,6 +192,9 @@ input::placeholder,textarea::placeholder{color:#63757D}
     <button class="btn borrar" id="eliminar">Eliminar viaje</button>
   </div>
   <div id="zona-exportar"></div>
+
+  <p class="sec">Pantalla</p>
+  <div id="zona-tema"></div>
   <p class="nota" id="estado"></p>
 </main>
 
@@ -185,6 +205,35 @@ input::placeholder,textarea::placeholder{color:#63757D}
 
 <script src="../sync.js?v=41"></script>
 <script>
+
+/* ---- Modo de color, compartido por todas las apps ---- */
+const TEMA = {
+  get valor(){ try { return localStorage.getItem("tema_viajes") || "auto"; } catch { return "auto"; } },
+  set valor(v){ try { localStorage.setItem("tema_viajes", v); } catch {}; this.aplica(); },
+  aplica(){
+    const v = this.valor;
+    document.body.classList.toggle("claro", v === "claro");
+    document.body.classList.toggle("auto",  v === "auto");
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (!m) return;
+    const oscuro = m.dataset.oscuro || m.getAttribute("content");
+    if (!m.dataset.oscuro) m.dataset.oscuro = oscuro;
+    const claroDeVerdad = v === "claro" ||
+      (v === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches);
+    m.setAttribute("content", claroDeVerdad ? "#F4F6F7" : m.dataset.oscuro);
+  },
+  opciones(){
+    const v = this.valor;
+    const b = (id, t, sub) => `<button class="op${v === id ? " on" : ""}" data-tema="${id}"><b>${t}</b><small>${sub}</small></button>`;
+    return `<div class="ops">${b("auto","Automático","Como el móvil")}${b("claro","Claro","Para el sol")}${b("oscuro","Oscuro","Para la noche")}</div>`;
+  },
+  engancha(volver){
+    document.querySelectorAll("[data-tema]").forEach(x =>
+      x.addEventListener("click", () => { TEMA.valor = x.dataset.tema; volver && volver(); }));
+  }
+};
+if (window.matchMedia)
+  matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => TEMA.aplica());
 const CLAVE = "viajes_propios";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const nuevoId = () => "v" + Date.now().toString(36);
@@ -409,10 +458,7 @@ function engancha(){
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+sucio();
   }));
   document.querySelectorAll("[data-borrar-par]").forEach(b => b.addEventListener("click", () => {
     const [i,k] = b.dataset.borrarPar.split(":").map(Number);
@@ -437,7 +483,6 @@ setTimeout(pintaAvisoNube, 300); sucio();
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
@@ -465,7 +510,6 @@ setTimeout(pintaAvisoNube, 300); sucio();
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
@@ -530,7 +574,6 @@ function enganchaFotos(){
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
@@ -562,7 +605,6 @@ setTimeout(pintaAvisoNube, 300); sucio();
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
@@ -685,7 +727,6 @@ function engancharResultados(){
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
@@ -722,7 +763,6 @@ setTimeout(pintaAvisoNube, 300); sucio();
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
@@ -926,7 +966,6 @@ document.getElementById("add-dia").addEventListener("click", () => {
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
-
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300); sucio();
@@ -1183,7 +1222,13 @@ async function pintaAvisoNube(){
     pinta("", "!", "El viaje se guarda en este móvil.");
   }
 }
+function pintaTema(){
+  document.getElementById("zona-tema").innerHTML = TEMA.opciones();
+  TEMA.engancha(pintaTema);
+}
 
+TEMA.aplica();
+pintaTema();
 pintaDias();
 pintaReservas();
 setTimeout(pintaAvisoNube, 300);
