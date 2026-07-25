@@ -117,6 +117,8 @@ input::placeholder,textarea::placeholder{color:#63757D}
   border-radius:50%;background:var(--fondo-3);color:var(--acento);font-family:var(--mono);
   font-size:12px;display:grid;place-items:center}
 .pasos li b{color:var(--tinta);font-weight:600}
+.sub-sec{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--acento);margin:20px 0 4px;padding-top:14px;border-top:1px solid var(--linea)}
 </style>
 </head>
 <body>
@@ -631,6 +633,21 @@ QUÉ ME INTERESA: ${d.interes || "un poco de todo"}
 RITMO: ${d.ritmo}
 MÁXIMO AL VOLANTE: unas ${d.coche} horas al día
 ${d.extra ? "OTRAS COSAS: " + d.extra : ""}
+${(d.ida || d.vuelta || d.cocheAlq) ? `
+═══ ESTO YA ESTÁ RESERVADO, NO LO CAMBIES ═══
+${d.ida ? "IDA: " + d.ida : ""}
+${d.vuelta ? "VUELTA: " + d.vuelta : ""}
+${d.cocheAlq ? "COCHE DE ALQUILER: " + d.cocheAlq : ""}
+
+Construye el viaje ALREDEDOR de esos horarios:
+- Ponlos como paradas reales, con su hora, el día que toquen.
+- Si la ida llega tarde, el primer día es solo llegar y dormir cerca.
+- Si la vuelta sale de madrugada, la última noche se duerme cerca del aeropuerto
+  y el día anterior se deja sin nada que no se pueda saltar.
+- Si el coche se recoge o se devuelve a una hora, cuadra el día para llegar con margen,
+  y ten en cuenta lo que se puede o no hacer sin coche antes y después.
+- Avísame por escrito si algo de lo que planeo choca con esos horarios.
+` : ""}
 
 ═══ CÓMO QUIERO QUE ESTÉ ORGANIZADO ═══
 
@@ -650,9 +667,10 @@ ${d.extra ? "OTRAS COSAS: " + d.extra : ""}
    Escribe en cada día los kilómetros y el tiempo aproximados.
    Cuenta que en carretera de montaña se va mucho más lento de lo que dice el mapa.
 
-4. LO DE HORA FIJA, PRIMERO
-   Si algo tiene visita guiada, entrada con hora, ferri o último teleférico,
-   colócalo como ancla del día y ordena lo demás alrededor. Dilo en la nota.
+4. AVÍSAME DE LO QUE HAY QUE RESERVAR
+   Cuando una parada tenga visita guiada, entrada con hora, ferri o último
+   teleférico, dilo en la nota para que lo reserve yo con tiempo, y colócala
+   a la hora que tenga sentido dentro del día.
 
 5. UN IMPRESCINDIBLE POR DÍA
    Marca con ★ al principio la parada que no habría que perderse ese día.
@@ -710,7 +728,7 @@ function abrirPedir(){
   z.innerHTML = `
     <div class="pedir-form">
       <div class="campo"><label>A dónde</label>
-        <input type="text" id="p-destino" placeholder="Norte de Portugal, Dolomitas, Picos de Europa…"></div>
+        <input type="text" id="p-destino" placeholder="Croacia, Dolomitas, Picos de Europa…"></div>
       <div class="dos">
         <div class="campo"><label>Cuántos días</label>
           <input type="text" id="p-dias" value="5" inputmode="numeric"></div>
@@ -719,6 +737,16 @@ function abrirPedir(){
       </div>
       <div class="campo"><label>Cómo viajáis</label>
         <input type="text" id="p-como" placeholder="En furgo camper, durmiendo en ella, con dos perras"></div>
+
+      <p class="sub-sec">Lo que ya está cerrado</p>
+      <p class="nota" style="margin:0 0 10px">Si tenéis vuelos o coche reservado, ponlo aquí: es lo que manda sobre el resto.</p>
+      <div class="campo"><label>Ida</label>
+        <input type="text" id="p-ida" placeholder="Vuelo Madrid–Zagreb, sale 18:55, llega 21:30"></div>
+      <div class="campo"><label>Vuelta</label>
+        <input type="text" id="p-vuelta" placeholder="Vuelo Zagreb–Madrid a las 06:00 del último día"></div>
+      <div class="campo"><label>Coche de alquiler</label>
+        <input type="text" id="p-coche-alq" placeholder="Recojo en el aeropuerto a las 22:00, devuelvo el día 7 a las 18:00"></div>
+      <p class="sub-sec">Cómo lo queréis</p>
       <div class="campo"><label>Qué os interesa</label>
         <input type="text" id="p-interes" placeholder="Montaña, rutas a pie, pueblos, comer bien…"></div>
       <div class="dos">
@@ -750,7 +778,8 @@ function abrirPedir(){
     if (!v("p-destino")){ alert("Dime al menos a dónde queréis ir."); return; }
     const texto = plantilla({ destino:v("p-destino"), dias:v("p-dias") || "5",
       salida:v("p-salida"), como:v("p-como"), interes:v("p-interes"), extra:v("p-extra"),
-      ritmo:v("p-ritmo"), coche:v("p-coche") });
+      ritmo:v("p-ritmo"), coche:v("p-coche"),
+      ida:v("p-ida"), vuelta:v("p-vuelta"), cocheAlq:v("p-coche-alq") });
     const b = document.getElementById("copiar-pedir");
     try {
       if (navigator.share) await navigator.share({ text: texto });
