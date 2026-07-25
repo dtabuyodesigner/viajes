@@ -82,7 +82,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v35 · 25/07 07:52";
+const VERSION = "v36 · 25/07 08:27";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -169,10 +169,12 @@ function pintaPie(){
 }
 
 /* ---- Nube ---- */
-function ponEstado(txt, ok){
+function ponEstado(txt, ok, login){
   const el = document.getElementById("nube");
   if (!el) return;
-  el.textContent = txt;
+  el.innerHTML = login
+    ? `${txt} · <a href="../splitwise/" style="color:#5BC8B4">entrar</a>`
+    : txt;
   el.style.color = ok ? "#5BC8B4" : "";
 }
 
@@ -180,12 +182,12 @@ async function pintaNube(){
   if (typeof SYNC === "undefined") return ponEstado("solo en este móvil", false);
   try {
     const e = await SYNC.estado();
-    ponEstado(e.txt, e.ok);
+    ponEstado(e.txt, e.ok, e.login);
     if (!e.ok) return;
     const r = await SYNC.sincronizar();
     if (r.cambios){ TODOS = VIAJES.concat(propios()); pintaLista(); }
     const e2 = await SYNC.estado();
-    ponEstado(e2.txt, e2.ok);
+    ponEstado(e2.txt, e2.ok, e2.login);
   } catch { ponEstado("solo en este móvil", false); }
 }
 
