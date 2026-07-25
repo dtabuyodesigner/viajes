@@ -188,6 +188,33 @@ async function nubeAguanta(){
   }
 }
 
+/* ═══ 4. El estado sobrevive a los repintados ═══ */
+async function estadoSobrevive(){
+  console.log(`\n${gris("──")} La portada no se queda en «comprobando…»`);
+  const almacen = {};
+  const dom = abrir("index.html", { almacen, sesion:{ user:{ email:"d@x.com" } } });
+  await esperar(1400);
+  const d = dom.window.document;
+
+  // un estado válido tiene texto y no es «comprobando…»
+  const valido = t => t.trim().length > 3 && !t.trim().startsWith("comprobando");
+
+  const inicial = d.getElementById("nube")?.textContent || "";
+  comprobar("resuelve al arrancar", valido(inicial), `«${inicial}»`);
+
+  // cambiar de tema repinta el pie: el estado no debe perderse
+  d.querySelector('[data-tema="claro"]')?.click();
+  await esperar(250);
+  const tras = d.getElementById("nube")?.textContent || "";
+  comprobar("sobrevive al cambiar de tema", valido(tras), `«${tras}»`);
+  comprobar("el botón de actualizar sigue ahí", !!d.getElementById("btn-actualizar"));
+
+  d.querySelector('[data-tema="oscuro"]')?.click();
+  await esperar(250);
+  const tras2 = d.getElementById("nube")?.textContent || "";
+  comprobar("y al volver a cambiarlo", valido(tras2), `«${tras2}»`);
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -211,6 +238,7 @@ async function nubeAguanta(){
 
   await editorFunciona();
   await nubeAguanta();
+  await estadoSobrevive();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);
