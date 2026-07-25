@@ -61,8 +61,9 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
   <p class="eyebrow" id="saludo">Viajes</p>
   <h1>¿A dónde<br>vamos?</h1>
 </header>
-<main id="lista"></main>
+<main><div id="lista"></div><div id="pie"></div></main>
 
+<script src="sync.js"></script>
 <script>
 const VIAJES = [
   { id:"eslovenia", n:"Eslovenia y Venecia", ruta:"eslovenia/",
@@ -81,7 +82,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v34 · 25/07 07:43";
+const VERSION = "v35 · 25/07 07:52";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -114,53 +115,83 @@ function propios(){
   catch { return []; }
 }
 
-const TODOS = VIAJES.concat(propios());
+let TODOS = VIAJES.concat(propios());
 
-document.getElementById("lista").innerHTML = TODOS.map(v => {
-  const [cls, txt] = estado(v);
-  const txt2 = v.propio && !v.desde
-    ? `${v.ndias} día${v.ndias === 1 ? "" : "s"} · sin fechas` : txt;
-  return `<a class="viaje ${cls}" href="${v.ruta}" style="--acento:${v.acento}">
-    ${v.img ? `<img class="art" src="${v.img}" alt="${v.n}" loading="lazy">` : `<span class="art">${v.art}</span>`}
-    <span class="cuerpo">
-      <h2>${v.n}</h2>
-      <p class="fechas">${textoFechas(v)}</p>
-      <span class="estado"><span class="punto"></span>${txt2}</span>
-      <span class="flecha">→</span>
-    </span>
-  </a>`;
-}).join("") + `
-  <a class="crear" href="crear/">
-    <span class="mas">+</span>
-    <span><b>Crear un viaje</b><small>Días, paradas y navegación, montado por ti</small></span>
-  </a>
-  <div class="mantenimiento">
-    <p class="ver">Versión <span id="ver"></span></p>
-    <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
-    <p class="nota" style="margin-top:10px">Actualiza esta portada y los dos viajes a la vez.</p>
-  </div>` + `<p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera de ellos a la pantalla de inicio por separado.</p>`;
+function pintaLista(){
+  document.getElementById("lista").innerHTML = TODOS.map(v => {
+    const [cls, txt] = estado(v);
+    const txt2 = v.propio && !v.desde
+      ? `${v.ndias} día${v.ndias === 1 ? "" : "s"} · sin fechas` : txt;
+    return `<a class="viaje ${cls}" href="${v.ruta}" style="--acento:${v.acento}">
+      ${v.img ? `<img class="art" src="${v.img}" alt="${v.n}" loading="lazy">` : `<span class="art">${v.art}</span>`}
+      <span class="cuerpo">
+        <h2>${v.n}</h2>
+        <p class="fechas">${textoFechas(v)}</p>
+        <span class="estado"><span class="punto"></span>${txt2}</span>
+        <span class="flecha">→</span>
+      </span>
+    </a>`;
+  }).join("");
 
-document.getElementById("ver").textContent = VERSION;
+  const enCurso = TODOS.find(v => estado(v)[0] === "curso");
+  document.getElementById("saludo").textContent = enCurso ? "Viaje en curso" : "Viajes";
+}
 
-document.getElementById("btn-actualizar").addEventListener("click", async e => {
-  const b = e.target;
-  b.textContent = "Limpiando…";
+function pintaPie(){
+  document.getElementById("pie").innerHTML = `
+    <a class="crear" href="crear/">
+      <span class="mas">+</span>
+      <span><b>Crear un viaje</b><small>Días, paradas y navegación, montado por ti</small></span>
+    </a>
+    <div class="mantenimiento">
+      <p class="ver">Versión ${VERSION} · <span id="nube">comprobando…</span></p>
+      <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
+      <p class="nota" style="margin-top:10px">Actualiza esta portada y los viajes a la vez.</p>
+    </div>
+    <p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera a la pantalla de inicio por separado.</p>`;
+
+  document.getElementById("btn-actualizar").addEventListener("click", async e => {
+    const b = e.target;
+    b.textContent = "Limpiando…";
+    try {
+      if ("serviceWorker" in navigator){
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      }
+      if (window.caches){
+        const ks = await caches.keys();
+        await Promise.all(ks.map(k => caches.delete(k)));
+      }
+    } catch {}
+    b.textContent = "Recargando…";
+    location.replace(location.pathname + "?v=" + Date.now());
+  });
+}
+
+/* ---- Nube ---- */
+function ponEstado(txt, ok){
+  const el = document.getElementById("nube");
+  if (!el) return;
+  el.textContent = txt;
+  el.style.color = ok ? "#5BC8B4" : "";
+}
+
+async function pintaNube(){
+  if (typeof SYNC === "undefined") return ponEstado("solo en este móvil", false);
   try {
-    if ("serviceWorker" in navigator){
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r => r.unregister()));   // portada y ambos viajes
-    }
-    if (window.caches){
-      const ks = await caches.keys();
-      await Promise.all(ks.map(k => caches.delete(k)));
-    }
-  } catch {}
-  b.textContent = "Recargando…";
-  location.replace(location.pathname + "?v=" + Date.now());
-});
+    const e = await SYNC.estado();
+    ponEstado(e.txt, e.ok);
+    if (!e.ok) return;
+    const r = await SYNC.sincronizar();
+    if (r.cambios){ TODOS = VIAJES.concat(propios()); pintaLista(); }
+    const e2 = await SYNC.estado();
+    ponEstado(e2.txt, e2.ok);
+  } catch { ponEstado("solo en este móvil", false); }
+}
 
-const enCurso = TODOS.find(v => estado(v)[0] === "curso");
-document.getElementById("saludo").textContent = enCurso ? "Viaje en curso" : "Viajes";
+pintaLista();
+pintaPie();
+setTimeout(pintaNube, 300);
 
 if ("serviceWorker" in navigator){
   window.addEventListener("load", async () => {
