@@ -31,7 +31,7 @@ a{color:var(--prau);text-decoration:none}
 :focus-visible{outline:2px solid var(--teito);outline-offset:2px;border-radius:4px}
 
 header{position:sticky;top:0;z-index:20;
-  background:linear-gradient(180deg,var(--monte) 72%,rgba(15,30,20,0));
+  background:linear-gradient(180deg,var(--monte) 72%,transparent);
   padding:calc(14px + env(safe-area-inset-top)) 20px 18px}
 .volver{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--papel-dim);text-decoration:none;margin:0 0 12px;
@@ -87,7 +87,7 @@ main{padding:0 20px 32px;max-width:640px;margin:0 auto}
 .btn.wl{border-color:var(--mar);color:var(--mar)}
 
 nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);
-  background:rgba(15,30,20,.94);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  background:color-mix(in srgb, var(--monte) 94%, transparent);backdrop-filter:blur(14px);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom)}
 nav button{background:none;border:0;padding:11px 4px 12px;cursor:pointer;color:var(--papel-dim);
   font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase}
@@ -255,6 +255,12 @@ header{position:relative}
 .cerca-aviso .ic{flex:0 0 auto;color:var(--teito);font-size:17px;line-height:1.2}
 .cerca-aviso b{display:block;font-size:15px;color:var(--papel)}
 .cerca-aviso small{display:block;font-size:13px;color:var(--papel-dim);margin-top:3px;line-height:1.45}
+
+/* La barra y la cabecera siguen el color de fondo, sea cual sea el tema */
+@supports not (background: color-mix(in srgb, red 50%, transparent)){
+  nav{background:var(--monte)}
+  header{background:var(--monte)}
+}
 </style>
 </head>
 <body>
@@ -600,7 +606,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v53 · 25/07 21:46";
+const VERSION = "v54 · 25/07 22:03";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
