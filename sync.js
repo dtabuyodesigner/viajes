@@ -50,17 +50,19 @@ const SYNC = {
     if (!navigator.onLine) return null;
     try {
       if (!window.supabase){
-        await new Promise((ok, mal) => {
+        const cargada = await new Promise(ok => {
           const s = document.createElement("script");
           s.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js";
-          s.onload = ok; s.onerror = mal;
+          s.onload = () => ok(true);
+          s.onerror = () => ok(false);
           document.head.appendChild(s);
-          setTimeout(mal, 8000);
+          setTimeout(() => ok(false), 9000);
         });
+        if (!cargada || !window.supabase) return null;
       }
       this.cliente = window.supabase.createClient(SB_URL, SB_KEY);
-      const { data } = await this.cliente.auth.getSession();
-      this.sesion = data?.session || null;
+      const r = await conTope(this.cliente.auth.getSession(), 8000, { data:null });
+      this.sesion = r?.data?.session || null;
       return this.cliente;
     } catch {
       this.cliente = null;
@@ -70,6 +72,11 @@ const SYNC = {
 
   /* ---- Estado, para pintarlo en pantalla ---- */
   async estado(){
+    return conTope(this._estado(), 12000,
+      { ok:false, txt:"La nube no responde · solo en este móvil" });
+  },
+
+  async _estado(){
     if (!navigator.onLine) return { ok:false, txt:"Sin conexión · solo en este móvil" };
     const c = await this.conectar();
     if (!c) return { ok:false, txt:"No se pudo conectar · solo en este móvil" };
@@ -134,6 +141,10 @@ const SYNC = {
 
   /* ---- Bajar y fundir con lo local ---- */
   async sincronizar(){
+    return conTope(this._sincronizar(), 25000, { cambios:0, ok:false });
+  },
+
+  async _sincronizar(){
     const c = await this.conectar();
     if (!c || !this.sesion) return { cambios:0, ok:false };
 
