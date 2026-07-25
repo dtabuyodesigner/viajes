@@ -228,11 +228,21 @@ body.claro{--monte:#F4F6F1;--monte-2:#FFFFFF;--papel:#132218;--papel-dim:#4C6153
   --line:rgba(19,34,24,.15);--prau:#2F6B31;--prau-dim:#3B8040;
   --mar:#1E6C82;--teito:#84620F;--oso:#8F3821;}
 }
+
+/* Selector de color, arriba a la derecha */
+header{position:relative}
+.tema-mini{position:absolute;top:calc(10px + env(safe-area-inset-top));right:17px;
+  display:flex;gap:2px;padding:2px;border-radius:999px;z-index:2}
+.tm{width:28px;height:28px;border-radius:50%;border:0;background:transparent;
+  cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
+  color:currentColor;font-family:var(--sans)}
+.tm.on{opacity:1;background:rgba(127,127,127,.18)}
 </style>
 </head>
 <body>
 
 <header>
+  <div id="tema-zona"></div>
   <a class="volver" href="../">‹ Viajes</a>
   <p class="eyebrow" id="eyebrow">Asturias occidental</p>
   <h1 id="title">Cargando</h1>
@@ -260,6 +270,13 @@ body.claro{--monte:#F4F6F1;--monte-2:#FFFFFF;--papel:#132218;--papel-dim:#4C6153
 const TEMA = {
   get valor(){ try { return localStorage.getItem("tema_viajes") || "auto"; } catch { return "auto"; } },
   set valor(v){ try { localStorage.setItem("tema_viajes", v); } catch {}; this.aplica(); },
+  pintaMini(){
+    const z = document.getElementById("tema-zona");
+    if (!z) return;
+    z.innerHTML = this.mini();
+    z.querySelectorAll("[data-tema]").forEach(b =>
+      b.addEventListener("click", () => { TEMA.valor = b.dataset.tema; TEMA.pintaMini(); }));
+  },
   aplica(){
     const v = this.valor;
     document.body.classList.toggle("claro", v === "claro");
@@ -272,13 +289,18 @@ const TEMA = {
       (v === "auto" && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches);
     m.setAttribute("content", claroDeVerdad ? "#F4F6F7" : m.dataset.oscuro);
   },
+  mini(){
+    const v = this.valor;
+    const b = (id, t, etiqueta) =>
+      `<button class="tm${v === id ? " on" : ""}" data-tema="${id}" aria-label="${etiqueta}" title="${etiqueta}">${t}</button>`;
+    return `<div class="tema-mini">${b("auto","◐","Automático")}${b("claro","☀","Claro")}${b("oscuro","☾","Oscuro")}</div>`;
+  },
   opciones(){
     const v = this.valor;
     const b = (id, t, sub) => `<button class="op${v === id ? " on" : ""}" data-tema="${id}"><b>${t}</b><small>${sub}</small></button>`;
     return `<div class="ops">${b("auto","Automático","Como el móvil")}${b("claro","Claro","Para el sol")}${b("oscuro","Oscuro","Para la noche")}</div>`;
   },
   engancha(volver){
-    TEMA.engancha(vistaInfo);
   }
 };
 if (window.matchMedia)
@@ -560,7 +582,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v50 · 25/07 20:33";
+const VERSION = "v52 · 25/07 21:15";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -1121,11 +1143,6 @@ function activaEnlacesGuia(){
 
 /* ---- Vista INFO ---- */
 
-function panelTema(){
-  return `<div class="sec"><span class="label">Pantalla</span><h2>Modo de color</h2></div>
-    <div class="card">${TEMA.opciones()}</div>`;
-}
-
 function panelNav(){
   const op = (g, val, act, t, sub) =>
     `<button class="op${val === act ? " on" : ""}" data-${g}="${val}"><b>${t}</b><small>${sub}</small></button>`;
@@ -1166,7 +1183,7 @@ function vistaInfo(){
   document.getElementById("v-info").innerHTML =
     `<div class="aviso"><span class="ic">!</span>
       <p>Somiedo es territorio de osos, lobos y mastines de rebaño. Bella y Lisboa atadas en todo el parque.</p></div>` +
-    tarjetaGastos() + panelNav() + panelTema() +
+    tarjetaGastos() + panelNav() + 
     bloque("Bella y Lisboa", "Con las perras", VIAJE.info.perras) +
     bloque("Dormir y conducir", "La furgo", VIAJE.info.furgo) +
     `<div class="card" style="margin-top:12px">
@@ -1204,7 +1221,6 @@ function vistaInfo(){
     sessionStorage.removeItem("recargado");
     location.replace(location.pathname + "?v=" + Date.now());
   });
-  TEMA.engancha(vistaInfo);
   document.querySelectorAll("[data-via]").forEach(b =>
     b.addEventListener("click", () => { PREF.via = b.dataset.via; vistaInfo(); }));
 }
@@ -1230,6 +1246,7 @@ document.querySelectorAll("nav button").forEach(b =>
   b.addEventListener("click", () => vePestana(b.dataset.v)));
 
 TEMA.aplica();
+TEMA.pintaMini();
 vistaHoy();
 
 if (typeof DIARIO_SYNC !== "undefined"){
