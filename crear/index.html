@@ -79,6 +79,19 @@ input::placeholder,textarea::placeholder{color:#63757D}
   color:var(--tinta-dim);margin:26px 0 10px}
 .vacio{color:var(--tinta-dim);font-size:14px;padding:14px 0}
 .ok{color:var(--acento)}
+.subir{display:block;text-align:center;padding:16px;border:1px dashed var(--linea);
+  border-radius:12px;color:var(--acento);font-size:14px;cursor:pointer}
+.foto-zona img{display:block;width:100%;border-radius:12px;margin-bottom:8px}
+.buscador-zona{margin-top:10px}
+.busca-caja{background:var(--fondo-3);border-radius:12px;padding:12px;margin-top:8px}
+.res{background:var(--fondo-2);border:1px solid var(--linea);border-radius:12px;
+  padding:12px;margin-top:9px}
+.res img{display:block;width:100%;max-height:160px;object-fit:cover;border-radius:9px;margin-bottom:9px}
+.res h4{margin:0 0 5px;font-size:15px}
+.res p{margin:0;font-size:13.5px;line-height:1.5;color:var(--tinta-dim)}
+.res .btns{margin-top:10px}
+.cargando{color:var(--tinta-dim);font-size:13.5px;padding:10px 0}
+.peso{font-size:12px;color:var(--tinta-dim);margin-top:6px}
 </style>
 </head>
 <body>
@@ -193,9 +206,30 @@ function pintaDias(){
           <input type="text" class="mini p-mapa" data-i="${i}" data-k="${k}" value="${esc(p.mapa)}"
             placeholder="Nombre para el navegador" style="margin-top:7px">
         </div>`).join("")}
-      <div class="btns"><button class="btn fino" data-add-par="${i}">+ Parada</button></div>
+      <div class="btns">
+        <button class="btn fino" data-add-par="${i}">+ Parada</button>
+        <button class="btn fino busca" data-buscar="${i}">Buscar un sitio</button>
+      </div>
+
+      <div class="buscador-zona" id="bz-${i}"></div>
+
+      <label style="font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+        text-transform:uppercase;color:var(--tinta-dim);display:block;margin:16px 0 7px">Foto del día</label>
+      ${d.foto ? `<div class="foto-zona">
+          <img src="${d.foto}" alt="">
+          <button class="btn fino borrar" data-quitar-foto="${i}">Quitar foto</button>
+        </div>`
+        : `<label class="subir">
+             <input type="file" accept="image/*" data-foto="${i}" hidden>
+             <span>+ Añadir una foto</span>
+           </label>`}
     </div>`).join("");
   engancha();
+  enganchaFotos();
+  document.querySelectorAll("[data-buscar]").forEach(b => {
+    if (b.dataset.l) return; b.dataset.l = 1;
+    b.addEventListener("click", () => abreBuscador(+b.dataset.buscar));
+  });
 }
 
 function engancha(){
@@ -225,6 +259,158 @@ function engancha(){
     if (!confirm("¿Quitar este día entero?")) return;
     viaje.dias.splice(+b.dataset.borrarDia,1); pintaDias(); sucio();
   }));
+}
+
+/* ---- Fotos: se comprimen antes de guardar ---- */
+function comprimir(archivo, maxLado = 900, calidad = 0.72){
+  return new Promise((ok, mal) => {
+    const lector = new FileReader();
+    lector.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width:a, height:b } = img;
+        const f = Math.min(1, maxLado / Math.max(a, b));
+        a = Math.round(a * f); b = Math.round(b * f);
+        const c = document.createElement("canvas");
+        c.width = a; c.height = b;
+        c.getContext("2d").drawImage(img, 0, 0, a, b);
+        ok(c.toDataURL("image/jpeg", calidad));
+      };
+      img.onerror = mal;
+      img.src = lector.result;
+    };
+    lector.onerror = mal;
+    lector.readAsDataURL(archivo);
+  });
+}
+
+function enganchaFotos(){
+  document.querySelectorAll("[data-foto]").forEach(inp => {
+    if (inp.dataset.l) return; inp.dataset.l = 1;
+    inp.addEventListener("change", async e => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      const eti = inp.closest(".subir").querySelector("span");
+      eti.textContent = "Preparando la foto…";
+      try {
+        const datos = await comprimir(f);
+        const kb = Math.round(datos.length * 0.75 / 1024);
+        if (kb > 600){ eti.textContent = "+ Añadir una foto";
+          alert("Esa foto pesa demasiado incluso comprimida. Prueba con otra."); return; }
+        viaje.dias[+inp.dataset.foto].foto = datos;
+        pintaDias(); sucio();
+      } catch { eti.textContent = "+ Añadir una foto"; alert("No se pudo leer la imagen."); }
+    });
+  });
+  document.querySelectorAll("[data-quitar-foto]").forEach(b => {
+    if (b.dataset.l) return; b.dataset.l = 1;
+    b.addEventListener("click", () => {
+      delete viaje.dias[+b.dataset.quitarFoto].foto;
+      pintaDias(); sucio();
+    });
+  });
+}
+
+/* ---- Buscar un sitio en Wikipedia ---- */
+async function buscarSitio(texto){
+  const base = "https://es.wikipedia.org/w/api.php";
+  const url = base + "?" + new URLSearchParams({
+    action:"query", format:"json", origin:"*",
+    generator:"search", gsrsearch:texto, gsrlimit:"3",
+    prop:"extracts|pageimages|coordinates",
+    exintro:"1", explaintext:"1", exsentences:"3",
+    piprop:"thumbnail", pithumbsize:"640"
+  });
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(corte);
+    if (!r.ok) throw new Error("respuesta " + r.status);
+    const d = await r.json();
+    const paginas = d?.query?.pages;
+    if (!paginas) return [];
+    return Object.values(paginas)
+      .sort((a,b) => (a.index||0) - (b.index||0))
+      .map(p => ({
+        titulo: p.title,
+        texto: (p.extract || "").trim(),
+        imagen: p.thumbnail?.source || "",
+        xy: p.coordinates?.[0] ? `${p.coordinates[0].lat},${p.coordinates[0].lon}` : ""
+      }))
+      .filter(p => p.texto || p.imagen);
+  } catch (e){
+    clearTimeout(corte);
+    throw e;
+  }
+}
+
+function abreBuscador(i){
+  const z = document.getElementById("bz-" + i);
+  if (z.dataset.abierto){ z.innerHTML = ""; delete z.dataset.abierto; return; }
+  z.dataset.abierto = "1";
+  z.innerHTML = `<div class="busca-caja">
+      <input type="text" class="mini" id="q-${i}" placeholder="Lago Bled, Cudillero, Somiedo…">
+      <div class="btns" style="margin-top:8px">
+        <button class="btn fino solid" id="go-${i}">Buscar</button>
+      </div>
+      <div id="rs-${i}"></div>
+    </div>`;
+  const lanzar = async () => {
+    const q = document.getElementById("q-" + i).value.trim();
+    if (!q) return;
+    const rs = document.getElementById("rs-" + i);
+    rs.innerHTML = `<p class="cargando">Buscando en Wikipedia…</p>`;
+    try {
+      const res = await buscarSitio(q);
+      if (!res.length){ rs.innerHTML = `<p class="cargando">Nada con ese nombre.</p>`; return; }
+      rs.innerHTML = res.map((r, k) => `
+        <div class="res">
+          ${r.imagen ? `<img src="${r.imagen}" alt="">` : ""}
+          <h4>${esc(r.titulo)}</h4>
+          <p>${esc(r.texto || "Sin descripción.")}</p>
+          <div class="btns">
+            <button class="btn fino solid" data-usar="${i}:${k}">Añadir como parada</button>
+            ${r.imagen ? `<button class="btn fino" data-usar-img="${i}:${k}">Usar la foto</button>` : ""}
+          </div>
+        </div>`).join("");
+      rs.dataset.res = JSON.stringify(res);
+      engancharResultados();
+    } catch {
+      rs.innerHTML = `<p class="cargando">No se pudo consultar. ¿Hay cobertura?</p>`;
+    }
+  };
+  document.getElementById("go-" + i).addEventListener("click", lanzar);
+  document.getElementById("q-" + i).addEventListener("keydown", e => {
+    if (e.key === "Enter"){ e.preventDefault(); lanzar(); } });
+}
+
+function engancharResultados(){
+  document.querySelectorAll("[data-usar]").forEach(b => {
+    if (b.dataset.l) return; b.dataset.l = 1;
+    b.addEventListener("click", () => {
+      const [i, k] = b.dataset.usar.split(":").map(Number);
+      const res = JSON.parse(document.getElementById("rs-" + i).dataset.res)[k];
+      viaje.dias[i].paradas.push({
+        h:"", txt:res.titulo, n:res.texto.slice(0, 240), mapa:res.titulo
+      });
+      pintaDias(); sucio();
+    });
+  });
+  document.querySelectorAll("[data-usar-img]").forEach(b => {
+    if (b.dataset.l) return; b.dataset.l = 1;
+    b.addEventListener("click", async () => {
+      const [i, k] = b.dataset.usarImg.split(":").map(Number);
+      const res = JSON.parse(document.getElementById("rs-" + i).dataset.res)[k];
+      b.textContent = "Guardando…";
+      try {
+        const r = await fetch(res.imagen);
+        const blob = await r.blob();
+        viaje.dias[i].foto = await comprimir(blob);
+        pintaDias(); sucio();
+      } catch { b.textContent = "No se pudo guardar"; }
+    });
+  });
 }
 
 document.getElementById("add-dia").addEventListener("click", () => {
