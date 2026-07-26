@@ -171,6 +171,19 @@ header{position:relative}
 
 .km i{display:block;font-style:normal;font-size:9px;letter-spacing:.1em;
   text-transform:uppercase;opacity:.6;color:var(--td)}
+
+.tiempo{background:var(--f2);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin:0 0 16px}
+.t-hoy{display:flex;align-items:center;gap:13px}
+.t-hoy .ico{font-size:30px;line-height:1}
+.t-hoy b{display:block;font-size:21px;letter-spacing:-.02em;color:var(--t)}
+.t-hoy small{display:block;font-size:13px;color:var(--td);margin-top:2px}
+.t-man{display:flex;align-items:baseline;gap:9px;margin-top:11px;padding-top:11px;
+  border-top:1px solid var(--line);font-size:14px;color:var(--td)}
+.t-man b{color:var(--t);font-weight:600}
+.t-man small{color:var(--ac)}
+.tiempo .fuente{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--td);opacity:.65;margin:10px 0 0}
 </style>
 </head>
 <body>
@@ -407,7 +420,7 @@ function vistaHoy(){
   document.getElementById("title").textContent = d.t || `Día ${i+1}`;
   document.getElementById("subtitle").textContent = (d.dest||"").trim() ? `Duermes en ${d.dest}` : VIAJE.nombre;
 
-  let h = `<div id="aviso-cerca"></div>`
+  let h = `<div id="aviso-cerca"></div><div id="zona-tiempo"></div>`
         + (d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : "")
         + botonesRuta(i) + pintaParadas(d, i);
   const sig = VIAJE.dias[i+1];
@@ -417,6 +430,8 @@ function vistaHoy(){
   document.getElementById("v-hoy").innerHTML = h;
   activaDiario();
   if (P.avisar) avisoCerca(i);
+  const conXY = (d.paradas || []).find(p => p.xy);
+  if (conXY) pintaTiempo(conXY.xy, d.dest || "");
 }
 
 function vistaDias(){
