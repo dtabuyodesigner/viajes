@@ -83,6 +83,7 @@ estar usándose en carretera ahora mismo.
 | Tiempo real por carretera | | ● | ● | ● | |
 | El tiempo | | ● | ● | ● | |
 | Aviso de cercanía | | ● | ● | ● | |
+| El primer vistazo del día | | ● | ● | ● | |
 | park4night | | | ● | | |
 | Crear, pedir a una IA, importar | | | | | ● |
 | Sincronización | ● | ● | ● | ● | ● |
