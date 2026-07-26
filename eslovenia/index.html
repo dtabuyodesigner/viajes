@@ -568,8 +568,10 @@ const VIAJE = {
     ]},
     { f:"2026-07-28", xy:"45.490,12.240", dest:"LH Hotel Sirio Venice Mestre", t:"Retorno a los canales venecianos", arte:"canales", base:"LH Hotel Sirio Venice · Mestre", paradas:[
       { h:"Mañana", txt:"Vuelta a Italia por autopista", n:"Peajes italianos en cabina, se paga al salir" },
-      { h:"15:00", txt:"Devolución del coche en Marco Polo", n:"Fotos del coche y del cuentakilómetros. Pide el informe de estado por escrito", key:true },
-      { txt:"Traslado al hotel en Mestre", n:"Bus ATVO o taxi" },
+      { h:"15:00", txt:"Devolver el coche · Galdierirent", c:"Galdierirent", xy:"45.5052,12.3235",
+        n:"Via Triestina 94, junto al aeropuerto. Abren de 8:00 a 22:00 · +39 342 013 8930. Fotos del coche y del cuentakilómetros antes de entregarlo, y pedid el informe de estado por escrito",
+        mapa:"Via Triestina 94 Tessera Venezia", w:"Via Triestina 94 Venezia", g:"galdieri", key:true },
+      { txt:"Del taller al hotel", n:"Sin coche ya. En la ficha están los enlaces para ver el trayecto en bus y andando en ese momento, con los horarios del día", g:"galdieri", key:true },
       { h:"Tarde", txt:"Despedida por la isla de Venecia", c:"Venecia", n:"Plaza San Marcos, canales y cena", mapa:"Piazza San Marco Venezia", key:true },
       { txt:"Dejar cerrado el taxi de mañana", n:"Sale de madrugada: resérvalo esta noche", key:true }
     ]},
@@ -736,6 +738,18 @@ const GUIA = [
     { id:"skofja", xy:"46.166,14.306", n:"Škofja Loka", d:"2026-07-27",
       t:"Villa medieval de las mejor conservadas de Eslovenia, a un rato corto de Liubliana.",
       m:"Skofja Loka" },
+    { id:"galdieri", xy:"45.5052,12.3235", n:"Devolución del coche · Galdierirent", d:"2026-07-28",
+      t:"Donde se devuelve el Fiat Panda el día 28 a las tres. Via Triestina 94, en Tessera, pegado al aeropuerto Marco Polo. Abren de ocho de la mañana a diez de la noche, así que hay margen si el viaje desde Eslovenia se alarga.\n\nDesde aquí ya no tenéis coche. Al hotel de Mestre hay unos ocho kilómetros: en autobús es lo razonable, andando serían casi dos horas y no merece la pena con maletas. Los botones de abajo piden el trayecto en ese momento, con los horarios reales del día, en vez de fiarse de una línea que a lo mejor ha cambiado.",
+      k:[["Dirección","Via Triestina 94, Tessera"],
+         ["Horario","8:00 – 22:00"],
+         ["Teléfono","+39 342 013 8930"],
+         ["Al hotel de Mestre","unos 8 km"]],
+      c:"Antes de entregarlo: fotos del coche por los cuatro lados, del cuentakilómetros y del nivel de combustible. Es política lleno-lleno, así que repostad justo antes. Y pedid el informe de estado por escrito, que la fianza son 600 €.",
+      tel:"+393420138930",
+      rutas:[["Al hotel en bus","transit","LH Hotel Sirio Venice Mestre"],
+             ["Al hotel andando","walking","LH Hotel Sirio Venice Mestre"],
+             ["A la terminal del aeropuerto","walking","Aeroporto Marco Polo Venezia"]],
+      m:"Via Triestina 94 Tessera Venezia" },
     { id:"tivoli", xy:"46.055,14.494", n:"Parque Tivoli",
       t:"El gran parque de Liubliana, pegado al centro. Buen sitio para el último paseo tranquilo antes de irse.",
       m:"Tivoli Park Ljubljana" }
@@ -783,7 +797,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v65 · 26/07 16:47";
+const VERSION = "v66 · 26/07 17:30";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -2120,6 +2134,14 @@ function ficha(l){
         <a class="btn solid" href="${navegar(l.m)}" target="_blank" rel="noopener">Ir con ${comoNavego()}</a>
         <a class="btn" href="${mapa(l.m)}" target="_blank" rel="noopener">Ver en Maps</a>
         ${l.civ ? `<a class="btn civ" href="${l.civ}" target="_blank" rel="noopener">Free tours</a>` : ""}</div>` : ""}
+      ${l.tel ? `<div class="btns"><a class="btn solid" href="tel:${l.tel}">Llamar · ${esc(l.tel)}</a></div>` : ""}
+      ${l.rutas ? `<div class="cercanas">
+        <span class="label">Cómo seguir desde aquí</span>
+        <p class="note" style="margin:4px 0 0">Se pide en el momento, con los horarios de ese día.</p>
+        <div class="btns">${l.rutas.map(([txt, modo, hasta]) =>
+          `<a class="btn ${modo === "transit" ? "solid" : ""}" target="_blank" rel="noopener"
+            href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(l.xy || l.m)}&destination=${encodeURIComponent(hasta)}&travelmode=${modo}">${esc(txt)}</a>`).join("")}</div>
+      </div>` : ""}
     </div>
   </div>`;
 }
