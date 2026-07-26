@@ -153,3 +153,71 @@ Para no volver a proponerlo:
 | `waze.com/ul?q=` desde una app instalada | Falla al saltar; hay que usar `waze://` |
 | Bajar imágenes de bancos libres desde el asistente | La red del entorno no llega |
 | Fotos de hoteles desde Booking | Son suyas: copiarlas sería infracción |
+
+---
+
+## Cómo unificar el motor, paso a paso
+
+Es el punto 1 de esta lista y el que más riesgo quita. Así se hace sin romper
+nada.
+
+### La red de seguridad
+
+```bash
+node tests/foto.js guardar     # fotografía cómo se comporta ahora
+# …mover código…
+node tests/foto.js comparar    # ¿sale exactamente lo mismo?
+```
+
+`tests/foto.js` abre cada app, recorre todas las pestañas y todos los días, y
+guarda el HTML que producen. Si después de mover código el HTML es idéntico, el
+refactor no ha cambiado nada visible. Ignora comentarios y números de versión,
+así que solo salta cuando cambia el comportamiento de verdad.
+
+**Regla:** si `comparar` sale en verde, sigue. Si sale en rojo y no era lo que
+querías, deshaz y mira qué se rompió: te dice la vista y el carácter exacto.
+
+### Fase 1 · Lo que ya es idéntico
+
+Todo esto está copiado **letra por letra** en tres o cuatro archivos. Moverlo es
+mecánico y no cambia nada:
+
+| Bloque | Dónde está hoy |
+|---|---|
+| `TEMA` (modo de color) | las cinco apps |
+| Cámara, galería, portada del día | Eslovenia, Asturias, visor |
+| «Estoy aquí», buscar y añadir sitios | Eslovenia, Asturias, visor |
+| Mapa del día y mapa de cabecera | Eslovenia, Asturias, visor |
+| `porCarretera`, `formatoTiempo` | Eslovenia, Asturias, visor |
+| `elTiempo`, `pintaTiempo`, `TIEMPOS` | Eslovenia, Asturias, visor |
+| Servicios de OpenStreetMap | Eslovenia, Asturias, visor |
+| `esc`, `waze`, `mapa`, `navegar`… | las cinco |
+
+Van a `assets/app.js`, que ya carga `sync.js` y por tanto se guarda igual sin
+cobertura. **Mueve un bloque, compara, sigue.** Uno cada vez, nunca dos.
+
+Solo con esta fase desaparece la mayor parte del dolor: son los bloques que se
+han tocado más veces hoy y donde han salido casi todos los fallos.
+
+### Fase 2 · Separar los datos
+
+Cada viaje pasa a ser `eslovenia/datos.js` con su `VIAJE`, su `GUIA` y su `info`.
+El HTML queda reducido a la estructura y a cargar el motor y los datos.
+
+A partir de aquí, un viaje nuevo es un archivo de datos, no una app entera.
+
+### Fase 3 · Lo que no es igual
+
+Eslovenia tiene vuelos, seguros y una guía de 39 fichas. Asturias tiene
+park4night. El visor tiene el editor detrás. Eso **no** se fuerza a ser común: el
+motor debe permitir bloques propios sin obligar a nadie a tenerlos.
+
+La señal de que te estás pasando: si para unificar tienes que meter un `if` con
+el nombre del viaje dentro del motor, ese trozo no era común.
+
+### Qué no hacer
+
+- **No refactorizar y añadir a la vez.** Una cosa o la otra.
+- **No hacerlo con alguien usando la app en carretera.** Trabaja en `dev` y
+  mezcla a `main` cuando `probar` y `comparar` estén los dos en verde.
+- **No mover cinco bloques y luego comparar.** Uno cada vez.
