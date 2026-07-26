@@ -850,7 +850,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v73 · 26/07 22:18";
+const VERSION = "v74 · 26/07 22:26";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -1954,11 +1954,22 @@ async function lanzarServicios(){
     const t = await porCarretera(MIPOS, r.map(x => x.xy));
     const ns = document.getElementById("nota-serv");
     if (t){
-      t.forEach((x, i) => {
-        const el = document.getElementById("ks-" + i);
-        if (el && x) el.innerHTML = `${formatoTiempo(x.seg)}<i>${x.km != null ? Math.round(x.km) + " km" : "en coche"}</i>`;
-      });
-      if (ns) ns.textContent = "Tiempo en coche. Datos de OpenStreetMap, mantenidos por voluntarios.";
+      // con los tiempos reales hay que reordenar: el orden por línea recta no vale
+      const conTiempo = r.map((x, i) => ({ ...x, t: t[i] }))
+        .sort((a, b) => (a.t?.seg ?? Infinity) - (b.t?.seg ?? Infinity));
+      const lista = cont.querySelector("ul.plain");
+      if (lista) lista.innerHTML = conTiempo.map(x => `
+        <li><div class="serv-fila">
+          <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
+          <span class="km">${x.t
+            ? `${formatoTiempo(x.t.seg)}<i>${x.t.km != null ? Math.round(x.t.km) + " km" : "en coche"}</i>`
+            : `${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i>`}</span>
+        </div>
+        <div class="btns" style="margin-top:6px">
+          <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
+          <a class="btn" href="${mapaXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ver</a>
+        </div></li>`).join("");
+      if (ns) ns.textContent = "Ordenado por tiempo en coche. Datos de OpenStreetMap, mantenidos por voluntarios.";
     } else if (ns){
       ns.innerHTML = "<b>Distancias en línea recta.</b> Datos de OpenStreetMap.";
     }
