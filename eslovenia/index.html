@@ -303,6 +303,19 @@ header{position:relative}
 
 .km i{display:block;font-style:normal;font-size:9px;letter-spacing:.1em;
   text-transform:uppercase;opacity:.6;color:var(--paper-dim)}
+
+.tiempo{background:var(--karst-2);border:1px solid var(--line);border-radius:14px;
+  padding:14px 16px;margin:0 0 16px}
+.t-hoy{display:flex;align-items:center;gap:13px}
+.t-hoy .ico{font-size:30px;line-height:1}
+.t-hoy b{display:block;font-size:21px;letter-spacing:-.02em;color:var(--paper)}
+.t-hoy small{display:block;font-size:13px;color:var(--paper-dim);margin-top:2px}
+.t-man{display:flex;align-items:baseline;gap:9px;margin-top:11px;padding-top:11px;
+  border-top:1px solid var(--line);font-size:14px;color:var(--paper-dim)}
+.t-man b{color:var(--paper);font-weight:600}
+.t-man small{color:var(--soca)}
+.tiempo .fuente{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--paper-dim);opacity:.65;margin:10px 0 0}
 </style>
 </head>
 <body>
@@ -707,7 +720,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v56 · 26/07 05:46";
+const VERSION = "v57 · 26/07 06:17";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
@@ -916,6 +929,66 @@ async function compartirDiario(){
   } catch {}
 }
 
+
+/* ---- El tiempo, con Open-Meteo (sin clave) ---- */
+const TIEMPOS = {
+  0:["Despejado","☀"], 1:["Poco nuboso","🌤"], 2:["Nuboso","⛅"], 3:["Cubierto","☁"],
+  45:["Niebla","🌫"], 48:["Niebla helada","🌫"],
+  51:["Llovizna","🌦"], 53:["Llovizna","🌦"], 55:["Llovizna fuerte","🌦"],
+  61:["Lluvia floja","🌧"], 63:["Lluvia","🌧"], 65:["Lluvia fuerte","🌧"],
+  66:["Lluvia helada","🌧"], 67:["Lluvia helada","🌧"],
+  71:["Nieve","🌨"], 73:["Nieve","🌨"], 75:["Nieve fuerte","🌨"], 77:["Granizo","🌨"],
+  80:["Chubascos","🌦"], 81:["Chubascos","🌦"], 82:["Chubascos fuertes","⛈"],
+  85:["Chubascos de nieve","🌨"], 86:["Chubascos de nieve","🌨"],
+  95:["Tormenta","⛈"], 96:["Tormenta con granizo","⛈"], 99:["Tormenta con granizo","⛈"]
+};
+
+async function elTiempo(la, lo){
+  if (!navigator.onLine) return null;
+  const u = `https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}` +
+            `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max` +
+            `&timezone=auto&forecast_days=2`;
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch(u, { signal: ctrl.signal });
+    clearTimeout(corte);
+    if (!r.ok) throw new Error(r.status);
+    const d = (await r.json()).daily;
+    if (!d) throw new Error("sin datos");
+    return [0,1].map(i => ({
+      code: d.weather_code[i], max: Math.round(d.temperature_2m_max[i]),
+      min: Math.round(d.temperature_2m_min[i]), lluvia: d.precipitation_probability_max[i]
+    }));
+  } catch { clearTimeout(corte); return null; }
+}
+
+async function pintaTiempo(xy, donde){
+  const z = document.getElementById("zona-tiempo");
+  if (!z || !xy) return;
+  const [la, lo] = xy.split(",").map(Number);
+  const t = await elTiempo(la, lo);
+  if (!t) return;
+  const [hoy, man] = t;
+  const [txtHoy, icoHoy] = TIEMPOS[hoy.code] || ["", "•"];
+  const [txtMan, icoMan] = TIEMPOS[man.code] || ["", "•"];
+  z.innerHTML = `<div class="tiempo">
+    <div class="t-hoy">
+      <span class="ico">${icoHoy}</span>
+      <div>
+        <b>${hoy.max}° / ${hoy.min}°</b>
+        <small>${esc(txtHoy)}${hoy.lluvia != null ? ` · ${hoy.lluvia}% de lluvia` : ""}</small>
+      </div>
+    </div>
+    <div class="t-man">
+      <span>Mañana</span>
+      <b>${icoMan} ${man.max}°/${man.min}°</b>
+      ${man.lluvia != null ? `<small>${man.lluvia}%</small>` : ""}
+    </div>
+    <p class="fuente">${esc(donde)} · Open-Meteo</p>
+  </div>`;
+}
+
 /* ---- Rutas del día ---- */
 const waze = q => `waze://?q=${encodeURIComponent(q)}&navigate=yes`;
 
@@ -945,7 +1018,6 @@ function botonesRuta(i){
       ${d.dest ? `<span class="wz-par cama-par"><a class="wz cama" href="${navegar(d.dest)}" target="_blank" rel="noopener">
         <b>${tramos.length+1}</b>Alojamiento</a>${PREF.app === "waze"
           ? `<a class="wz-alt" href="${mapsDe(d.dest)}" target="_blank" rel="noopener">map</a>` : ""}</span>` : ""}</div>
-    <div class="btns"><a class="btn" href="${tiempoEn(d.dest)}" target="_blank" rel="noopener">El tiempo hoy</a></div>
     <p class="note" style="margin:10px 0 0">Waze solo lleva a un sitio por vez: dale al siguiente número según vayas llegando.
     ${r.n ? `<a href="${r.url}" target="_blank" rel="noopener">Ver la ruta entera en Maps →</a>` : ""}</p>
   </div>`;
@@ -1065,7 +1137,7 @@ function vistaHoy(){
   document.getElementById("title").textContent = dia.t;
   document.getElementById("subtitle").textContent = `Duermes en ${dia.base}`;
 
-  let h = `<div id="aviso-cerca"></div>` + cabecera(dia) + botonesRuta(i) + pintaParadas(dia, i);
+  let h = `<div id="aviso-cerca"></div><div id="zona-tiempo"></div>` + cabecera(dia) + botonesRuta(i) + pintaParadas(dia, i);
   if (sig){
     const fs = fecha(sig.f);
     h += `<div class="sec"><span class="label">Mañana · ${esc(fs.wd)}</span><h2>${esc(sig.t)}</h2></div>
@@ -1074,6 +1146,7 @@ function vistaHoy(){
   document.getElementById("v-hoy").innerHTML = h;
   activaEnlacesGuia(); activaDiario();
   if (PREF.avisar) avisoCerca(i);
+  if (dia.xy) pintaTiempo(dia.xy, dia.base || "");
 }
 
 /* ---- Vista DÍAS ---- */
