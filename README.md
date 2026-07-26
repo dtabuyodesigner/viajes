@@ -16,6 +16,7 @@ conduce por sitios donde no hay línea.
 /crear/               editor: crear, pedir a una IA e importar viajes
 /viaje/?id=xxx        visor de los viajes creados
 /sync.js              nube, diario y fotos: compartido por todas
+/assets/app.js        motor común: cámara, mapas, tiempo, «estoy aquí»
 /img/  /fotos/        dibujos, mapas y fotos
 /sql/                 SQL de las tablas, para pegar en Supabase
 /tests/probar.js      68 comprobaciones automáticas
@@ -33,6 +34,7 @@ producción. Se abre el archivo y funciona.
 | Eslovenia | 2.453 | 139 KB |
 | Asturias | 2.042 | 110 KB |
 | sync.js | 722 | 26 KB |
+| assets/app.js | 431 | 15 KB |
 
 ---
 
@@ -46,8 +48,8 @@ sesión. Supabase iguala cuando hay red. Si la nube falla, no se entera nadie.
 Toda llamada de red lleva tope de tiempo (`conTope()` en `sync.js`). Si algo no
 responde, se avisa. Nunca se deja un botón en «Cargando…» para siempre.
 
-**3. Se prueba antes de publicar.**
-`node tests/probar.js` antes de cada subida. Sin excepciones.
+**3. Se prueba antes de publicar, y se publica en `dev`.**
+`node tests/probar.js` antes de cada subida. A `main` solo lo pedido y probado.
 
 ---
 
@@ -81,6 +83,7 @@ estar usándose en carretera ahora mismo.
 | Tiempo real por carretera | | ● | ● | ● | |
 | El tiempo | | ● | ● | ● | |
 | Aviso de cercanía | | ● | ● | ● | |
+| El primer vistazo del día | | ● | ● | ● | |
 | park4night | | | ● | | |
 | Crear, pedir a una IA, importar | | | | | ● |
 | Sincronización | ● | ● | ● | ● | ● |
@@ -181,9 +184,9 @@ sesión: son dos personas que comparten todo.
 
 ## Reglas que no se saltan
 
-**El caché puede dejarte la app vieja.** `sync.js` va con `?v=NN` en la URL y
-está excluido del service worker. Si tocas `sync.js`, **sube el número** en las
-cinco páginas que lo cargan.
+**El caché puede dejarte la app vieja.** `sync.js` y `assets/app.js` van con
+`?v=NN` en la URL y están excluidos del service worker. Si los tocas, **sube el
+número** en las páginas que los cargan.
 
 **La versión se ve en pantalla.** `const VERSION`. Súbela en cada publicación.
 
@@ -232,7 +235,9 @@ volver a probarlos a mano.
 
 ## Las pruebas
 
-`node tests/probar.js` — 68 comprobaciones, sin tocar la red ni GitHub:
+Dos herramientas, para dos cosas distintas.
+
+**`node tests/probar.js`** comprueba que las apps funcionan. 68 comprobaciones, sin tocar la red ni GitHub:
 
 1. Cada app carga sin errores y todas las pestañas pintan contenido
 2. No hay enlaces con esquemas desconocidos
@@ -243,6 +248,15 @@ volver a probarlos a mano.
 7. No se usa ninguna función sin definir
 8. Barra, cabecera y tarjetas siguen el tema claro
 9. Cada vista tiene sus propios identificadores
+
+**`node tests/foto.js`** comprueba que siguen haciendo *exactamente lo mismo*.
+Guarda el HTML de las 34 vistas y lo compara después de mover código. Es lo que
+hace seguro refactorizar:
+
+```bash
+node tests/foto.js guardar     # antes de tocar
+node tests/foto.js comparar    # después
+```
 
 **Una prueba que nunca has visto fallar no sirve.** Después de escribirla,
 reintroduce el fallo a propósito y comprueba que salta. Ha pasado dos veces que

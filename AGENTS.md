@@ -5,6 +5,20 @@ Antigravity o lo que venga. Léelo entero antes de escribir nada.
 
 ---
 
+## Las dos reglas que no se negocian
+
+**1. Nunca se toca `main` directamente.** Todo va a `dev`. A `main` solo llega lo
+que esté probado y cuando la persona lo pida. `main` es lo que hay publicado y
+puede estar usándose en carretera ahora mismo.
+
+**2. Todo cambio se documenta antes de darlo por terminado.** `README.md` si
+cambia la estructura o los datos, `PENDIENTE.md` si se completa o aparece algo
+nuevo, `USO.md` si cambia lo que ve la persona, y este archivo si se comete un
+error del que se pueda aprender. No es papeleo: es lo que permite que la próxima
+sesión no empiece de cero.
+
+---
+
 ## Lo primero
 
 ```bash
@@ -46,6 +60,10 @@ Si tocas `sync.js`, sube el `?v=NN` en las tres páginas que lo cargan. Si tocas
 una app, sube su `const VERSION`. Ya ha pasado dos veces que el usuario viera
 una versión antigua y pensara que algo estaba roto.
 
+### Mover código: fotografiar antes
+Si vas a refactorizar, `node tests/foto.js guardar` primero. Mueve **un bloque**,
+`comparar`, sigue. Nunca cinco de golpe: si algo se rompe no sabrás cuál fue.
+
 ### Nada de dependencias
 Ni frameworks, ni compilación, ni `node_modules` en producción. Un archivo HTML
 por app, con todo dentro. `jsdom` es solo para las pruebas.
@@ -82,10 +100,13 @@ Es lo que hay y mezclar idiomas lo hace peor.
 
 ## Antes de publicar
 
-1. `node tests/probar.js` en verde
-2. Subir `VERSION` y, si toca, el `?v=` de `sync.js`
-3. Trabajar en `dev`, mezclar a `main` solo lo probado
-4. Comprobar que el build de GitHub Pages termina en `built`
+1. `node tests/probar.js` en verde — **y leer el resultado**, no solo lanzarlo
+2. Si has movido código, `node tests/foto.js comparar` también en verde
+3. Subir `VERSION` y, si toca, el `?v=` de `sync.js` y de `assets/app.js`
+4. Actualizar la documentación que corresponda
+5. Subir **a `dev`**
+6. Mezclar a `main` solo cuando la persona lo pida
+7. Comprobar que el build de GitHub Pages termina en `built`
 
 `main` es lo que hay publicado. Puede estar usándose **en carretera ahora
 mismo**. No se sube nada a `main` sin probar.
@@ -127,10 +148,11 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 
 ```bash
 node tests/probar.js              # las 68 en verde, y LEER el resultado
-# subir VERSION en index.html, eslovenia/, asturias/
-# si tocaste sync.js, subir también el ?v=NN en las páginas que lo cargan
-git checkout dev && git commit -am "…"
-git checkout main && git merge dev && git push
+node tests/foto.js comparar       # si has movido código
+# subir VERSION, y el ?v=NN de sync.js y assets/app.js si los tocaste
+# actualizar README / PENDIENTE / USO / AGENTS según toque
+git checkout dev && git commit -am "…" && git push origin dev
+# …y parar aquí. A main solo cuando lo pidan.
 ```
 
 Y comprobar que el build de GitHub Pages acaba en `built`. Si sale `errored`,

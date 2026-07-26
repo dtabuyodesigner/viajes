@@ -4,7 +4,25 @@ Ordenado por lo que más cambia las cosas, no por lo que más cuesta.
 
 ---
 
-## 1 · Unificar el motor
+## 1 · Unificar el motor  ·  fase 1 hecha, en `dev`
+
+**Hecho ya (v72, rama `dev`).** `assets/app.js` con la cámara y las fotos,
+«Estoy aquí» y buscar sitios, el mapa del día, el mapa de cabecera, el tiempo de
+Open-Meteo y los tiempos por carretera de OSRM. **758 líneas fuera de la
+triplicación**, de 784 duplicadas quedan 96. Las 34 fotografías salen idénticas.
+
+Aparecieron dos cosas al mover: el visor tenía el hueco del tiempo sin rellenar
+—lo ha ganado gratis— y su función de ubicación se llamaba distinto.
+
+**Falta la fase 2** (separar los datos de cada viaje) y las 96 líneas de bloques
+pequeños que difieren lo justo para no poder moverlos tal cual: dictado por voz,
+compartir el diario y las rutas de Wikiloc.
+
+**Mezclado a `main` en v73**, a petición.
+
+---
+
+### Lo que había antes
 
 **Qué pasa hoy.** Hay cuatro apps con el mismo código copiado: portada, visor,
 Eslovenia y Asturias. Cada arreglo hay que hacerlo cuatro veces y cada repetición
@@ -101,9 +119,7 @@ arranca sola en el día que toca.
 
 ## Ideas sin decidir
 
-- **Lista de lo que hay que reservar.** La app ya lo sabe: está escrito en las
-  notas («reserva online, en verano se agotan») pero enterrado en el día 6.
-  Sacarlo a una lista es casi gratis.
+
 - **Preparativos antes de salir**, con cuenta atrás: antiparasitario, revisión de
   la furgo, viñeta, mapas descargados, taxi de madrugada.
 - **Modo conducción:** letra grande, solo la siguiente parada, un botón.
@@ -140,6 +156,9 @@ Para no volver a proponerlo:
 | Compartir la app | v64 |
 | Añadir sitios por los que ya se pasó | v68 |
 | Mapa en cada día | v69–v72 |
+| Motor común, fase 1 | v72 · `dev` |
+| El primer vistazo: lo que importa del día, al abrir | v73 |
+| El vistazo recuerda tus notas de ayer y de días pasados | v73 |
 
 ---
 
