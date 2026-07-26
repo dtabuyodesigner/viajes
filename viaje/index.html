@@ -708,15 +708,19 @@ function pedirUbicacion(){
 }
 
 async function buscarCerca(cat, pos, km){
+  // En radios grandes, cosas como las gasolineras salen a miles y el servidor
+  // se atraganta. Se le pide el mínimo y se corta pronto.
   const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
-  const consulta = `[out:json][timeout:25];(${partes});out center 40;`;
+  const tope = km >= 50 ? 60 : 40;
+  const espera = km >= 50 ? 50 : 25;
+  const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
   const ctrl = new AbortController();
-  const corte = setTimeout(() => ctrl.abort(), 28000);
+  const corte = setTimeout(() => ctrl.abort(), (espera + 8) * 1000);
   try {
     const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(consulta),
                           { signal: ctrl.signal });
     clearTimeout(corte);
-    if (!r.ok) throw new Error(r.status);
+    if (!r.ok) throw new Error(r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : r.status);
     const d = await r.json();
     return (d.elements || []).map(e => {
       const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
@@ -872,8 +876,13 @@ async function lanzarCerca(){
     } else if (ns){
       ns.innerHTML = "<b>Distancias en línea recta.</b> Datos de OpenStreetMap.";
     }
-  } catch {
-    cont.innerHTML = `<p class="note">No se pudo consultar. ¿Hay cobertura?</p>`;
+  } catch (e) {
+    const motivo = String(e?.message || "");
+    cont.innerHTML = `<p class="note">${
+      motivo === "ocupado" ? "El servidor de mapas está saturado ahora mismo. Prueba en un minuto."
+      : motivo === "lento" || /abort/i.test(motivo)
+        ? `Demasiados resultados en ${radioKm} km y el servidor no da abasto. Prueba con un radio menor.`
+      : "No se pudo consultar. ¿Hay cobertura?"}</p>`;
   }
 }
 
