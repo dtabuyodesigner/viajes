@@ -450,6 +450,36 @@ function vistaDias(){
   }));
 }
 
+
+/* ---- Tiempo real por carretera (OSRM, datos de OpenStreetMap) ---- */
+function formatoTiempo(seg){
+  const m = Math.round(seg / 60);
+  if (m < 60) return m + " min";
+  const h = Math.floor(m / 60), r = m % 60;
+  return r ? `${h} h ${r}` : `${h} h`;
+}
+
+async function porCarretera(origen, destinos){
+  if (!navigator.onLine || !destinos.length) return null;
+  const puntos = [origen, ...destinos].map(p => `${p[1]},${p[0]}`).join(";");
+  const url = `https://router.project-osrm.org/table/v1/driving/${puntos}` +
+              `?sources=0&annotations=duration,distance`;
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(corte);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    if (d.code !== "Ok") throw new Error(d.code);
+    const dur = (d.durations || [[]])[0].slice(1);
+    const dis = (d.distances || [[]])[0].slice(1);
+    return destinos.map((_, i) => (dur[i] == null ? null : {
+      seg: dur[i], km: dis[i] != null ? dis[i] / 1000 : null
+    }));
+  } catch { clearTimeout(corte); return null; }
+}
+
 /* ---- Qué hay cerca, con OpenStreetMap ---- */
 const CATEGORIAS = [
   { id:"agua",   n:"Agua potable",  q:'node["amenity"="drinking_water"]' },
@@ -608,11 +638,11 @@ async function lanzarCerca(){
   try {
     const r = await buscarCerca(cat, miPos, radioKm);
     if (!r.length){ cont.innerHTML = `<p class="note">Nada en ${radioKm} km. Prueba a ampliar el radio.</p>`; return; }
-    cont.innerHTML = `<ul class="plain">${r.map(x => `
+    cont.innerHTML = `<ul class="plain">${r.map((x, i) => `
       <li>
         <div class="lugar-fila">
           <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
-          <span class="km">${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i></span>
+          <span class="km" id="ks-${i}">${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i></span>
         </div>
         <div class="btns" style="margin-top:6px">
           <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
@@ -620,7 +650,18 @@ async function lanzarCerca(){
              target="_blank" rel="noopener">Ver</a>
         </div>
       </li>`).join("")}</ul>
-      <p class="note">Distancias en línea recta. Datos de OpenStreetMap, mantenidos por voluntarios: puede faltar algo.</p>`;
+      <p class="note" id="nota-serv">Calculando el tiempo por carretera…</p>`;
+    const t = await porCarretera(miPos, r.map(x => x.xy));
+    const ns = document.getElementById("nota-serv");
+    if (t){
+      t.forEach((x, i) => {
+        const el = document.getElementById("ks-" + i);
+        if (el && x) el.innerHTML = `${formatoTiempo(x.seg)}<i>${x.km != null ? Math.round(x.km) + " km" : "en coche"}</i>`;
+      });
+      if (ns) ns.textContent = "Tiempo en coche. Datos de OpenStreetMap, mantenidos por voluntarios.";
+    } else if (ns){
+      ns.innerHTML = "<b>Distancias en línea recta.</b> Datos de OpenStreetMap.";
+    }
   } catch {
     cont.innerHTML = `<p class="note">No se pudo consultar. ¿Hay cobertura?</p>`;
   }
