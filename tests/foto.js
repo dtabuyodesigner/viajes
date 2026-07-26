@@ -82,6 +82,10 @@ async function retratar(app){
   const sync = fs.readFileSync(path.join(RAIZ, "sync.js"), "utf8");
   html = html.replace(/<script src="[^"]*sync\.js[^"]*"><\/script>/,
                       `<script>\n${sync}\n</script>`);
+  const motor = fs.existsSync(path.join(RAIZ, "assets/app.js"))
+    ? fs.readFileSync(path.join(RAIZ, "assets/app.js"), "utf8") : "";
+  html = html.replace(/<script src="[^"]*assets\/app\.js[^"]*"><\/script>/,
+                      motor ? `<script>\n${motor}\n</script>` : "");
 
   const almacen = { tema_viajes: "oscuro", ...(app.almacen || {}) };
   const dom = new JSDOM(html, {
