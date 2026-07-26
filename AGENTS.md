@@ -134,6 +134,8 @@ Están aquí para que no se repitan:
 | Las fotos salían en todos los días | El día se dibuja dos veces y ambos usaban los mismos ids | Parámetro `ctx`: `hoy` y `det` |
 | El botón «situarme» roto en el visor | Allí la función se llama `ubicacion()`, no `pedirUbicacion()` | La prueba de funciones sin definir lo cazó |
 | Se publicó con una prueba en rojo | Se lanzó la subida sin mirar el resultado | Leer la salida antes de subir, no después |
+| Los servicios salían desordenados | Se ordenaban en recto y los tiempos reales se metían en su sitio sin reordenar | Ya estaba corregido en otro bloque: el motor común evita repetir el fallo |
+| «Nada en 100 km» con gasolineras | Overpass se atraganta con miles de resultados y devuelve 504 | Tope y timeout según el radio, y decir qué pasa |
 
 El patrón se repite: **dar algo por bueno sin ejecutarlo**. Por eso existen las
 pruebas.
