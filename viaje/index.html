@@ -131,9 +131,9 @@ ul.plain li:first-child{border-top:0}
 .stop.key > p{font-weight:600}
 .lluvia{display:flex;gap:10px;align-items:flex-start;margin:2px 0 14px;padding:11px 13px;
   border-radius:12px;background:rgba(90,169,196,.1);border:1px solid rgba(90,169,196,.3)}
-.lluvia .ic{flex:0 0 auto;color:#7FC4D8;font-size:15px;line-height:1.4}
-.lluvia p{margin:0;font-size:13.5px;line-height:1.5;color:#C6DDE5}
-.lluvia b{color:#E9F0F2}
+.lluvia .ic{flex:0 0 auto;color:var(--ac);font-size:15px;line-height:1.4}
+.lluvia p{margin:0;font-size:13.5px;line-height:1.5;color:var(--t)}
+.lluvia b{color:var(--t)}
 .row{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-top:1px solid var(--line)}
 .row:first-of-type{border-top:0}
 .row .k{color:var(--td);font-size:14px;flex:0 0 auto}
@@ -168,6 +168,9 @@ header{position:relative}
   nav{background:var(--f)}
   header{background:var(--f)}
 }
+
+.km i{display:block;font-style:normal;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;opacity:.6;color:var(--td)}
 </style>
 </head>
 <body>
@@ -382,7 +385,7 @@ async function avisoCerca(i){
     const dist = mejor.km < 1 ? Math.round(mejor.km * 1000) + " m" : mejor.km.toFixed(1) + " km";
     z.innerHTML = `<div class="cerca-aviso">
       <span class="ic">◎</span>
-      <div><b>Estás a ${dist} de ${esc(mejor.p.txt)}</b>
+      <div><b>Tienes ${dist} en línea recta hasta ${esc(mejor.p.txt)}</b>
       ${mejor.p.n ? `<small>${esc(mejor.p.n)}</small>` : ""}</div>
     </div>`;
   } catch {}
@@ -609,7 +612,7 @@ async function lanzarCerca(){
       <li>
         <div class="lugar-fila">
           <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
-          <span class="km">${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}</span>
+          <span class="km">${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i></span>
         </div>
         <div class="btns" style="margin-top:6px">
           <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
@@ -617,7 +620,7 @@ async function lanzarCerca(){
              target="_blank" rel="noopener">Ver</a>
         </div>
       </li>`).join("")}</ul>
-      <p class="note">Datos de OpenStreetMap, mantenidos por voluntarios: puede faltar algo o estar desactualizado.</p>`;
+      <p class="note">Distancias en línea recta. Datos de OpenStreetMap, mantenidos por voluntarios: puede faltar algo.</p>`;
   } catch {
     cont.innerHTML = `<p class="note">No se pudo consultar. ¿Hay cobertura?</p>`;
   }
