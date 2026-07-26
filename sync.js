@@ -340,11 +340,13 @@ const FOTOS = {
     const t = await this._tienda("readwrite");
     if (!t) return null;
     const id = `${viaje}:${dia}:${Date.now()}`;
-    return new Promise(ok => {
+    const guardado = await new Promise(ok => {
       const p = t.put({ id, viaje, dia, datos, cuando: Date.now() });
       p.onsuccess = () => ok(id);
       p.onerror = () => ok(null);
     });
+    if (guardado) this.subir(id).catch(()=>{});
+    return guardado;
   },
 
   /* Todas las de un día, de la más antigua a la más nueva */
@@ -384,11 +386,107 @@ const FOTOS = {
   async borrar(id){
     const t = await this._tienda("readwrite");
     if (!t) return false;
-    return new Promise(ok => {
+    const fuera = await new Promise(ok => {
       const p = t.delete(id);
       p.onsuccess = () => ok(true);
       p.onerror = () => ok(false);
     });
+    this.marcarBorradaFuera(id).catch(()=>{});
+    return fuera;
+  },
+
+  /* ---- Compartir con el otro móvil ---- */
+
+  pendientes(){
+    try { return JSON.parse(localStorage.getItem("fotos_pendientes")) || []; } catch { return []; }
+  },
+  _apuntarPendiente(id){
+    const p = new Set(this.pendientes()); p.add(id);
+    try { localStorage.setItem("fotos_pendientes", JSON.stringify([...p])); } catch {}
+  },
+  _quitarPendiente(id){
+    try { localStorage.setItem("fotos_pendientes",
+      JSON.stringify(this.pendientes().filter(x => x !== id))); } catch {}
+  },
+
+  async _porId(id){
+    const t = await this._tienda("readonly");
+    if (!t) return null;
+    return new Promise(ok => {
+      const p = t.get(id);
+      p.onsuccess = () => ok(p.result || null);
+      p.onerror = () => ok(null);
+    });
+  },
+
+  async subir(id){
+    const c = await SYNC.conectar();
+    if (!c || !SYNC.sesion){ this._apuntarPendiente(id); return false; }
+    const f = await this._porId(id);
+    if (!f){ this._quitarPendiente(id); return false; }
+    try {
+      const { error } = await c.from("viaje_fotos").upsert({
+        id: f.id, viaje: f.viaje, dia: f.dia, datos: f.datos,
+        autor: SYNC.sesion.user?.email || "", borrada: false
+      });
+      if (error) throw error;
+      this._quitarPendiente(id);
+      return true;
+    } catch { this._apuntarPendiente(id); return false; }
+  },
+
+  async marcarBorradaFuera(id){
+    const c = await SYNC.conectar();
+    if (!c || !SYNC.sesion) return false;
+    try {
+      await c.from("viaje_fotos").update({ borrada:true }).eq("id", id);
+      this._quitarPendiente(id);
+      return true;
+    } catch { return false; }
+  },
+
+  /* Trae del otro móvil las fotos de un día que aquí no estén.
+     Primero pregunta qué ids hay (ligero) y solo baja las que faltan. */
+  async traerDelDia(viaje, dia){
+    const c = await SYNC.conectar();
+    if (!c || !SYNC.sesion) return 0;
+
+    // lo pendiente de subir, primero
+    for (const id of this.pendientes()) await this.subir(id);
+
+    let fuera = [];
+    try {
+      const { data, error } = await c.from("viaje_fotos")
+        .select("id,borrada").eq("viaje", viaje).eq("dia", dia);
+      if (error) throw error;
+      fuera = data || [];
+    } catch { return 0; }
+
+    const aqui = new Set((await this.delDia(viaje, dia)).map(f => f.id));
+    let nuevas = 0;
+
+    for (const f of fuera){
+      if (f.borrada){
+        if (aqui.has(f.id)){
+          const t = await this._tienda("readwrite");
+          if (t) t.delete(f.id);
+          nuevas++;
+        }
+        continue;
+      }
+      if (aqui.has(f.id)) continue;
+      try {
+        const { data, error } = await c.from("viaje_fotos")
+          .select("id,viaje,dia,datos,cuando").eq("id", f.id).maybeSingle();
+        if (error || !data) continue;
+        const t = await this._tienda("readwrite");
+        if (!t) continue;
+        t.put({ id:data.id, viaje:data.viaje, dia:data.dia, datos:data.datos,
+                cuando: Date.parse(data.cuando) || Date.now() });
+        nuevas++;
+      } catch {}
+    }
+    return nuevas;
   },
 
   /* Cuánto ocupan, para avisar antes de llenar el móvil */
@@ -425,4 +523,7 @@ function comprimirFoto(archivo, maxLado = 1400, calidad = 0.75){
 }
 
 // Reintento automático al recuperar la cobertura
-window.addEventListener("online", () => { SYNC.sincronizar().catch(()=>{}); });
+window.addEventListener("online", () => {
+  SYNC.sincronizar().catch(()=>{});
+  FOTOS.pendientes().forEach(id => FOTOS.subir(id).catch(()=>{}));
+});
