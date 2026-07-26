@@ -67,7 +67,7 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .login input{width:100%;padding:11px 13px;margin-bottom:8px;border-radius:12px;
   border:1px solid var(--linea);background:var(--fondo);color:var(--tinta);
   font-family:var(--sans);font-size:15px}
-.login input::placeholder{color:#63757D}
+.login input::placeholder{color:var(--tinta-dim)}
 #err-login{color:#E08A72}
 
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
@@ -163,7 +163,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v54 · 25/07 22:03";
+const VERSION = "v55 · 26/07 05:36";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
