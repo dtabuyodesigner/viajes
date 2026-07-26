@@ -761,7 +761,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v62 · 26/07 07:52";
+const VERSION = "v63 · 26/07 10:45";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -784,7 +784,7 @@ function indiceHoy(){
   return VIAJE.dias.length - 1;                            // ya ha terminado
 }
 
-function pintaParadas(dia, iDia){
+function pintaParadas(dia, iDia, ctx = "hoy"){
   const clase = "river";
   return `<div class="${clase}">` + dia.paradas.map((p, k) => {
     const clave = `${iDia}:${k}`;
@@ -801,7 +801,7 @@ function pintaParadas(dia, iDia){
         <span class="pk">P</span>
         <div><b>${esc(p.park.n)}</b><small>${esc(p.park.p)}</small></div>
       </div>` : ""}
-    </div>`; }).join("") + `</div>` + cajaAqui(iDia) + cajaNota(iDia) + cajaFotos(iDia);
+    </div>`; }).join("") + `</div>` + cajaAqui(iDia, ctx) + cajaNota(iDia) + cajaFotos(iDia, ctx);
 }
 
 function cajaNota(i){
@@ -1195,19 +1195,19 @@ async function avisoCerca(i){
 
 
 /* ---- «Estoy aquí»: registrar un sitio, esté o no en el plan ---- */
-function cajaAqui(i){
-  return `<div class="aqui-zona" id="aqui-${i}">
+function cajaAqui(i, ctx = "hoy"){
+  return `<div class="aqui-zona" id="aqui-${ctx}-${i}">
     <span class="label">Por dónde hemos pasado</span>
-    <div id="lista-aqui-${i}"></div>
+    <div id="lista-aqui-${ctx}-${i}"></div>
     <div class="btns">
-      <button class="btn solid" data-aqui="${i}">Estoy aquí</button>
+      <button class="btn solid" data-aqui="${ctx}:${i}">Estoy aquí</button>
     </div>
     <p class="note">Guarda el punto donde estés ahora, aunque no estuviera previsto. Luego sale en el mapa.</p>
   </div>`;
 }
 
-function pintaAqui(i){
-  const z = document.getElementById("lista-aqui-" + i);
+function pintaAqui(i, ctx = "hoy"){
+  const z = document.getElementById(`lista-aqui-${ctx}-${i}`);
   if (!z || typeof DIARIO_SYNC === "undefined") return;
   const vs = DIARIO_SYNC.visitasDelDia(VIAJE_ID, i);
   z.innerHTML = vs.length ? `<ul class="plain">${vs.map(v => {
@@ -1230,17 +1230,17 @@ function pintaAqui(i){
     const t = prompt("¿Qué es este sitio?", v?.txt || "");
     if (t === null) return;
     DIARIO_SYNC.renombrarVisita(VIAJE_ID, b.dataset.nombrar, t.trim());
-    pintaAqui(i);
+    pintaAqui(i, ctx);
   }));
   z.querySelectorAll("[data-quitar-v]").forEach(b => b.addEventListener("click", () => {
     if (!confirm("¿Quitar este punto?")) return;
     DIARIO_SYNC.borrarVisita(VIAJE_ID, b.dataset.quitarV);
-    pintaAqui(i);
+    pintaAqui(i, ctx);
   }));
 }
 
-function activaAqui(i){
-  const b = document.querySelector(`[data-aqui="${i}"]`);
+function activaAqui(i, ctx = "hoy"){
+  const b = document.querySelector(`[data-aqui="${ctx}:${i}"]`);
   if (!b || b.dataset.listo) return;
   b.dataset.listo = "1";
   b.addEventListener("click", async () => {
@@ -1249,39 +1249,39 @@ function activaAqui(i){
     try {
       const v = await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
       b.textContent = "Guardado";
-      pintaAqui(i);
+      pintaAqui(i, ctx);
       const t = prompt("Guardado. ¿Le pones nombre?", "");
-      if (t && t.trim()){ DIARIO_SYNC.renombrarVisita(VIAJE_ID, v.id, t.trim()); pintaAqui(i); }
+      if (t && t.trim()){ DIARIO_SYNC.renombrarVisita(VIAJE_ID, v.id, t.trim()); pintaAqui(i, ctx); }
     } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
     setTimeout(() => { b.textContent = antes; }, 2200);
   });
 }
 
 /* ---- Cámara y fotos del día ---- */
-function cajaFotos(i){
-  return `<div class="fotos-dia" id="fotos-${i}">
+function cajaFotos(i, ctx = "hoy"){
+  return `<div class="fotos-dia" id="fotos-${ctx}-${i}">
     <span class="label">Fotos del día</span>
-    <div class="galeria" id="gal-${i}"></div>
+    <div class="galeria" id="gal-${ctx}-${i}"></div>
     <div class="btns">
       <label class="btn solid camara">
-        <input type="file" accept="image/*" capture="environment" data-camara="${i}" hidden>
+        <input type="file" accept="image/*" capture="environment" data-camara="${ctx}:${i}" hidden>
         <span>Hacer una foto</span>
       </label>
       <label class="btn">
-        <input type="file" accept="image/*" multiple data-carrete="${i}" hidden>
+        <input type="file" accept="image/*" multiple data-carrete="${ctx}:${i}" hidden>
         <span>Del carrete</span>
       </label>
     </div>
   </div>`;
 }
 
-async function pintaGaleria(i, traer = true){
-  const g = document.getElementById("gal-" + i);
+async function pintaGaleria(i, traer = true, ctx = "hoy"){
+  const g = document.getElementById(`gal-${ctx}-${i}`);
   if (!g) return;
   let fs = await FOTOS.delDia(VIAJE_ID, i);
   if (traer){
     // pintamos lo que hay y, mientras, miramos si el otro móvil subió algo
-    FOTOS.traerDelDia(VIAJE_ID, i).then(n => { if (n) pintaGaleria(i, false); }).catch(()=>{});
+    FOTOS.traerDelDia(VIAJE_ID, i).then(n => { if (n) pintaGaleria(i, false, ctx); }).catch(()=>{});
   }
   g.innerHTML = fs.length
     ? fs.map(f => {
@@ -1297,19 +1297,19 @@ async function pintaGaleria(i, traer = true){
   g.querySelectorAll("[data-borrar-foto]").forEach(b => b.addEventListener("click", async () => {
     if (!confirm("¿Quitar esta foto?")) return;
     await FOTOS.borrar(b.dataset.borrarFoto);
-    pintaGaleria(i);
+    pintaGaleria(i, false, ctx);
   }));
   g.querySelectorAll("[data-ver]").forEach(im => im.addEventListener("click", () => verFoto(im.src)));
   g.querySelectorAll("[data-portada]").forEach(b => b.addEventListener("click", () => {
     if (typeof DIARIO_SYNC === "undefined") return;
     DIARIO_SYNC.ponPortada(VIAJE_ID, i, b.dataset.portada);
-    pintaGaleria(i, false);
-    pintaPortada(i);
+    pintaGaleria(i, false, ctx);
+    pintaPortada(i, ctx);
   }));
 }
 
-async function pintaPortada(i){
-  const z = document.getElementById("portada-dia");
+async function pintaPortada(i, ctx = "hoy"){
+  const z = document.getElementById(`portada-${ctx}`);
   if (!z || typeof DIARIO_SYNC === "undefined") return;
   const id = DIARIO_SYNC.portada(VIAJE_ID, i);
   if (!id){ z.innerHTML = ""; return; }
@@ -1327,8 +1327,8 @@ function verFoto(src){
   document.body.appendChild(v);
 }
 
-function activaCamara(i){
-  document.querySelectorAll(`[data-camara="${i}"], [data-carrete="${i}"]`).forEach(inp => {
+function activaCamara(i, ctx = "hoy"){
+  document.querySelectorAll(`[data-camara="${ctx}:${i}"], [data-carrete="${ctx}:${i}"]`).forEach(inp => {
     if (inp.dataset.listo) return;
     inp.dataset.listo = "1";
     inp.addEventListener("change", async e => {
@@ -1350,7 +1350,7 @@ function activaCamara(i){
       if (fallos) alert(fallos === archivos.length
         ? "No se pudieron guardar las fotos en este móvil."
         : `${fallos} de ${archivos.length} no se pudieron guardar.`);
-      pintaGaleria(i);
+      pintaGaleria(i, false, ctx);
     });
   });
 }
@@ -1367,7 +1367,7 @@ function vistaHoy(){
   document.getElementById("title").textContent = dia.t;
   document.getElementById("subtitle").textContent = `Duermes en ${dia.base}`;
 
-  let h = `<div id="aviso-cerca"></div><div id="portada-dia"></div><div id="zona-tiempo"></div>` + cabecera(dia) + botonesRuta(i) + pintaParadas(dia, i);
+  let h = `<div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>` + cabecera(dia) + botonesRuta(i) + pintaParadas(dia, i, "hoy");
   if (sig){
     const fs = fecha(sig.f);
     h += `<div class="sec"><span class="label">Mañana · ${esc(fs.wd)}</span><h2>${esc(sig.t)}</h2></div>
@@ -1375,7 +1375,8 @@ function vistaHoy(){
   }
   document.getElementById("v-hoy").innerHTML = h;
   activaEnlacesGuia(); activaDiario(); activaAtajoServicios();
-  activaCamara(i); pintaGaleria(i); activaAqui(i); pintaAqui(i); pintaPortada(i);
+  activaCamara(i, "hoy"); pintaGaleria(i, true, "hoy");
+  activaAqui(i, "hoy"); pintaAqui(i, "hoy"); pintaPortada(i, "hoy");
   if (PREF.avisar) avisoCerca(i);
   if (dia.xy) pintaTiempo(dia.xy, dia.base || "");
 }
@@ -1407,10 +1408,10 @@ function vistaDias(){
   document.querySelectorAll(".day").forEach(b => b.addEventListener("click", () => {
     const i = +b.dataset.i, d = VIAJE.dias[i], f = fecha(d.f);
     const det = document.getElementById("detalle");
-    det.innerHTML = `<div class="sec"><span class="label">${esc(f.wd)} ${esc(f.txt)}</span><h2>${esc(d.t)}</h2></div>${cabecera(d)}${botonesRuta(i)}${pintaParadas(d, i)}`;
+    det.innerHTML = `<div class="sec"><span class="label">${esc(f.wd)} ${esc(f.txt)}</span><h2>${esc(d.t)}</h2></div><div id="portada-det"></div>${cabecera(d)}${botonesRuta(i)}${pintaParadas(d, i, "det")}`;
     activaEnlacesGuia(); activaDiario(); activaAtajoServicios();
-    activaCamara(i); pintaGaleria(i); activaAqui(i); pintaAqui(i); pintaPortada(i); activaAqui(i); pintaAqui(i); pintaPortada(i);
-  activaCamara(i); pintaGaleria(i); activaAqui(i); pintaAqui(i); pintaPortada(i); activaAtajoServicios();
+    activaCamara(i, "det"); pintaGaleria(i, true, "det");
+    activaAqui(i, "det"); pintaAqui(i, "det"); pintaPortada(i, "det");
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
 }
