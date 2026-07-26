@@ -720,7 +720,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v57 · 26/07 06:17";
+const VERSION = "v58 · 26/07 06:35";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
@@ -1018,6 +1018,7 @@ function botonesRuta(i){
       ${d.dest ? `<span class="wz-par cama-par"><a class="wz cama" href="${navegar(d.dest)}" target="_blank" rel="noopener">
         <b>${tramos.length+1}</b>Alojamiento</a>${PREF.app === "waze"
           ? `<a class="wz-alt" href="${mapsDe(d.dest)}" target="_blank" rel="noopener">map</a>` : ""}</span>` : ""}</div>
+    <div class="btns"><button class="btn" id="ir-servicios">Comer, gasolina, tiendas…</button></div>
     <p class="note" style="margin:10px 0 0">Waze solo lleva a un sitio por vez: dale al siguiente número según vayas llegando.
     ${r.n ? `<a href="${r.url}" target="_blank" rel="noopener">Ver la ruta entera en Maps →</a>` : ""}</p>
   </div>`;
@@ -1144,7 +1145,7 @@ function vistaHoy(){
           <p class="note">${sig.paradas.map(p => esc(p.txt)).join(" · ")}</p>`;
   }
   document.getElementById("v-hoy").innerHTML = h;
-  activaEnlacesGuia(); activaDiario();
+  activaEnlacesGuia(); activaDiario(); activaAtajoServicios();
   if (PREF.avisar) avisoCerca(i);
   if (dia.xy) pintaTiempo(dia.xy, dia.base || "");
 }
@@ -1173,7 +1174,7 @@ function vistaDias(){
     const i = +b.dataset.i, d = VIAJE.dias[i], f = fecha(d.f);
     const det = document.getElementById("detalle");
     det.innerHTML = `<div class="sec"><span class="label">${esc(f.wd)} ${esc(f.txt)}</span><h2>${esc(d.t)}</h2></div>${cabecera(d)}${botonesRuta(i)}${pintaParadas(d, i)}`;
-    activaEnlacesGuia(); activaDiario();
+    activaEnlacesGuia(); activaDiario(); activaAtajoServicios(); activaAtajoServicios();
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
 }
@@ -1725,7 +1726,12 @@ async function buscarServicios(cat, pos, km){
 }
 
 function bloqueServicios(){
-  if (!MIPOS) return "";
+  if (!MIPOS) return `<div class="card" id="c-servicios">
+    <h3>Servicios cerca</h3>
+    <p class="note" style="margin-top:0">Dónde comer, supermercados, gasolineras, agua potable
+      o farmacias alrededor de donde estéis.</p>
+    <div class="btns"><button class="btn solid" id="btn-serv">Usar mi ubicación</button></div>
+  </div>`;
   return `<div class="card" id="c-servicios">
     <h3>Servicios cerca</h3>
     <p class="note" style="margin-top:0">Gasolineras, tiendas y sitios para comer alrededor.</p>
@@ -1771,6 +1777,12 @@ async function lanzarServicios(){
 }
 
 function activaServicios(){
+  const bs = document.getElementById("btn-serv");
+  if (bs) bs.addEventListener("click", async () => {
+    bs.textContent = "Localizando…";
+    try { await pedirUbicacion(); vistaGuia(); ponTiempos(); }
+    catch { bs.textContent = "No se pudo obtener la ubicación"; }
+  });
   document.querySelectorAll("[data-cat]").forEach(x => x.addEventListener("click", () => {
     catActiva = x.dataset.cat; vistaGuia(); lanzarServicios(); }));
   document.querySelectorAll("[data-km]").forEach(x => x.addEventListener("click", () => {
@@ -1865,6 +1877,19 @@ function abrirGuia(id){
   if (!el) return;
   el.classList.add("abierto");
   setTimeout(() => el.scrollIntoView?.({behavior:"smooth", block:"center"}), 60);
+}
+
+function activaAtajoServicios(){
+  const b = document.getElementById("ir-servicios");
+  if (!b || b.dataset.listo) return;
+  b.dataset.listo = "1";
+  b.addEventListener("click", () => {
+    filtroGuia = "";
+    vePestana("guia");
+    setTimeout(() => {
+      document.getElementById("c-servicios")?.scrollIntoView?.({behavior:"smooth", block:"start"});
+    }, 80);
+  });
 }
 
 function activaEnlacesGuia(){
