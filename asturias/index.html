@@ -357,6 +357,14 @@ header{position:relative}
   background:transparent;color:var(--papel-dim);font-family:var(--sans);font-size:13px;cursor:pointer}
 .mp.on{border-color:var(--prau);color:var(--prau);font-weight:600;background:rgba(127,176,105,.1)}
 .mapa-cab .mapa,.mapa-cab .mapa-dia{margin:0}
+
+.vistazo{background:var(--monte-2);border-left:3px solid var(--teito);
+  border-radius:0 12px 12px 0;padding:13px 15px;margin:0 0 16px}
+.vistazo p{margin:0;font-size:15px;line-height:1.5;color:var(--papel)}
+.vistazo p + p{margin-top:7px}
+.vistazo .v-lluvia,.vistazo .v-hora{font-weight:600}
+.vistazo .v-aviso::before{content:"· "}
+.vistazo .v-hecho{color:var(--prau)}
 </style>
 </head>
 <body>
@@ -1132,6 +1140,101 @@ async function avisoCerca(i){
 
 
 
+
+/* ═══════════════════════════════════════════════════════════
+   El primer vistazo.
+
+   Lo que la app ya sabe, dicho junto y en dos frases, en vez
+   de repartido en cuatro pestañas. Se lee en un semáforo.
+
+   Reglas: nada de rellenar por rellenar. Si no hay nada que
+   avisar, no aparece. Y lo urgente primero.
+   ═══════════════════════════════════════════════════════════ */
+
+function frasesDelDia(i){
+  const d = VIAJE.dias[i];
+  if (!d) return [];
+  const f = [];
+  const ahora = new Date();
+  const hora = ahora.getHours();
+  const esHoy = (typeof indiceHoy === "function") && indiceHoy() === i;
+
+  /* ---- 1. Lo que hay que hacer con hora ---- */
+  const conHora = (d.paradas || []).filter(p => /\d/.test(p.h || ""));
+  if (esHoy && conHora.length){
+    const primera = conHora[0];
+    const m = (primera.h || "").match(/(\d{1,2})[:.]?(\d{2})?/);
+    if (m){
+      const h = +m[1];
+      if (hora < h) f.push({ tipo:"hora", txt:`${primera.c || primera.txt}, a las ${primera.h}.` });
+    }
+  }
+
+  /* ---- 2. Lo que hay que reservar o llevar (solo por la mañana) ---- */
+  const avisos = [];
+  for (const p of (d.paradas || [])){
+    const t = ((p.n || "") + " " + (p.park?.p || "")).toLowerCase();
+    if (/reserv|entrada con hora|se agotan|comprar antes/.test(t))
+      avisos.push(`${p.c || p.txt}: hay que reservar`);
+    if (/efectivo|no.{0,12}tarjeta|dat[áa]fono/.test(t))
+      avisos.push("llevad efectivo");
+    if (/se llena|llegar (antes|pronto)|antes de las/.test(t) && !avisos.includes("madrugar"))
+      avisos.push("el aparcamiento se llena pronto");
+  }
+  // por la tarde ya no hace falta recordar lo de llevar efectivo
+  if (!esHoy || hora < 13)
+    [...new Set(avisos)].slice(0, 2).forEach(a => f.push({ tipo:"aviso", txt: a }));
+
+  /* ---- 3. Lo imprescindible, si aún no está hecho ---- */
+  if (esHoy && typeof DIARIO_SYNC !== "undefined"){
+    const clave = (d.paradas || []).map((p, k) => ({ p, k })).filter(x => x.p.key);
+    const pendientes = clave.filter(x => !DIARIO_SYNC.estaHecha(VIAJE_ID, `${i}:${x.k}`));
+    if (pendientes.length && hora >= 15 && hora < 21)
+      f.unshift({ tipo:"pendiente", txt: pendientes.length === 1
+        ? `Queda ${pendientes[0].p.c || pendientes[0].p.txt}.`
+        : `Quedan ${pendientes.length} cosas: ${pendientes.map(x => x.p.c || x.p.txt).slice(0,2).join(", ")}.` });
+    if (clave.length && !pendientes.length && hora >= 13)
+      f.unshift({ tipo:"hecho", txt:"Lo importante del día, hecho." });
+  }
+
+  /* ---- 4. Cuánto se conduce ---- */
+  if (d.km && esHoy && hora < 12) f.push({ tipo:"coche", txt:`${d.km} al volante.` });
+
+  return f;
+}
+
+async function frasesTiempo(i){
+  const d = VIAJE.dias[i];
+  if (!d || !d.xy || typeof elTiempo !== "function") return [];
+  const [la, lo] = d.xy.split(",").map(Number);
+  const t = await elTiempo(la, lo);
+  if (!t) return [];
+  const hoy = t[0];
+  const f = [];
+  if (hoy.lluvia != null && hoy.lluvia >= 50)
+    f.push({ tipo:"lluvia", txt:`${hoy.lluvia}% de lluvia${d.lluvia ? `. Plan B: ${d.lluvia}` : ""}` });
+  else if (hoy.max >= 30) f.push({ tipo:"calor", txt:`${hoy.max}° de máxima. Agua encima.` });
+  else if (hoy.min <= 4) f.push({ tipo:"frio", txt:`${hoy.min}° de mínima. Abrigo.` });
+  return f;
+}
+
+function pintaVistazo(i){
+  const z = document.getElementById("vistazo");
+  if (!z) return;
+  const f = frasesDelDia(i);
+  const dibuja = lista => {
+    if (!lista.length){ z.innerHTML = ""; return; }
+    z.innerHTML = `<div class="vistazo">${lista.slice(0, 3).map(x =>
+      `<p class="v-${x.tipo}">${esc(x.txt)}</p>`).join("")}</div>`;
+  };
+  dibuja(f);
+  // el tiempo llega después, y si trae algo urgente se pone primero
+  const tarde = new Date().getHours() >= 18;
+  frasesTiempo(i).then(tf => {
+    if (tf.length) dibuja(tarde ? [...f, ...tf] : [...tf, ...f]);
+  }).catch(()=>{});
+}
+
 /* ---- Vista HOY ---- */
 function vistaHoy(){
   const i = indiceHoy(), dia = VIAJE.dias[i], f = fechaDe(i);
@@ -1139,7 +1242,7 @@ function vistaHoy(){
   document.getElementById("title").textContent = dia.t;
   document.getElementById("subtitle").textContent = `Duermes en ${dia.base}`;
 
-  let h = `<div id="mapa-cab-hoy-${i}">${mapaCabecera(i, "hoy")}</div><div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>`;
+  let h = `<div id="vistazo"></div><div id="mapa-cab-hoy-${i}">${mapaCabecera(i, "hoy")}</div><div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>`;
   if (!PREF.salida){
     h += `<div class="card">
       <span class="label">Todavía sin fechas</span>
@@ -1152,7 +1255,7 @@ function vistaHoy(){
       </div>
     </div>`;
   }
-  h += ilustra(dia.arte) + botonesRuta(i)
+  h += `<div id="vistazo"></div>` + ilustra(dia.arte) + botonesRuta(i)
      + pintaParadas(dia, i, "hoy");
 
   const sig = VIAJE.dias[i+1];
@@ -1163,6 +1266,7 @@ function vistaHoy(){
   activaDiario();
   activaCamara(i, "hoy"); pintaGaleria(i, true, "hoy");
   activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); activaMapaCab(i, "hoy"); pintaPortada(i, "hoy");
+  pintaVistazo(i);
   if (PREF.avisar) avisoCerca(i);
   if (dia.xy) pintaTiempo(dia.xy, dia.dest || dia.base || "");
 
