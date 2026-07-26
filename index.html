@@ -47,6 +47,8 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .ver{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--tinta-dim);margin:0 0 11px}
 .btn-act{width:100%;padding:12px;border-radius:999px;border:0;background:var(--tinta);color:var(--fondo);
   font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer}
+.btn-act.ligero{background:transparent;color:var(--tinta);border:1px solid var(--linea);
+  font-weight:600;margin-top:8px}
 .mantenimiento .nota{margin:0}
 .ops{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
 .op{flex:1 1 92px;text-align:left;padding:10px 11px;border-radius:11px;cursor:pointer;
@@ -102,7 +104,7 @@ header{position:relative}
 </header>
 <main><div id="lista"></div><div id="pie"></div></main>
 
-<script src="sync.js?v=62"></script>
+<script src="sync.js?v=64"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -163,7 +165,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v63 · 26/07 10:45";
+const VERSION = "v64 · 26/07 16:38";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -227,6 +229,7 @@ function pintaPie(){
     <div class="mantenimiento">
       <p class="ver">Versión ${VERSION} · <span id="nube"></span></p>
       <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
+      <button class="btn-act ligero" id="btn-compartir">Compartir la app</button>
       <p class="nota" style="margin-top:10px">Actualiza esta portada y los viajes a la vez.</p>
       <div id="cuenta"></div>
 
@@ -234,6 +237,19 @@ function pintaPie(){
     <p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera a la pantalla de inicio por separado.</p>`;
 
   ponEstado(ultimoEstado);
+  document.getElementById("btn-compartir").addEventListener("click", async () => {
+    const b = document.getElementById("btn-compartir");
+    const url = location.origin + location.pathname;
+    const texto = `Apps de viaje que funcionan sin cobertura: itinerario, navegación, ` +
+                  `qué hay cerca y diario del viaje.\n\n${url}\n\n` +
+                  `Se abre en el navegador. Para tenerla como una app: Compartir → Añadir a pantalla de inicio.`;
+    try {
+      if (navigator.share) await navigator.share({ title:"Viajes", text:texto, url });
+      else { await navigator.clipboard.writeText(url); b.textContent = "Enlace copiado"; }
+    } catch {}
+    setTimeout(() => { b.textContent = "Compartir la app"; }, 2500);
+  });
+
   document.getElementById("btn-actualizar").addEventListener("click", async e => {
     const b = e.target;
     b.textContent = "Limpiando…";
