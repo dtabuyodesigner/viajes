@@ -268,6 +268,31 @@ function temaClaroCompleto(){
   }
 }
 
+/* ═══ 7. Sin identificadores repetidos entre vistas ═══ */
+function idsUnicos(){
+  console.log(`\n${gris("──")} Cada vista tiene sus propios identificadores`);
+  const archivos = ["viaje/index.html","eslovenia/index.html","asturias/index.html"];
+  for (const a of archivos){
+    const src = fs.readFileSync(path.join(RAIZ, a), "utf8");
+    // ids que se generan dentro de plantillas: deben llevar el contexto
+    // solo los bloques que se dibujan dos veces: en Hoy y en el detalle del día
+    const porDia = ["fotos", "gal", "aqui", "lista-aqui"];
+    const sospechosos = [];
+    for (const m of src.matchAll(/id="([a-z-]+)-\$\{(?:ctx|i)[^}]*\}[^"]*"/g)){
+      const base = m[1];
+      if (porDia.includes(base) && !m[0].includes("${ctx}")) sospechosos.push(base);
+    }
+    comprobar(`${a}: los ids de día llevan contexto`, sospechosos.length === 0,
+              sospechosos.length ? "sin ctx: " + [...new Set(sospechosos)].join(", ") : "");
+
+    // los huecos fijos no pueden estar duplicados
+    for (const fijo of ["portada-hoy","portada-det"]){
+      const n = (src.match(new RegExp(`id="${fijo}"`, "g")) || []).length;
+      comprobar(`${a}: «${fijo}» aparece una vez`, n === 1, `${n} veces`);
+    }
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -294,6 +319,7 @@ function temaClaroCompleto(){
   await estadoSobrevive();
   funcionesDefinidas();
   temaClaroCompleto();
+  idsUnicos();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);
