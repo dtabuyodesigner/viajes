@@ -110,6 +110,9 @@ Están aquí para que no se repitan:
 | `navegarXY` usada sin estar definida | La condición de inserción buscaba un texto que no existía en esas apps | Prueba nueva: funciones usadas y no definidas |
 | El botón del tiempo llevaba a un hotel | Se le pasaba el nombre del alojamiento a una búsqueda de Google | Usar coordenadas, y traer el dato dentro de la app |
 | Segunda prueba que no detectaba su fallo | El ancla de la expresión regular fallaba con un comentario delante | Verificar SIEMPRE en los dos sentidos |
+| Las fotos salían en todos los días | El día se dibuja dos veces y ambos usaban los mismos ids | Parámetro `ctx`: `hoy` y `det` |
+| El botón «situarme» roto en el visor | Allí la función se llama `ubicacion()`, no `pedirUbicacion()` | La prueba de funciones sin definir lo cazó |
+| Se publicó con una prueba en rojo | Se lanzó la subida sin mirar el resultado | Leer la salida antes de subir, no después |
 
 El patrón se repite: **dar algo por bueno sin ejecutarlo**. Por eso existen las
 pruebas.
@@ -123,7 +126,7 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 ## Cómo se publica
 
 ```bash
-node tests/probar.js              # las 59 en verde
+node tests/probar.js              # las 68 en verde, y LEER el resultado
 # subir VERSION en index.html, eslovenia/, asturias/
 # si tocaste sync.js, subir también el ?v=NN en las páginas que lo cargan
 git checkout dev && git commit -am "…"
