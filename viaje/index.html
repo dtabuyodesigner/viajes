@@ -431,11 +431,11 @@ function cajaFotos(i){
     <div class="btns">
       <label class="btn solid camara">
         <input type="file" accept="image/*" capture="environment" data-camara="${i}" hidden>
-        Hacer una foto
+        <span>Hacer una foto</span>
       </label>
       <label class="btn">
         <input type="file" accept="image/*" multiple data-carrete="${i}" hidden>
-        Del carrete
+        <span>Del carrete</span>
       </label>
     </div>
   </div>`;
@@ -479,9 +479,9 @@ function activaCamara(i){
     inp.addEventListener("change", async e => {
       const archivos = [...(e.target.files || [])];
       if (!archivos.length) return;
-      const eti = inp.parentElement;
-      const original = eti.textContent.trim();
-      eti.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = " Guardando… "; });
+      const eti = inp.parentElement.querySelector("span");
+      const original = eti ? eti.textContent : "";
+      if (eti) eti.textContent = archivos.length > 1 ? `Guardando ${archivos.length}…` : "Guardando…";
       let fallos = 0;
       for (const a of archivos){
         try {
@@ -490,7 +490,7 @@ function activaCamara(i){
           if (!id) fallos++;
         } catch { fallos++; }
       }
-      eti.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = " " + original + " "; });
+      if (eti) eti.textContent = original;
       inp.value = "";
       if (fallos) alert(fallos === archivos.length
         ? "No se pudieron guardar las fotos en este móvil."
