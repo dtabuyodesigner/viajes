@@ -296,5 +296,133 @@ const DIARIO_SYNC = {
   }
 };
 
+
+/* ═══════════════════════════════════════════════════════════
+   Fotos del viaje.
+
+   Van en IndexedDB, no en localStorage: allí solo caben unos
+   5 MB en total y tres fotos ya lo llenarían. Aquí caben
+   cientos.
+
+   Se guardan en el móvil. No se sincronizan todavía: una foto
+   comprimida son 100 KB y meterlas en la fila del viaje sería
+   pesado. Para compartirlas, de momento, el compartir del móvil.
+   ═══════════════════════════════════════════════════════════ */
+
+const FOTOS = {
+  _bd: null,
+
+  async abrir(){
+    if (this._bd) return this._bd;
+    if (!window.indexedDB) return null;
+    return new Promise(ok => {
+      const p = indexedDB.open("viajes_fotos", 1);
+      p.onupgradeneeded = () => {
+        const bd = p.result;
+        if (!bd.objectStoreNames.contains("fotos"))
+          bd.createObjectStore("fotos", { keyPath: "id" });
+      };
+      p.onsuccess = () => { this._bd = p.result; ok(this._bd); };
+      p.onerror = () => ok(null);
+      setTimeout(() => ok(null), 5000);
+    });
+  },
+
+  async _tienda(modo){
+    const bd = await this.abrir();
+    if (!bd) return null;
+    try { return bd.transaction("fotos", modo).objectStore("fotos"); }
+    catch { return null; }
+  },
+
+  /* Guarda una foto y devuelve su id */
+  async guardar(viaje, dia, datos){
+    const t = await this._tienda("readwrite");
+    if (!t) return null;
+    const id = `${viaje}:${dia}:${Date.now()}`;
+    return new Promise(ok => {
+      const p = t.put({ id, viaje, dia, datos, cuando: Date.now() });
+      p.onsuccess = () => ok(id);
+      p.onerror = () => ok(null);
+    });
+  },
+
+  /* Todas las de un día, de la más antigua a la más nueva */
+  async delDia(viaje, dia){
+    const t = await this._tienda("readonly");
+    if (!t) return [];
+    return new Promise(ok => {
+      const fuera = [];
+      const p = t.openCursor();
+      p.onsuccess = e => {
+        const c = e.target.result;
+        if (!c) return ok(fuera.sort((a,b) => a.cuando - b.cuando));
+        if (c.value.viaje === viaje && String(c.value.dia) === String(dia)) fuera.push(c.value);
+        c.continue();
+      };
+      p.onerror = () => ok([]);
+    });
+  },
+
+  /* Cuántas hay por día, para pintar las miniaturas de la lista */
+  async cuentaPorDia(viaje){
+    const t = await this._tienda("readonly");
+    if (!t) return {};
+    return new Promise(ok => {
+      const n = {};
+      const p = t.openCursor();
+      p.onsuccess = e => {
+        const c = e.target.result;
+        if (!c) return ok(n);
+        if (c.value.viaje === viaje) n[c.value.dia] = (n[c.value.dia] || 0) + 1;
+        c.continue();
+      };
+      p.onerror = () => ok({});
+    });
+  },
+
+  async borrar(id){
+    const t = await this._tienda("readwrite");
+    if (!t) return false;
+    return new Promise(ok => {
+      const p = t.delete(id);
+      p.onsuccess = () => ok(true);
+      p.onerror = () => ok(false);
+    });
+  },
+
+  /* Cuánto ocupan, para avisar antes de llenar el móvil */
+  async espacio(){
+    try {
+      if (!navigator.storage?.estimate) return null;
+      const e = await navigator.storage.estimate();
+      return { usado: e.usage || 0, total: e.quota || 0 };
+    } catch { return null; }
+  }
+};
+
+/* Comprime antes de guardar: una foto de iPhone son 4 MB, esto la deja en ~120 KB */
+function comprimirFoto(archivo, maxLado = 1400, calidad = 0.75){
+  return new Promise((ok, mal) => {
+    const lector = new FileReader();
+    lector.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width:a, height:b } = img;
+        const f = Math.min(1, maxLado / Math.max(a, b));
+        a = Math.round(a * f); b = Math.round(b * f);
+        const c = document.createElement("canvas");
+        c.width = a; c.height = b;
+        c.getContext("2d").drawImage(img, 0, 0, a, b);
+        ok(c.toDataURL("image/jpeg", calidad));
+      };
+      img.onerror = mal;
+      img.src = lector.result;
+    };
+    lector.onerror = mal;
+    lector.readAsDataURL(archivo);
+  });
+}
+
 // Reintento automático al recuperar la cobertura
 window.addEventListener("online", () => { SYNC.sincronizar().catch(()=>{}); });
