@@ -571,7 +571,7 @@ const VIAJE = {
       { h:"15:00", txt:"Devolver el coche · Galdierirent", c:"Galdierirent", xy:"45.5052,12.3235",
         n:"Via Triestina 94, junto al aeropuerto. Abren de 8:00 a 22:00 · +39 342 013 8930. Fotos del coche y del cuentakilómetros antes de entregarlo, y pedid el informe de estado por escrito",
         mapa:"Via Triestina 94 Tessera Venezia", w:"Via Triestina 94 Venezia", g:"galdieri", key:true },
-      { txt:"Del taller al hotel", n:"Sin coche ya. En la ficha están los enlaces para ver el trayecto en bus y andando en ese momento, con los horarios del día", g:"galdieri", key:true },
+      { txt:"Bus 15 a Mestre", c:"Parada Tessera Triestina", n:"Pasa por la misma calle. Billete urbano ~1,50 € si subís en Tessera, no en el aeropuerto. Compradlo antes: en el quiosco de enfrente o en la app AVM Venezia", mapa:"Tessera Triestina fermata autobus Venezia", g:"galdieri", key:true },
       { h:"Tarde", txt:"Despedida por la isla de Venecia", c:"Venecia", n:"Plaza San Marcos, canales y cena", mapa:"Piazza San Marco Venezia", key:true },
       { txt:"Dejar cerrado el taxi de mañana", n:"Sale de madrugada: resérvalo esta noche", key:true }
     ]},
@@ -739,16 +739,18 @@ const GUIA = [
       t:"Villa medieval de las mejor conservadas de Eslovenia, a un rato corto de Liubliana.",
       m:"Skofja Loka" },
     { id:"galdieri", xy:"45.5052,12.3235", n:"Devolución del coche · Galdierirent", d:"2026-07-28",
-      t:"Donde se devuelve el Fiat Panda el día 28 a las tres. Via Triestina 94, en Tessera, pegado al aeropuerto Marco Polo. Abren de ocho de la mañana a diez de la noche, así que hay margen si el viaje desde Eslovenia se alarga.\n\nDesde aquí ya no tenéis coche. Al hotel de Mestre hay unos ocho kilómetros: en autobús es lo razonable, andando serían casi dos horas y no merece la pena con maletas. Los botones de abajo piden el trayecto en ese momento, con los horarios reales del día, en vez de fiarse de una línea que a lo mejor ha cambiado.",
+      t:"Donde se devuelve el Fiat Panda el día 28 a las tres. Via Triestina 94, en Tessera, pegado al aeropuerto Marco Polo. Abren de ocho de la mañana a diez de la noche, así que hay margen si la vuelta desde Eslovenia se alarga.\n\n<b>El autobús 15 de ACTV pasa por esta misma calle</b> y va hasta la estación de Mestre. Y aquí está lo bueno: el recargo de 8 € del aeropuerto solo se aplica si subes o bajas en la parada de la terminal. En la parada de <b>Tessera, Triestina</b>, que es la que tenéis al lado, se paga la tarifa urbana normal, alrededor de 1,50 €. Devolvéis el coche, cruzáis a la parada y os plantáis en Mestre por menos de lo que cuesta un café.\n\nEl otro camino, ir andando a la terminal para coger el ATVO rápido, <b>no lo hagáis</b>: son 1,2 o 1,5 km por una carretera con mucho tráfico y tramos sin acera. Con maletas, mala idea.",
       k:[["Dirección","Via Triestina 94, Tessera"],
          ["Horario","8:00 – 22:00"],
          ["Teléfono","+39 342 013 8930"],
+         ["Bus al hotel","línea 15 de ACTV"],
+         ["Parada","Tessera, Triestina"],
+         ["Billete","~1,50 € · comprar antes de subir"],
          ["Al hotel de Mestre","unos 8 km"]],
-      c:"Antes de entregarlo: fotos del coche por los cuatro lados, del cuentakilómetros y del nivel de combustible. Es política lleno-lleno, así que repostad justo antes. Y pedid el informe de estado por escrito, que la fianza son 600 €.",
+      c:"El billete <b>hay que llevarlo comprado</b>: en el autobús no se vende. Hay un quiosco a unos 50 metros de la parada, en el sentido contrario, o se compra desde la app AVM Venezia. Y validadlo al subir, en la maquinita amarilla. Antes de entregar el coche: fotos por los cuatro lados, del cuentakilómetros y del nivel de combustible, que es lleno-lleno. Pedid el informe de estado por escrito: la fianza son 600 €.",
       tel:"+393420138930",
-      rutas:[["Al hotel en bus","transit","LH Hotel Sirio Venice Mestre"],
-             ["Al hotel andando","walking","LH Hotel Sirio Venice Mestre"],
-             ["A la terminal del aeropuerto","walking","Aeroporto Marco Polo Venezia"]],
+      rutas:[["Ver el 15 ahora","transit","LH Hotel Sirio Venice Mestre"],
+             ["La parada, en el mapa","walking","Tessera Triestina fermata autobus Venezia"]],
       m:"Via Triestina 94 Tessera Venezia" },
     { id:"tivoli", xy:"46.055,14.494", n:"Parque Tivoli",
       t:"El gran parque de Liubliana, pegado al centro. Buen sitio para el último paseo tranquilo antes de irse.",
@@ -797,7 +799,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v66 · 26/07 17:30";
+const VERSION = "v67 · 26/07 17:40";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
