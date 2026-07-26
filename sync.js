@@ -243,21 +243,57 @@ const DIARIO_SYNC = {
     }, () => {}, { enableHighAccuracy:false, timeout:8000, maximumAge:120000 });
   },
 
+  /* Pregunta a OpenStreetMap cómo se llama este sitio */
+  async comoSeLlama(la, lo){
+    if (!navigator.onLine) return "";
+    const u = `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
+              `&lat=${la}&lon=${lo}&zoom=16&accept-language=es`;
+    const ctrl = new AbortController();
+    const corte = setTimeout(() => ctrl.abort(), 9000);
+    try {
+      const r = await fetch(u, { signal: ctrl.signal });
+      clearTimeout(corte);
+      if (!r.ok) throw new Error(r.status);
+      const d = await r.json();
+      const a = d.address || {};
+      // lo más concreto primero: el sitio, luego el pueblo, luego el municipio
+      const sitio = d.name || a.tourism || a.amenity || a.natural || a.peak || "";
+      const pueblo = a.village || a.hamlet || a.town || a.city || a.suburb || a.locality || "";
+      const zona = a.municipality || a.county || "";
+      const partes = [];
+      if (sitio) partes.push(sitio);
+      if (pueblo && pueblo !== sitio) partes.push(pueblo);
+      if (!partes.length && zona) partes.push(zona);
+      return partes.join(" · ");
+    } catch { clearTimeout(corte); return ""; }
+  },
+
   /* ---- «Estoy aquí»: marcar un sitio suelto, esté o no en el plan ---- */
   apuntarAqui(viaje, dia, txt){
     return new Promise((ok, mal) => {
       if (!navigator.geolocation) return mal("Este móvil no da la ubicación");
-      navigator.geolocation.getCurrentPosition(p => {
+      navigator.geolocation.getCurrentPosition(async p => {
+        const la = p.coords.latitude, lo = p.coords.longitude;
         const d = this.local(viaje);
         const v = {
           id: "v" + Date.now().toString(36),
-          xy: `${p.coords.latitude.toFixed(5)},${p.coords.longitude.toFixed(5)}`,
-          ts: Date.now(), dia, txt: txt || ""
+          xy: `${la.toFixed(5)},${lo.toFixed(5)}`,
+          ts: Date.now(), dia, txt: txt || "",
+          precision: Math.round(p.coords.accuracy || 0)
         };
         d.visitas.push(v);
         this.guardarLocal(viaje, d);
+        ok(v);                                   // se guarda ya, sin esperar al nombre
+        // y por detrás, cómo se llama el sitio
+        if (!txt){
+          const nombre = await this.comoSeLlama(la, lo);
+          if (nombre){
+            const d2 = this.local(viaje);
+            const v2 = (d2.visitas || []).find(x => x.id === v.id);
+            if (v2 && !v2.txt){ v2.txt = nombre; v2.auto = true; this.guardarLocal(viaje, d2); }
+          }
+        }
         this.subir(viaje).catch(()=>{});
-        ok(v);
       }, () => mal("No se pudo obtener la ubicación"),
          { enableHighAccuracy:true, timeout:12000, maximumAge:20000 });
     });
