@@ -119,9 +119,7 @@ arranca sola en el día que toca.
 
 ## Ideas sin decidir
 
-- **Lista de lo que hay que reservar.** La app ya lo sabe: está escrito en las
-  notas («reserva online, en verano se agotan») pero enterrado en el día 6.
-  Sacarlo a una lista es casi gratis.
+
 - **Preparativos antes de salir**, con cuenta atrás: antiparasitario, revisión de
   la furgo, viñeta, mapas descargados, taxi de madrugada.
 - **Modo conducción:** letra grande, solo la siguiente parada, un botón.
@@ -158,6 +156,8 @@ Para no volver a proponerlo:
 | Compartir la app | v64 |
 | Añadir sitios por los que ya se pasó | v68 |
 | Mapa en cada día | v69–v72 |
+| Motor común, fase 1 | v72 · `dev` |
+| El primer vistazo: lo que importa del día, al abrir | v73 · `dev` |
 
 ---
 
