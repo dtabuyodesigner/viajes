@@ -232,6 +232,28 @@ header{position:relative}
 .res-sitio:first-child{border-top:0}
 .res-sitio b{font-size:14.5px;color:var(--t)}
 .res-sitio small{display:block;font-size:12px;color:var(--td);margin-top:1px}
+
+.mapa-dia{background:var(--f2);border:1px solid var(--line);border-radius:14px;
+  padding:12px;margin:0 0 16px}
+.mapa-dia svg{width:100%;height:auto;display:block}
+.mapa-dia polyline{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.mapa-dia polyline.prev{stroke:var(--acd);stroke-width:2;stroke-dasharray:4 5;opacity:.75}
+.mapa-dia polyline.real{stroke:var(--am);stroke-width:2.6}
+.mapa-dia .pisada{fill:var(--am)}
+.mapa-dia .pp circle{fill:var(--ac)}
+.mapa-dia .pp text{fill:var(--f2);font-family:var(--mono);font-size:8.5px;
+  font-weight:700;text-anchor:middle}
+.mapa-dia .cama-d circle{fill:none;stroke:var(--am);stroke-width:2.4}
+.mapa-dia .yo circle{fill:#4C9BE8}
+.mapa-dia .yo .halo{fill:#4C9BE8;opacity:.22}
+.mapa-dia .leyenda{display:flex;flex-wrap:wrap;gap:12px;margin-top:9px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--td)}
+.mapa-dia .leyenda span{display:inline-flex;align-items:center;gap:5px}
+.mapa-dia .leyenda i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.mapa-dia .c-prev{background:var(--ac)}
+.mapa-dia .c-real{background:var(--am)}
+.mapa-dia .c-yo{background:#4C9BE8}
 </style>
 </head>
 <body>
@@ -563,6 +585,89 @@ function activaAqui(i, ctx = "hoy"){
   });
 }
 
+
+/* ---- Mapa del día: lo previsto, por dónde se ha ido y dónde estás ---- */
+function mapaDia(i, ctx = "hoy"){
+  const d = VIAJE.dias[i];
+  const previstas = (d.paradas || []).map((p, k) => ({
+    n: p.txt, xy: (typeof xyDeParada === "function" ? xyDeParada(p) : p.xy), k
+  })).filter(x => x.xy);
+  const dormir = d.xy ? { n: "Noche", xy: d.xy, cama: true } : null;
+  const reales = (typeof DIARIO_SYNC !== "undefined")
+    ? DIARIO_SYNC.recorridoReal(VIAJE_ID).filter(r => String(r.dia) === String(i)) : [];
+
+  const todos = [...previstas, ...(dormir ? [dormir] : []), ...reales.map(r => ({ xy:r.xy }))];
+  if (typeof MI_POS !== "undefined" && MI_POS) todos.push({ xy: MI_POS });
+  if (todos.length < 2) return "";
+
+  const pts = todos.map(x => x.xy.split(",").map(Number));
+  const lats = pts.map(p => p[0]), lons = pts.map(p => p[1]);
+  const k = Math.cos((Math.min(...lats) + Math.max(...lats)) / 2 * Math.PI / 180);
+  let y0 = Math.min(...lats), y1 = Math.max(...lats);
+  let x0 = Math.min(...lons) * k, x1 = Math.max(...lons) * k;
+  const mx = Math.max((x1 - x0) * 0.18, 0.006), my = Math.max((y1 - y0) * 0.18, 0.006);
+  x0 -= mx; x1 += mx; y0 -= my; y1 += my;
+
+  const W = 320, H = 190, P = 18;
+  const esc2 = Math.min((W - P*2) / (x1 - x0), (H - P*2) / (y1 - y0));
+  const dx = (W - (x1 - x0) * esc2) / 2, dy = (H - (y1 - y0) * esc2) / 2;
+  const cx = lon => ((lon * k - x0) * esc2 + dx).toFixed(1);
+  const cy = lat => (H - ((lat - y0) * esc2 + dy)).toFixed(1);
+  const XY = xy => { const [a, b] = xy.split(",").map(Number); return `${cx(b)},${cy(a)}`; };
+
+  const lineaPrev = [...previstas, ...(dormir ? [dormir] : [])].map(x => XY(x.xy)).join(" ");
+  const lineaReal = reales.map(r => XY(r.xy)).join(" ");
+
+  return `<div class="mapa-dia">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa del día">
+      ${lineaPrev ? `<polyline class="prev" points="${lineaPrev}"/>` : ""}
+      ${reales.length > 1 ? `<polyline class="real" points="${lineaReal}"/>` : ""}
+      ${reales.map(r => `<circle class="pisada" cx="${XY(r.xy).split(",")[0]}" cy="${XY(r.xy).split(",")[1]}" r="3"/>`).join("")}
+      ${previstas.map(x => `<g class="pp" data-parada="${x.k}">
+          <circle cx="${XY(x.xy).split(",")[0]}" cy="${XY(x.xy).split(",")[1]}" r="6.5"/>
+          <text x="${XY(x.xy).split(",")[0]}" y="${+XY(x.xy).split(",")[1] + 3.2}">${x.k + 1}</text>
+        </g>`).join("")}
+      ${dormir ? `<g class="cama-d">
+          <circle cx="${XY(dormir.xy).split(",")[0]}" cy="${XY(dormir.xy).split(",")[1]}" r="7"/>
+        </g>` : ""}
+      ${(typeof MI_POS !== "undefined" && MI_POS) ? `<g class="yo">
+          <circle class="halo" cx="${XY(MI_POS).split(",")[0]}" cy="${XY(MI_POS).split(",")[1]}" r="11"/>
+          <circle cx="${XY(MI_POS).split(",")[0]}" cy="${XY(MI_POS).split(",")[1]}" r="4.5"/>
+        </g>` : ""}
+    </svg>
+    <div class="leyenda">
+      <span><i class="c-prev"></i>Lo previsto</span>
+      ${reales.length ? `<span><i class="c-real"></i>Por dónde fuimos</span>` : ""}
+      ${(typeof MI_POS !== "undefined" && MI_POS) ? `<span><i class="c-yo"></i>Estás aquí</span>` : ""}
+      ${!(typeof MI_POS !== "undefined" && MI_POS) ? `<button class="lnk" data-mi-pos="${ctx}:${i}">situarme</button>` : ""}
+    </div>
+  </div>`;
+}
+
+let MI_POS = null;
+// si el aviso de cercanía ya pidió la ubicación, se reutiliza
+
+function activaMapaDia(i, ctx = "hoy"){
+  document.querySelectorAll(`[data-mi-pos="${ctx}:${i}"]`).forEach(b => {
+    if (b.dataset.listo) return; b.dataset.listo = "1";
+    b.addEventListener("click", async () => {
+      b.textContent = "localizando…";
+      try {
+        const p = await pedirUbicacion();
+        MI_POS = Array.isArray(p) ? p.join(",") : p;
+        refrescaMapaDia(i, ctx);
+      } catch { b.textContent = "no se pudo"; }
+    });
+  });
+}
+
+function refrescaMapaDia(i, ctx){
+  const z = document.getElementById(`mapa-dia-${ctx}-${i}`);
+  if (!z) return;
+  z.innerHTML = mapaDia(i, ctx);
+  activaMapaDia(i, ctx);
+}
+
 /* ---- Cámara y fotos del día ---- */
 function cajaFotos(i, ctx = "hoy"){
   return `<div class="fotos-dia" id="fotos-${ctx}-${i}">
@@ -679,7 +784,8 @@ function vistaHoy(){
 
   let h = `<div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>`
         + (d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : "")
-        + botonesRuta(i) + pintaParadas(d, i, "hoy");
+        + botonesRuta(i) + `<div id="mapa-dia-hoy-${i}">${mapaDia(i, "hoy")}</div>`
+        + pintaParadas(d, i, "hoy");
   const sig = VIAJE.dias[i+1];
   if (sig) h += `<div class="sec"><span class="label">Día siguiente</span>
     <h2>${esc(sig.t || "Día " + (i+2))}</h2></div>
@@ -687,7 +793,7 @@ function vistaHoy(){
   document.getElementById("v-hoy").innerHTML = h;
   activaDiario();
   activaCamara(i, "hoy"); pintaGaleria(i, true, "hoy");
-  activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); pintaPortada(i, "hoy");
+  activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); activaMapaDia(i, "hoy"); pintaPortada(i, "hoy");
   if (P.avisar) avisoCerca(i);
   const conXY = (d.paradas || []).find(p => p.xy);
   if (conXY) pintaTiempo(conXY.xy, d.dest || "");
@@ -718,10 +824,10 @@ function vistaDias(){
     det.innerHTML = `<div class="sec"><span class="label">${f ? esc(f.wd)+" "+esc(f.txt) : "Día "+(i+1)}</span>
       <h2>${esc(d.t || "Día " + (i+1))}</h2></div>
       ${d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : ""}
-      <div id="portada-det"></div>${botonesRuta(i)}${pintaParadas(d, i, "det")}`;
+      <div id="portada-det"></div>${botonesRuta(i)}<div id="mapa-dia-det-${i}">${mapaDia(i, "det")}</div>${pintaParadas(d, i, "det")}`;
     activaDiario();
     activaCamara(i, "det"); pintaGaleria(i, true, "det");
-    activaAqui(i, "det"); activaBuscarSitio(i, "det"); pintaAqui(i, "det"); pintaPortada(i, "det");
+    activaAqui(i, "det"); activaBuscarSitio(i, "det"); pintaAqui(i, "det"); activaMapaDia(i, "det"); pintaPortada(i, "det");
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
 }
