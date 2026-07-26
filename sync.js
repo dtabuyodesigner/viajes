@@ -299,6 +299,47 @@ const DIARIO_SYNC = {
     });
   },
 
+  /* Buscar un sitio por su nombre, para añadirlo después de haber pasado */
+  async buscarSitio(texto, cerca){
+    if (!navigator.onLine) return [];
+    let u = `https://nominatim.openstreetmap.org/search?format=jsonv2` +
+            `&q=${encodeURIComponent(texto)}&limit=6&accept-language=es`;
+    if (cerca){                                  // prioriza lo que esté cerca del viaje
+      const [la, lo] = cerca.split(",").map(Number);
+      u += `&viewbox=${lo-1.5},${la+1.5},${lo+1.5},${la-1.5}&bounded=0`;
+    }
+    const ctrl = new AbortController();
+    const corte = setTimeout(() => ctrl.abort(), 10000);
+    try {
+      const r = await fetch(u, { signal: ctrl.signal });
+      clearTimeout(corte);
+      if (!r.ok) throw new Error(r.status);
+      const d = await r.json();
+      return (d || []).map(x => ({
+        nombre: (x.name || x.display_name || "").split(",")[0].trim(),
+        donde: (x.display_name || "").split(",").slice(1, 3).join(",").trim(),
+        xy: `${Number(x.lat).toFixed(5)},${Number(x.lon).toFixed(5)}`
+      })).filter(x => x.nombre);
+    } catch { clearTimeout(corte); return []; }
+  },
+
+  /* Añade un punto a un día ya pasado, colocándolo en su sitio del recorrido */
+  anadirVisita(viaje, dia, nombre, xy, fechaDia){
+    const d = this.local(viaje);
+    // la hora se calcula para que quede en orden dentro de ese día
+    const base = fechaDia ? new Date(fechaDia + "T09:00:00").getTime() : Date.now();
+    const cuantas = (d.visitas || []).filter(v => String(v.dia) === String(dia) && !v.borrada).length;
+    const v = {
+      id: "v" + Date.now().toString(36),
+      xy, ts: base + cuantas * 20 * 60 * 1000,   // veinte minutos entre punto y punto
+      dia, txt: nombre, manual: true
+    };
+    d.visitas.push(v);
+    this.guardarLocal(viaje, d);
+    this.subir(viaje).catch(()=>{});
+    return v;
+  },
+
   visitasDelDia(viaje, dia){
     return (this.local(viaje).visitas || [])
       .filter(v => String(v.dia) === String(dia) && !v.borrada)
