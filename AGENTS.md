@@ -50,6 +50,12 @@ una versión antigua y pensara que algo estaba roto.
 Ni frameworks, ni compilación, ni `node_modules` en producción. Un archivo HTML
 por app, con todo dentro. `jsdom` es solo para las pruebas.
 
+### Al reemplazar código, comprueba dónde ha caído
+Varias veces un reemplazo automático ha insertado un bloque dentro de otra
+función, o ha coincidido con la primera de nueve apariciones. La sintaxis
+quedaba válida y el fallo solo aparecía al usar la app. Después de un reemplazo,
+mira el resultado, no solo `node --check`.
+
 ### No inventes URLs ni esquemas
 Se subieron 34 enlaces de Wikiloc con un formato inventado que daba 404.
 Si no puedes comprobar una URL, **no la pongas**: dilo y pide que se compruebe.
@@ -99,6 +105,11 @@ Están aquí para que no se repitan:
 | Se dio por hecho que la sesión se compartía | En iOS cada app de la pantalla de inicio tiene su almacén | No suponer: comprobar |
 | Al cambiar de tema, el estado volvía a «comprobando…» | Repintar el pie destruía el elemento y nadie recalculaba | Guardar el último estado y repintarlo |
 | Una prueba daba verde con el fallo puesto | Comprobaba «no empieza por comprobando», y el texto vacío también cumple | Escribir la prueba, meter el fallo a propósito y ver que salta |
+| La barra inferior seguía oscura en modo claro | Al reorganizar el CSS se borraron las reglas `body.claro nav{…}` | Atar los fondos a variables, no escribir colores |
+| Textos de las fichas invisibles con sol | Colores claros escritos a mano, pensados para fondo oscuro | Todo el texto con variables del tema |
+| `navegarXY` usada sin estar definida | La condición de inserción buscaba un texto que no existía en esas apps | Prueba nueva: funciones usadas y no definidas |
+| El botón del tiempo llevaba a un hotel | Se le pasaba el nombre del alojamiento a una búsqueda de Google | Usar coordenadas, y traer el dato dentro de la app |
+| Segunda prueba que no detectaba su fallo | El ancla de la expresión regular fallaba con un comentario delante | Verificar SIEMPRE en los dos sentidos |
 
 El patrón se repite: **dar algo por bueno sin ejecutarlo**. Por eso existen las
 pruebas.
@@ -106,3 +117,19 @@ pruebas.
 Y un aviso sobre las pruebas mismas: **una prueba que nunca has visto fallar no
 sirve de nada**. Después de escribirla, reintroduce el fallo a propósito y
 comprueba que salta. Si pasa igual, la prueba está mal.
+
+---
+
+## Cómo se publica
+
+```bash
+node tests/probar.js              # las 59 en verde
+# subir VERSION en index.html, eslovenia/, asturias/
+# si tocaste sync.js, subir también el ?v=NN en las páginas que lo cargan
+git checkout dev && git commit -am "…"
+git checkout main && git merge dev && git push
+```
+
+Y comprobar que el build de GitHub Pages acaba en `built`. Si sale `errored`,
+suele ser porque dos commits seguidos lanzaron dos builds a la vez: el siguiente
+lo arregla solo. Mirar el historial antes de asustarse.
