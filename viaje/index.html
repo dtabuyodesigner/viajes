@@ -216,6 +216,12 @@ header{position:relative}
 .visita b{font-size:15px;color:var(--t)}
 .visita small{display:block;font-family:var(--mono);font-size:11.5px;color:var(--td);margin-top:2px}
 .btn.borrar-v{border-color:var(--rj);color:var(--rj)}
+
+.normas{list-style:none;margin:0;padding:0}
+.normas li{position:relative;padding:9px 0 9px 20px;border-top:1px solid var(--line);
+  font-size:14.5px;line-height:1.5}
+.normas li:first-child{border-top:0}
+.normas li::before{content:"·";position:absolute;left:6px;top:9px;color:var(--am);font-weight:700}
 </style>
 </head>
 <body>
@@ -244,7 +250,7 @@ header{position:relative}
   <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
 </nav>
 
-<script src="../sync.js?v=62"></script>
+<script src="../sync.js?v=64"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -460,8 +466,9 @@ function pintaAqui(i, ctx = "hoy"){
     const hora = `${String(h.getHours()).padStart(2,"0")}:${String(h.getMinutes()).padStart(2,"0")}`;
     return `<li class="visita">
       <div>
-        <b>${esc(v.txt) || "Sin nombre"}</b>
-        <small>${hora}</small>
+        <b>${esc(v.txt) || "Buscando el nombre…"}</b>
+        <small>${hora}${v.auto ? " · según OpenStreetMap" : ""}${
+          v.precision ? ` · ±${v.precision} m` : ""}</small>
       </div>
       <div class="btns" style="margin-top:6px">
         <button class="btn fino" data-nombrar="${v.id}">${v.txt ? "Cambiar nombre" : "Ponerle nombre"}</button>
@@ -492,11 +499,12 @@ function activaAqui(i, ctx = "hoy"){
     const antes = b.textContent;
     b.textContent = "Localizando…";
     try {
-      const v = await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
+      await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
       b.textContent = "Guardado";
       pintaAqui(i, ctx);
-      const t = prompt("Guardado. ¿Le pones nombre?", "");
-      if (t && t.trim()){ DIARIO_SYNC.renombrarVisita(VIAJE_ID, v.id, t.trim()); pintaAqui(i, ctx); }
+      // el nombre llega un momento después, de OpenStreetMap
+      setTimeout(() => pintaAqui(i, ctx), 1500);
+      setTimeout(() => pintaAqui(i, ctx), 4000);
     } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
     setTimeout(() => { b.textContent = antes; }, 2200);
   });
@@ -825,7 +833,7 @@ function vistaCerca(){
       </div>` : `
       <div class="cats">${CATEGORIAS.map(c =>
         `<button class="cat${catActiva === c.id ? " on" : ""}" data-cat="${c.id}">${c.n}</button>`).join("")}</div>
-      <div class="radios">${[2,5,10,25].map(k =>
+      <div class="radios">${[5,10,25,50,100].map(k =>
         `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>
       <div id="res-cerca"></div>`}`;
 
@@ -895,6 +903,12 @@ function vistaInfo(){
         ${VIAJE.dias.length} día${VIAJE.dias.length===1?"":"s"}</div>
       <div class="btns"><a class="btn" href="../crear/?id=${esc(ID)}">Editar</a></div>
     </div>
+    ${(VIAJE.normas || []).length ? `
+      <div class="sec"><span class="label">Antes de conducir</span><h2>Normas del país</h2></div>
+      <div class="card">
+        <ul class="normas">${VIAJE.normas.map(n => `<li>${esc(n)}</li>`).join("")}</ul>
+        <p class="note">Confírmalo si algo te juega una mala pasada: las normas cambian y esto lo ha redactado una IA.</p>
+      </div>` : ""}
     <div class="sec"><span class="label">Ajustes</span><h2>Cómo navegar</h2></div>
     <div class="card"><div class="ops">
       ${op("app","waze",P.app,"Waze","Tráfico en vivo")}
