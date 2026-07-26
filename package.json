@@ -3,9 +3,12 @@
   "private": true,
   "description": "Apps de viaje que funcionan sin cobertura",
   "scripts": {
-    "test": "node tests/probar.js"
+    "test": "node tests/probar.js",
+    "foto": "node tests/foto.js guardar",
+    "comparar": "node tests/foto.js comparar"
   },
   "devDependencies": {
-    "jsdom": "^24.0.0"
+    "jsdom": "^24.0.0",
+    "fake-indexeddb": "^6.0.0"
   }
 }
