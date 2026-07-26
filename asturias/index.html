@@ -350,6 +350,13 @@ header{position:relative}
 .mapa-dia .c-prev{background:var(--prau)}
 .mapa-dia .c-real{background:var(--teito)}
 .mapa-dia .c-yo{background:#4C9BE8}
+
+.mapa-cab{margin:0 0 18px}
+.mapa-pes{display:flex;gap:6px;margin:0 0 9px}
+.mp{flex:1;padding:8px 10px;border-radius:10px;border:1px solid var(--line);
+  background:transparent;color:var(--papel-dim);font-family:var(--sans);font-size:13px;cursor:pointer}
+.mp.on{border-color:var(--prau);color:var(--prau);font-weight:600;background:rgba(127,176,105,.1)}
+.mapa-cab .mapa,.mapa-cab .mapa-dia{margin:0}
 </style>
 </head>
 <body>
@@ -695,7 +702,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v71 · 26/07 18:01";
+const VERSION = "v72 · 26/07 18:09";
 const VIAJE_ID = "asturias";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
@@ -1228,6 +1235,7 @@ function pintaAqui(i, ctx = "hoy"){
     if (!confirm("¿Quitar este punto?")) return;
     DIARIO_SYNC.borrarVisita(VIAJE_ID, b.dataset.quitarV);
     pintaAqui(i, ctx);
+    refrescaMapaCab(i, ctx);
   }));
 }
 
@@ -1264,6 +1272,7 @@ function activaBuscarSitio(i, ctx = "hoy"){
         DIARIO_SYNC.anadirVisita(VIAJE_ID, i, r.nombre, r.xy, VIAJE.dias[i]?.f || "");
         z.innerHTML = ""; delete z.dataset.abierto;
         pintaAqui(i, ctx);
+        refrescaMapaCab(i, ctx);
       }));
     };
     document.getElementById(`gos-${ctx}-${i}`).addEventListener("click", lanzar);
@@ -1283,6 +1292,7 @@ function activaAqui(i, ctx = "hoy"){
       await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
       b.textContent = "Guardado";
       pintaAqui(i, ctx);
+      refrescaMapaCab(i, ctx);
       // el nombre llega un momento después, de OpenStreetMap
       setTimeout(() => pintaAqui(i, ctx), 1500);
       setTimeout(() => pintaAqui(i, ctx), 4000);
@@ -1291,6 +1301,44 @@ function activaAqui(i, ctx = "hoy"){
   });
 }
 
+
+
+/* ---- Mapa de cabecera: el viaje entero o solo este día ---- */
+let pestanaMapa = "dia";
+
+function mapaCabecera(i, ctx = "hoy"){
+  // el mapa general, sin sus botones propios: aquí manda la pestaña de arriba
+  const general = (typeof mapaRuta === "function")
+    ? mapaRuta().replace(/<div class="modos">[\s\S]*?<\/div>/, "") : "";
+  const hoy = mapaDia(i, ctx);
+  if (!general && !hoy) return "";
+  const enDia = pestanaMapa === "dia" && hoy;
+
+  return `<div class="mapa-cab">
+    ${general && hoy ? `<div class="mapa-pes">
+      <button class="mp${enDia ? " on" : ""}" data-pes="dia" data-ctx="${ctx}:${i}">Este día</button>
+      <button class="mp${enDia ? "" : " on"}" data-pes="todo" data-ctx="${ctx}:${i}">El viaje entero</button>
+    </div>` : ""}
+    <div class="mapa-cuerpo">${enDia ? hoy : general}</div>
+  </div>`;
+}
+
+function activaMapaCab(i, ctx = "hoy"){
+  document.querySelectorAll(`[data-pes][data-ctx="${ctx}:${i}"]`).forEach(b =>
+    b.addEventListener("click", () => {
+      pestanaMapa = b.dataset.pes;
+      refrescaMapaCab(i, ctx);
+    }));
+  activaMapaDia(i, ctx);
+  if (typeof activaMapa === "function") activaMapa();
+}
+
+function refrescaMapaCab(i, ctx){
+  const z = document.getElementById(`mapa-cab-${ctx}-${i}`);
+  if (!z) return;
+  z.innerHTML = mapaCabecera(i, ctx);
+  activaMapaCab(i, ctx);
+}
 
 /* ---- Mapa del día: lo previsto, por dónde se ha ido y dónde estás ---- */
 function mapaDia(i, ctx = "hoy"){
@@ -1479,7 +1527,7 @@ function vistaHoy(){
   document.getElementById("title").textContent = dia.t;
   document.getElementById("subtitle").textContent = `Duermes en ${dia.base}`;
 
-  let h = `<div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>`;
+  let h = `<div id="mapa-cab-hoy-${i}">${mapaCabecera(i, "hoy")}</div><div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>`;
   if (!PREF.salida){
     h += `<div class="card">
       <span class="label">Todavía sin fechas</span>
@@ -1493,7 +1541,6 @@ function vistaHoy(){
     </div>`;
   }
   h += ilustra(dia.arte) + botonesRuta(i)
-     + `<div id="mapa-dia-hoy-${i}">${mapaDia(i, "hoy")}</div>`
      + pintaParadas(dia, i, "hoy");
 
   const sig = VIAJE.dias[i+1];
@@ -1503,7 +1550,7 @@ function vistaHoy(){
   document.getElementById("v-hoy").innerHTML = h;
   activaDiario();
   activaCamara(i, "hoy"); pintaGaleria(i, true, "hoy");
-  activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); activaMapaDia(i, "hoy"); pintaPortada(i, "hoy");
+  activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); activaMapaCab(i, "hoy"); pintaPortada(i, "hoy");
   if (PREF.avisar) avisoCerca(i);
   if (dia.xy) pintaTiempo(dia.xy, dia.dest || dia.base || "");
 
@@ -1537,10 +1584,10 @@ function vistaDias(){
     const i = +b.dataset.i, d = VIAJE.dias[i], f = fechaDe(i);
     const det = document.getElementById("detalle");
     det.innerHTML = `<div class="sec"><span class="label">${f ? esc(f.wd) + " " + esc(f.txt) : "Día " + d.d}</span>
-      <h2>${esc(d.t)}</h2></div><div id="portada-det"></div>${ilustra(d.arte)}${botonesRuta(i)}<div id="mapa-dia-det-${i}">${mapaDia(i, "det")}</div>${pintaParadas(d, i, "det")}`;
+      <h2>${esc(d.t)}</h2></div><div id="mapa-cab-det-${i}">${mapaCabecera(i, "det")}</div><div id="portada-det"></div>${ilustra(d.arte)}${botonesRuta(i)}${pintaParadas(d, i, "det")}`;
     activaEnlacesGuia(); activaDiario(); activaAtajoServicios();
     activaCamara(i, "det"); pintaGaleria(i, true, "det");
-    activaAqui(i, "det"); activaBuscarSitio(i, "det"); pintaAqui(i, "det"); activaMapaDia(i, "det"); pintaPortada(i, "det");
+    activaAqui(i, "det"); activaBuscarSitio(i, "det"); pintaAqui(i, "det"); activaMapaCab(i, "det"); pintaPortada(i, "det");
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
   document.querySelectorAll(".mapa .modo").forEach(b => b.addEventListener("click", () => {
