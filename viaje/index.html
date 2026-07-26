@@ -379,7 +379,7 @@ function botonesRuta(i){
   </div>`;
 }
 
-function pintaParadas(d, i){
+function pintaParadas(d, i, ctx = "hoy"){
   const con = d.paradas.filter(p => (p.txt || "").trim());
   return (con.length ? `<div class="senda">` + con.map((p, k) => {
     const c = `${i}:${k}`, ok = P.esta(c);
@@ -393,7 +393,7 @@ function pintaParadas(d, i){
     + `<div class="diario"><span class="label">Notas del día</span>
        <textarea class="nota-txt" data-dia="${i}" rows="2"
          placeholder="Qué tal fue, dónde comisteis, cuánto costó…">${esc(P.nota(i))}</textarea></div>`
-    + cajaAqui(i) + cajaFotos(i);
+    + cajaAqui(i, ctx) + cajaFotos(i, ctx);
 }
 
 function activaDiario(){
@@ -440,19 +440,19 @@ async function avisoCerca(i){
 
 
 /* ---- «Estoy aquí»: registrar un sitio, esté o no en el plan ---- */
-function cajaAqui(i){
-  return `<div class="aqui-zona" id="aqui-${i}">
+function cajaAqui(i, ctx = "hoy"){
+  return `<div class="aqui-zona" id="aqui-${ctx}-${i}">
     <span class="label">Por dónde hemos pasado</span>
-    <div id="lista-aqui-${i}"></div>
+    <div id="lista-aqui-${ctx}-${i}"></div>
     <div class="btns">
-      <button class="btn solid" data-aqui="${i}">Estoy aquí</button>
+      <button class="btn solid" data-aqui="${ctx}:${i}">Estoy aquí</button>
     </div>
     <p class="note">Guarda el punto donde estés ahora, aunque no estuviera previsto. Luego sale en el mapa.</p>
   </div>`;
 }
 
-function pintaAqui(i){
-  const z = document.getElementById("lista-aqui-" + i);
+function pintaAqui(i, ctx = "hoy"){
+  const z = document.getElementById(`lista-aqui-${ctx}-${i}`);
   if (!z || typeof DIARIO_SYNC === "undefined") return;
   const vs = DIARIO_SYNC.visitasDelDia(VIAJE_ID, i);
   z.innerHTML = vs.length ? `<ul class="plain">${vs.map(v => {
@@ -475,17 +475,17 @@ function pintaAqui(i){
     const t = prompt("¿Qué es este sitio?", v?.txt || "");
     if (t === null) return;
     DIARIO_SYNC.renombrarVisita(VIAJE_ID, b.dataset.nombrar, t.trim());
-    pintaAqui(i);
+    pintaAqui(i, ctx);
   }));
   z.querySelectorAll("[data-quitar-v]").forEach(b => b.addEventListener("click", () => {
     if (!confirm("¿Quitar este punto?")) return;
     DIARIO_SYNC.borrarVisita(VIAJE_ID, b.dataset.quitarV);
-    pintaAqui(i);
+    pintaAqui(i, ctx);
   }));
 }
 
-function activaAqui(i){
-  const b = document.querySelector(`[data-aqui="${i}"]`);
+function activaAqui(i, ctx = "hoy"){
+  const b = document.querySelector(`[data-aqui="${ctx}:${i}"]`);
   if (!b || b.dataset.listo) return;
   b.dataset.listo = "1";
   b.addEventListener("click", async () => {
@@ -494,39 +494,39 @@ function activaAqui(i){
     try {
       const v = await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
       b.textContent = "Guardado";
-      pintaAqui(i);
+      pintaAqui(i, ctx);
       const t = prompt("Guardado. ¿Le pones nombre?", "");
-      if (t && t.trim()){ DIARIO_SYNC.renombrarVisita(VIAJE_ID, v.id, t.trim()); pintaAqui(i); }
+      if (t && t.trim()){ DIARIO_SYNC.renombrarVisita(VIAJE_ID, v.id, t.trim()); pintaAqui(i, ctx); }
     } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
     setTimeout(() => { b.textContent = antes; }, 2200);
   });
 }
 
 /* ---- Cámara y fotos del día ---- */
-function cajaFotos(i){
-  return `<div class="fotos-dia" id="fotos-${i}">
+function cajaFotos(i, ctx = "hoy"){
+  return `<div class="fotos-dia" id="fotos-${ctx}-${i}">
     <span class="label">Fotos del día</span>
-    <div class="galeria" id="gal-${i}"></div>
+    <div class="galeria" id="gal-${ctx}-${i}"></div>
     <div class="btns">
       <label class="btn solid camara">
-        <input type="file" accept="image/*" capture="environment" data-camara="${i}" hidden>
+        <input type="file" accept="image/*" capture="environment" data-camara="${ctx}:${i}" hidden>
         <span>Hacer una foto</span>
       </label>
       <label class="btn">
-        <input type="file" accept="image/*" multiple data-carrete="${i}" hidden>
+        <input type="file" accept="image/*" multiple data-carrete="${ctx}:${i}" hidden>
         <span>Del carrete</span>
       </label>
     </div>
   </div>`;
 }
 
-async function pintaGaleria(i, traer = true){
-  const g = document.getElementById("gal-" + i);
+async function pintaGaleria(i, traer = true, ctx = "hoy"){
+  const g = document.getElementById(`gal-${ctx}-${i}`);
   if (!g) return;
   let fs = await FOTOS.delDia(VIAJE_ID, i);
   if (traer){
     // pintamos lo que hay y, mientras, miramos si el otro móvil subió algo
-    FOTOS.traerDelDia(VIAJE_ID, i).then(n => { if (n) pintaGaleria(i, false); }).catch(()=>{});
+    FOTOS.traerDelDia(VIAJE_ID, i).then(n => { if (n) pintaGaleria(i, false, ctx); }).catch(()=>{});
   }
   g.innerHTML = fs.length
     ? fs.map(f => {
@@ -542,19 +542,19 @@ async function pintaGaleria(i, traer = true){
   g.querySelectorAll("[data-borrar-foto]").forEach(b => b.addEventListener("click", async () => {
     if (!confirm("¿Quitar esta foto?")) return;
     await FOTOS.borrar(b.dataset.borrarFoto);
-    pintaGaleria(i);
+    pintaGaleria(i, false, ctx);
   }));
   g.querySelectorAll("[data-ver]").forEach(im => im.addEventListener("click", () => verFoto(im.src)));
   g.querySelectorAll("[data-portada]").forEach(b => b.addEventListener("click", () => {
     if (typeof DIARIO_SYNC === "undefined") return;
     DIARIO_SYNC.ponPortada(VIAJE_ID, i, b.dataset.portada);
-    pintaGaleria(i, false);
-    pintaPortada(i);
+    pintaGaleria(i, false, ctx);
+    pintaPortada(i, ctx);
   }));
 }
 
-async function pintaPortada(i){
-  const z = document.getElementById("portada-dia");
+async function pintaPortada(i, ctx = "hoy"){
+  const z = document.getElementById(`portada-${ctx}`);
   if (!z || typeof DIARIO_SYNC === "undefined") return;
   const id = DIARIO_SYNC.portada(VIAJE_ID, i);
   if (!id){ z.innerHTML = ""; return; }
@@ -572,8 +572,8 @@ function verFoto(src){
   document.body.appendChild(v);
 }
 
-function activaCamara(i){
-  document.querySelectorAll(`[data-camara="${i}"], [data-carrete="${i}"]`).forEach(inp => {
+function activaCamara(i, ctx = "hoy"){
+  document.querySelectorAll(`[data-camara="${ctx}:${i}"], [data-carrete="${ctx}:${i}"]`).forEach(inp => {
     if (inp.dataset.listo) return;
     inp.dataset.listo = "1";
     inp.addEventListener("change", async e => {
@@ -595,7 +595,7 @@ function activaCamara(i){
       if (fallos) alert(fallos === archivos.length
         ? "No se pudieron guardar las fotos en este móvil."
         : `${fallos} de ${archivos.length} no se pudieron guardar.`);
-      pintaGaleria(i);
+      pintaGaleria(i, false, ctx);
     });
   });
 }
@@ -616,16 +616,17 @@ function vistaHoy(){
   document.getElementById("title").textContent = d.t || `Día ${i+1}`;
   document.getElementById("subtitle").textContent = (d.dest||"").trim() ? `Duermes en ${d.dest}` : VIAJE.nombre;
 
-  let h = `<div id="aviso-cerca"></div><div id="zona-tiempo"></div>`
+  let h = `<div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>`
         + (d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : "")
-        + botonesRuta(i) + pintaParadas(d, i);
+        + botonesRuta(i) + pintaParadas(d, i, "hoy");
   const sig = VIAJE.dias[i+1];
   if (sig) h += `<div class="sec"><span class="label">Día siguiente</span>
     <h2>${esc(sig.t || "Día " + (i+2))}</h2></div>
     <p class="note">${sig.paradas.filter(p=>p.txt).map(p => esc(p.txt)).join(" · ") || "Sin paradas"}</p>`;
   document.getElementById("v-hoy").innerHTML = h;
   activaDiario();
-  activaCamara(i); pintaGaleria(i); activaAqui(i); pintaAqui(i); pintaPortada(i);
+  activaCamara(i, "hoy"); pintaGaleria(i, true, "hoy");
+  activaAqui(i, "hoy"); pintaAqui(i, "hoy"); pintaPortada(i, "hoy");
   if (P.avisar) avisoCerca(i);
   const conXY = (d.paradas || []).find(p => p.xy);
   if (conXY) pintaTiempo(conXY.xy, d.dest || "");
@@ -656,9 +657,10 @@ function vistaDias(){
     det.innerHTML = `<div class="sec"><span class="label">${f ? esc(f.wd)+" "+esc(f.txt) : "Día "+(i+1)}</span>
       <h2>${esc(d.t || "Día " + (i+1))}</h2></div>
       ${d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : ""}
-      ${botonesRuta(i)}${pintaParadas(d, i)}`;
+      <div id="portada-det"></div>${botonesRuta(i)}${pintaParadas(d, i, "det")}`;
     activaDiario();
-    activaCamara(i); pintaGaleria(i); activaAqui(i); pintaAqui(i); pintaPortada(i); activaAqui(i); pintaAqui(i); pintaPortada(i);
+    activaCamara(i, "det"); pintaGaleria(i, true, "det");
+    activaAqui(i, "det"); pintaAqui(i, "det"); pintaPortada(i, "det");
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
 }
