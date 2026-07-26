@@ -184,6 +184,23 @@ header{position:relative}
 .t-man small{color:var(--ac)}
 .tiempo .fuente{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--td);opacity:.65;margin:10px 0 0}
+
+/* Fotos del día */
+.fotos-dia{margin:18px 0 8px}
+.galeria{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.miniatura{position:relative;width:calc(33.333% - 6px);aspect-ratio:1;
+  border-radius:11px;overflow:hidden;border:1px solid var(--line)}
+.miniatura img{width:100%;height:100%;object-fit:cover;display:block;cursor:pointer}
+.miniatura .quitar{position:absolute;top:4px;right:4px;width:23px;height:23px;
+  border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;
+  font-size:15px;line-height:1;cursor:pointer;padding:0}
+.btn.camara{cursor:pointer}
+.visor-foto{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.94);
+  display:grid;place-items:center;padding:16px}
+.visor-foto img{max-width:100%;max-height:86vh;border-radius:10px}
+.visor-foto .cerrar{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));
+  padding:11px 22px;border-radius:999px;border:1px solid rgba(255,255,255,.4);
+  background:transparent;color:#fff;font-family:var(--sans);font-size:14.5px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -212,7 +229,7 @@ header{position:relative}
   <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
 </nav>
 
-<script src="../sync.js?v=42"></script>
+<script src="../sync.js?v=59"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -254,6 +271,7 @@ const TEMA = {
 };
 if (window.matchMedia)
   matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", () => TEMA.aplica());
+const VIAJE_ID = new URLSearchParams(location.search).get("id") || "viaje";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
@@ -359,7 +377,8 @@ function pintaParadas(d, i){
     + (d.lluvia ? `<div class="lluvia"><span class="ic">☂</span><p><b>Si llueve:</b> ${esc(d.lluvia)}</p></div>` : "")
     + `<div class="diario"><span class="label">Notas del día</span>
        <textarea class="nota-txt" data-dia="${i}" rows="2"
-         placeholder="Qué tal fue, dónde comisteis, cuánto costó…">${esc(P.nota(i))}</textarea></div>`;
+         placeholder="Qué tal fue, dónde comisteis, cuánto costó…">${esc(P.nota(i))}</textarea></div>`
+    + cajaFotos(i);
 }
 
 function activaDiario(){
@@ -404,6 +423,79 @@ async function avisoCerca(i){
   } catch {}
 }
 
+/* ---- Cámara y fotos del día ---- */
+function cajaFotos(i){
+  return `<div class="fotos-dia" id="fotos-${i}">
+    <span class="label">Fotos del día</span>
+    <div class="galeria" id="gal-${i}"></div>
+    <div class="btns">
+      <label class="btn solid camara">
+        <input type="file" accept="image/*" capture="environment" data-camara="${i}" hidden>
+        Hacer una foto
+      </label>
+      <label class="btn">
+        <input type="file" accept="image/*" multiple data-carrete="${i}" hidden>
+        Del carrete
+      </label>
+    </div>
+  </div>`;
+}
+
+async function pintaGaleria(i){
+  const g = document.getElementById("gal-" + i);
+  if (!g) return;
+  const fs = await FOTOS.delDia(VIAJE_ID, i);
+  g.innerHTML = fs.length
+    ? fs.map(f => `<div class="miniatura">
+         <img src="${f.datos}" alt="" data-ver="${f.id}">
+         <button class="quitar" data-borrar-foto="${f.id}" aria-label="Quitar">×</button>
+       </div>`).join("")
+    : `<p class="note" style="margin:6px 0 0">Todavía no hay ninguna.</p>`;
+
+  g.querySelectorAll("[data-borrar-foto]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("¿Quitar esta foto?")) return;
+    await FOTOS.borrar(b.dataset.borrarFoto);
+    pintaGaleria(i);
+  }));
+  g.querySelectorAll("[data-ver]").forEach(im => im.addEventListener("click", () => verFoto(im.src)));
+}
+
+function verFoto(src){
+  const v = document.createElement("div");
+  v.className = "visor-foto";
+  v.innerHTML = `<img src="${src}" alt=""><button class="cerrar">Cerrar</button>`;
+  v.addEventListener("click", () => v.remove());
+  document.body.appendChild(v);
+}
+
+function activaCamara(i){
+  document.querySelectorAll(`[data-camara="${i}"], [data-carrete="${i}"]`).forEach(inp => {
+    if (inp.dataset.listo) return;
+    inp.dataset.listo = "1";
+    inp.addEventListener("change", async e => {
+      const archivos = [...(e.target.files || [])];
+      if (!archivos.length) return;
+      const eti = inp.parentElement;
+      const original = eti.textContent.trim();
+      eti.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = " Guardando… "; });
+      let fallos = 0;
+      for (const a of archivos){
+        try {
+          const datos = await comprimirFoto(a);
+          const id = await FOTOS.guardar(VIAJE_ID, i, datos);
+          if (!id) fallos++;
+        } catch { fallos++; }
+      }
+      eti.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = " " + original + " "; });
+      inp.value = "";
+      if (fallos) alert(fallos === archivos.length
+        ? "No se pudieron guardar las fotos en este móvil."
+        : `${fallos} de ${archivos.length} no se pudieron guardar.`);
+      pintaGaleria(i);
+    });
+  });
+}
+
 function vistaHoy(){
   if (!VIAJE.dias.length){
     document.getElementById("eyebrow").textContent = VIAJE.nombre;
@@ -429,6 +521,7 @@ function vistaHoy(){
     <p class="note">${sig.paradas.filter(p=>p.txt).map(p => esc(p.txt)).join(" · ") || "Sin paradas"}</p>`;
   document.getElementById("v-hoy").innerHTML = h;
   activaDiario();
+  activaCamara(i); pintaGaleria(i);
   if (P.avisar) avisoCerca(i);
   const conXY = (d.paradas || []).find(p => p.xy);
   if (conXY) pintaTiempo(conXY.xy, d.dest || "");
@@ -461,6 +554,7 @@ function vistaDias(){
       ${d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : ""}
       ${botonesRuta(i)}${pintaParadas(d, i)}`;
     activaDiario();
+    activaCamara(i); pintaGaleria(i);
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
 }
