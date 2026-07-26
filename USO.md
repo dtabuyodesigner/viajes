@@ -32,6 +32,10 @@ abajo**: iOS no lo permite en modo pantalla completa. Por eso está el botón.
 
 ## Lo que puedes hacer en un viaje
 
+**El mapa del día**, arriba del todo, con dos pestañas: *Este día* con las
+paradas numeradas y por dónde habéis ido, o *El viaje entero*. El enlace
+*situarme* añade un punto azul con tu posición.
+
 **Hoy** se abre solo en el día que toca. Arriba, el tiempo del sitio donde
 duermes y, si tienes una parada a menos de 5 km, un aviso.
 
@@ -43,6 +47,14 @@ un campo para escribir. Todo se sincroniza con el otro móvil.
 
 **Comer, gasolina, tiendas.** Botón en el día, o pestaña Guía. Da la ubicación y
 elige qué buscas. Te lo ordena por **tiempo en coche**, no en línea recta.
+
+**Fotos.** Al final de cada día: *Hacer una foto* abre la cámara, *Del carrete*
+deja elegir varias. La estrella de una miniatura la pone como portada del día.
+Se comparten con el otro móvil.
+
+**Por dónde hemos pasado.** *Estoy aquí* guarda el punto donde estés y le pone
+nombre solo, preguntándoselo a OpenStreetMap. Si ya te has ido del sitio, usa
+*Añadir un sitio* y búscalo por el nombre: se coloca en su hora dentro de ese día.
 
 **Modo de color.** Arriba a la derecha: ◐ automático, ☀ claro, ☾ oscuro. El
 claro es para cuando da el sol en la pantalla.
