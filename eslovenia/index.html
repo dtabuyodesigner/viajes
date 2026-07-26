@@ -403,6 +403,9 @@ header{position:relative}
 .vistazo p + p{margin-top:7px}
 .vistazo .v-lluvia,.vistazo .v-hora{font-weight:600}
 .vistazo .v-aviso::before{content:"· "}
+.vistazo .v-nota,.vistazo .v-ayer{font-style:italic;color:var(--paper-dim)}
+.vistazo .v-nota::before,.vistazo .v-ayer::before{content:"“";color:var(--soca);font-style:normal}
+.vistazo .v-nota::after,.vistazo .v-ayer::after{content:"”";color:var(--soca);font-style:normal}
 .vistazo .v-hecho{color:var(--soca)}
 </style>
 </head>
@@ -847,7 +850,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v72 · 26/07 18:09";
+const VERSION = "v73 · 26/07 22:18";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -1279,7 +1282,22 @@ function frasesDelDia(i){
       f.unshift({ tipo:"hecho", txt:"Lo importante del día, hecho." });
   }
 
-  /* ---- 4. Cuánto se conduce ---- */
+  /* ---- 4. Lo que apuntaste tú ---- */
+  if (typeof DIARIO_SYNC !== "undefined"){
+    const mia = (DIARIO_SYNC.nota(VIAJE_ID, i) || "").trim();
+    if (mia && !esHoy){
+      // al releer un día pasado, lo primero es lo que escribiste
+      f.unshift({ tipo:"nota", txt: mia.length > 150 ? mia.slice(0, 147) + "…" : mia });
+    }
+    // y si ayer apuntaste algo, hoy se recuerda
+    if (esHoy && i > 0){
+      const ayer = (DIARIO_SYNC.nota(VIAJE_ID, i - 1) || "").trim();
+      if (ayer && hora < 12)
+        f.push({ tipo:"ayer", txt:`Ayer apuntaste: ${ayer.length > 110 ? ayer.slice(0, 107) + "…" : ayer}` });
+    }
+  }
+
+  /* ---- 5. Cuánto se conduce ---- */
   if (d.km && esHoy && hora < 12) f.push({ tipo:"coche", txt:`${d.km} al volante.` });
 
   return f;
@@ -1300,8 +1318,8 @@ async function frasesTiempo(i){
   return f;
 }
 
-function pintaVistazo(i){
-  const z = document.getElementById("vistazo");
+function pintaVistazo(i, ctx = "hoy"){
+  const z = document.getElementById(ctx === "det" ? "vistazo-det" : "vistazo");
   if (!z) return;
   const f = frasesDelDia(i);
   const dibuja = lista => {
@@ -1371,8 +1389,9 @@ function vistaDias(){
   document.querySelectorAll(".day").forEach(b => b.addEventListener("click", () => {
     const i = +b.dataset.i, d = VIAJE.dias[i], f = fecha(d.f);
     const det = document.getElementById("detalle");
-    det.innerHTML = `<div class="sec"><span class="label">${esc(f.wd)} ${esc(f.txt)}</span><h2>${esc(d.t)}</h2></div><div id="mapa-cab-det-${i}">${mapaCabecera(i, "det")}</div><div id="portada-det"></div>${cabecera(d)}${botonesRuta(i)}${pintaParadas(d, i, "det")}`;
+    det.innerHTML = `<div class="sec"><span class="label">${esc(f.wd)} ${esc(f.txt)}</span><h2>${esc(d.t)}</h2></div><div id="vistazo-det"></div><div id="mapa-cab-det-${i}">${mapaCabecera(i, "det")}</div><div id="portada-det"></div>${cabecera(d)}${botonesRuta(i)}${pintaParadas(d, i, "det")}`;
     activaEnlacesGuia(); activaDiario(); activaAtajoServicios();
+    pintaVistazo(i, "det");
     activaCamara(i, "det"); pintaGaleria(i, true, "det");
     activaAqui(i, "det"); activaBuscarSitio(i, "det"); pintaAqui(i, "det"); activaMapaCab(i, "det"); pintaPortada(i, "det");
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
