@@ -737,7 +737,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v60 · 26/07 07:36";
+const VERSION = "v61 · 26/07 07:43";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -1153,11 +1153,11 @@ function cajaFotos(i){
     <div class="btns">
       <label class="btn solid camara">
         <input type="file" accept="image/*" capture="environment" data-camara="${i}" hidden>
-        Hacer una foto
+        <span>Hacer una foto</span>
       </label>
       <label class="btn">
         <input type="file" accept="image/*" multiple data-carrete="${i}" hidden>
-        Del carrete
+        <span>Del carrete</span>
       </label>
     </div>
   </div>`;
@@ -1201,9 +1201,9 @@ function activaCamara(i){
     inp.addEventListener("change", async e => {
       const archivos = [...(e.target.files || [])];
       if (!archivos.length) return;
-      const eti = inp.parentElement;
-      const original = eti.textContent.trim();
-      eti.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = " Guardando… "; });
+      const eti = inp.parentElement.querySelector("span");
+      const original = eti ? eti.textContent : "";
+      if (eti) eti.textContent = archivos.length > 1 ? `Guardando ${archivos.length}…` : "Guardando…";
       let fallos = 0;
       for (const a of archivos){
         try {
@@ -1212,7 +1212,7 @@ function activaCamara(i){
           if (!id) fallos++;
         } catch { fallos++; }
       }
-      eti.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = " " + original + " "; });
+      if (eti) eti.textContent = original;
       inp.value = "";
       if (fallos) alert(fallos === archivos.length
         ? "No se pudieron guardar las fotos en este móvil."
