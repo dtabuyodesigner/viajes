@@ -18,7 +18,7 @@ Aparecieron dos cosas al mover: el visor tenía el hueco del tiempo sin rellenar
 pequeños que difieren lo justo para no poder moverlos tal cual: dictado por voz,
 compartir el diario y las rutas de Wikiloc.
 
-**Sin mezclar a `main`.** Está en `dev`, probado, listo para cuando se pida.
+**Mezclado a `main` en v73**, a petición.
 
 ---
 
@@ -157,7 +157,8 @@ Para no volver a proponerlo:
 | Añadir sitios por los que ya se pasó | v68 |
 | Mapa en cada día | v69–v72 |
 | Motor común, fase 1 | v72 · `dev` |
-| El primer vistazo: lo que importa del día, al abrir | v73 · `dev` |
+| El primer vistazo: lo que importa del día, al abrir | v73 |
+| El vistazo recuerda tus notas de ayer y de días pasados | v73 |
 
 ---
 
