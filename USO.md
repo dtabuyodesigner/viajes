@@ -32,7 +32,11 @@ abajo**: iOS no lo permite en modo pantalla completa. Por eso está el botón.
 
 ## Lo que puedes hacer en un viaje
 
-**El mapa del día**, arriba del todo, con dos pestañas: *Este día* con las
+**Lo primero que ves** es un recuadro con lo que importa de hoy: si va a llover
+y cuál era el plan B, lo que hay que reservar o llevar, y por la tarde lo que
+queda por hacer. Si no hay nada que avisar, no aparece.
+
+**El mapa del día**, debajo, con dos pestañas: *Este día* con las
 paradas numeradas y por dónde habéis ido, o *El viaje entero*. El enlace
 *situarme* añade un punto azul con tu posición.
 
