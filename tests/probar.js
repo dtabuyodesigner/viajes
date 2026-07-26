@@ -226,7 +226,9 @@ function funcionesDefinidas(){
                      "esc","mapa","xyDeParada","buscarServicios","lanzarServicios"];
   for (const a of archivos){
     const src = fs.readFileSync(path.join(RAIZ, a), "utf8");
-    const usadas = vigiladas.filter(f => new RegExp("[^\\w.]" + f + "\\s*\\(").test(src));
+    // no cuentan los usos protegidos: typeof x === "function" ? x() : otra()
+    const limpio = src.replace(/typeof\s+(\w+)\s*===\s*"function"\s*\?[^:]*:/g, "");
+    const usadas = vigiladas.filter(f => new RegExp("[^\\w.]" + f + "\\s*\\(").test(limpio));
     const sinDefinir = usadas.filter(f =>
       !new RegExp("(const|let|var|function)\\s+" + f + "\\b").test(src));
     comprobar(`${a}: todas definidas`, sinDefinir.length === 0,
