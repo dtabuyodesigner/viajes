@@ -378,6 +378,8 @@ const waze = q => `waze://?q=${encodeURIComponent(q)}&navigate=yes`;
 const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
 const mapsXY = (la, lo) => `https://www.google.com/maps/dir/?api=1&destination=${la},${lo}&travelmode=driving`;
 const navegarXY = (la, lo) => PREF.app === "waze" ? wazeXY(la, lo) : mapsXY(la, lo);
+const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const navegar = q => P.app === "waze" ? waze(q) : mapsDe(q);
 const comoNavego = () => P.app === "waze" ? "Waze" : "Maps";
@@ -405,7 +407,7 @@ function botonesRuta(i){
   const chip = (destino, texto, n, cama) =>
     `<span class="wz-par${cama ? " cama-par" : ""}"><a class="wz" href="${navegar(destino)}" target="_blank" rel="noopener">
       <b>${n}</b>${esc(texto)}</a>${P.app === "waze"
-        ? `<a class="wz-alt" href="${mapsDe(destino)}" target="_blank" rel="noopener">map</a>` : ""}</span>`;
+        ? `<a class="wz-alt" href="${mapa(destino)}" target="_blank" rel="noopener" title="Ver dónde está">ver</a>` : ""}</span>`;
   return `<div class="ruta">
     <span class="label">Navegar con ${comoNavego()}${d.km ? " · " + esc(d.km) : ""}</span>
     <div class="wz-lista">
@@ -1028,6 +1030,7 @@ async function lanzarCerca(){
         </div>
         <div class="btns" style="margin-top:6px">
           <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
+        <a class="btn" href="${mapaXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ver</a>
           <a class="btn" href="https://www.google.com/maps/search/?api=1&query=${x.xy.join(",")}"
              target="_blank" rel="noopener">Ver</a>
         </div>
