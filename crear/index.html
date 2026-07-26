@@ -217,7 +217,7 @@ header{position:relative}
   <button class="btn solid" id="guardar">Guardar</button>
 </div>
 
-<script src="../sync.js?v=62"></script>
+<script src="../sync.js?v=64"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -871,6 +871,25 @@ Construye el viaje ALREDEDOR de esos horarios:
     Dónde llenar la nevera, dónde repostar antes de meterse en zona vacía,
     aparcamientos que se llenan pronto y si son de pago.
 
+11. NORMAS DEL PAÍS (solo si no es España)
+    Al final, después de los días, añade un apartado «## Normas» con lo que
+    cambia respecto a España y de verdad afecta al día a día. Sé concreto:
+
+    - Andando por carretera sin acera: ¿por qué lado se camina?
+    - En bici: ¿por dónde se circula? ¿casco obligatorio? ¿luces de día?
+    - En coche: límites de velocidad, luces encendidas de día, dónde no se
+      puede adelantar, prioridad en rotondas y en carreteras de montaña.
+    - Alcohol al volante: tasa permitida.
+    - Peajes o viñeta: cómo se paga y dónde se compra antes de entrar.
+    - Qué hay que llevar obligatoriamente en el coche.
+    - Aparcar: colores de las líneas y qué significan.
+    - Con perro: si puede ir suelto, si hay bozal obligatorio, si entra en
+      transporte público y en los parques naturales.
+    - Teléfonos de emergencia.
+    - Cualquier norma que sorprenda a alguien de España.
+
+    Si algo ha cambiado hace poco o no estás seguro, dilo en vez de inventarlo.
+
 ═══ FORMATO (respétalo, es lo que lee mi app) ═══
 
 # Nombre del viaje
@@ -893,7 +912,8 @@ REGLAS DE FORMATO:
 - Cada parada empieza por «- », hora en **negrita**, luego « · », nombre, « — » y la explicación.
 - Entre corchetes al final, el nombre que un GPS encuentre, con topónimo local si ayuda.
 - No inventes horarios ni precios exactos si no estás seguro: di «comprobar» en su lugar.
-- Nada de texto fuera de ese formato: ni introducción ni despedida.`;
+- Nada de texto fuera de ese formato: ni introducción ni despedida.
+- El apartado «## Normas» va al final, con líneas que empiezan por «- ».`;
 }
 
 function abrirPedir(){
@@ -1094,6 +1114,11 @@ function aMarkdown(v){
     if (d.lluvia) L.push(`- Si llueve: ${d.lluvia}`);
     L.push("");
   });
+  if ((v.normas || []).length){
+    L.push("## Normas");
+    v.normas.forEach(n => L.push(`- ${n}`));
+    L.push("");
+  }
   return L.join("\n");
 }
 
@@ -1116,8 +1141,8 @@ function extraerJSON(texto){
 
 function leerMarkdown(texto){
   const lineas = String(texto || "").split("\n");
-  const v = { nombre:"", salida:"", desde:"", hasta:"", dias:[] };
-  let dia = null;
+  const v = { nombre:"", salida:"", desde:"", hasta:"", dias:[], normas:[] };
+  let dia = null, enNormas = false;
 
   for (let cruda of lineas){
     const l = cruda.trim();
@@ -1126,6 +1151,15 @@ function leerMarkdown(texto){
     // # Nombre del viaje
     let m = l.match(/^#\s+(.+)$/);
     if (m && !l.startsWith("##")){ v.nombre = m[1].trim(); continue; }
+
+    // ## Normas: no es un día, es información del país
+    if (/^##+\s*(normas|conducci[óo]n|circulaci[óo]n)/i.test(l)){ dia = null; enNormas = true; continue; }
+
+    if (enNormas){
+      const n = l.match(/^[-*•]\s+(.*)$/);
+      if (n) v.normas.push(n[1].replace(/\*/g,"").trim());
+      continue;
+    }
 
     // ## Día 1 — Título
     m = l.match(/^##+\s*(?:d[ií]a\s*\d+\s*[—–\-:.]?\s*)?(.*)$/i);
@@ -1180,6 +1214,7 @@ function normalizar(v){
     nombre: texto(v.nombre || v.titulo || "Viaje sin nombre"),
     desde: texto(v.desde || ""), hasta: texto(v.hasta || ""),
     salida: texto(v.salida || v.origen || ""),
+    normas: Array.isArray(v.normas) ? v.normas.map(texto).filter(Boolean) : [],
     actualizado: new Date().toISOString(),
     dias: dias.map(d => ({
       t: texto(d.t || d.titulo || d.nombre || ""),
