@@ -590,7 +590,7 @@ function activaAqui(i, ctx = "hoy"){
 function mapaDia(i, ctx = "hoy"){
   const d = VIAJE.dias[i];
   const previstas = (d.paradas || []).map((p, k) => ({
-    n: p.txt, xy: (typeof xyDeParada === "function" ? xyDeParada(p) : p.xy), k
+    n: p.txt, xy: p.xy, k
   })).filter(x => x.xy);
   const dormir = d.xy ? { n: "Noche", xy: d.xy, cama: true } : null;
   const reales = (typeof DIARIO_SYNC !== "undefined")
@@ -653,7 +653,7 @@ function activaMapaDia(i, ctx = "hoy"){
     b.addEventListener("click", async () => {
       b.textContent = "localizando…";
       try {
-        const p = await pedirUbicacion();
+        const p = await ubicacion();
         MI_POS = Array.isArray(p) ? p.join(",") : p;
         refrescaMapaDia(i, ctx);
       } catch { b.textContent = "no se pudo"; }
