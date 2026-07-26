@@ -38,7 +38,7 @@ input[type=text],input[type=date],textarea,select{
   width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--linea);
   background:var(--fondo-2);color:var(--tinta);font-family:var(--sans);font-size:15.5px}
 textarea{resize:none;overflow:hidden;line-height:1.5}
-input::placeholder,textarea::placeholder{color:#63757D}
+input::placeholder,textarea::placeholder{color:var(--tinta-dim)}
 .dos{display:flex;gap:10px}
 .dos .campo{flex:1}
 
@@ -73,12 +73,12 @@ input::placeholder,textarea::placeholder{color:#63757D}
 .aviso .ic{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:var(--ambar);
   color:var(--fondo);font-family:var(--mono);font-size:12px;font-weight:700;
   display:grid;place-items:center;margin-top:1px}
-.aviso p{margin:0;font-size:13px;line-height:1.5;color:#E4D6B8}
-.aviso p a{color:#F0DFA8;text-decoration:underline}
+.aviso p{margin:0;font-size:13px;line-height:1.5;color:var(--tinta)}
+.aviso p a{color:var(--ambar);text-decoration:underline}
 .aviso.ok{background:rgba(91,200,180,.1);border-color:rgba(91,200,180,.35)}
 .aviso.ok .ic{background:var(--acento)}
-.aviso.ok p{color:#BFE8DF}
-.aviso.ok p a{color:#8FE0D0}
+.aviso.ok p{color:var(--tinta)}
+.aviso.ok p a{color:var(--acento)}
 .nota{font-size:13px;color:var(--tinta-dim);line-height:1.5;margin:10px 0 0}
 .sec{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
   color:var(--tinta-dim);margin:26px 0 10px}
