@@ -4,7 +4,25 @@ Ordenado por lo que más cambia las cosas, no por lo que más cuesta.
 
 ---
 
-## 1 · Unificar el motor
+## 1 · Unificar el motor  ·  fase 1 hecha, en `dev`
+
+**Hecho ya (v72, rama `dev`).** `assets/app.js` con la cámara y las fotos,
+«Estoy aquí» y buscar sitios, el mapa del día, el mapa de cabecera, el tiempo de
+Open-Meteo y los tiempos por carretera de OSRM. **758 líneas fuera de la
+triplicación**, de 784 duplicadas quedan 96. Las 34 fotografías salen idénticas.
+
+Aparecieron dos cosas al mover: el visor tenía el hueco del tiempo sin rellenar
+—lo ha ganado gratis— y su función de ubicación se llamaba distinto.
+
+**Falta la fase 2** (separar los datos de cada viaje) y las 96 líneas de bloques
+pequeños que difieren lo justo para no poder moverlos tal cual: dictado por voz,
+compartir el diario y las rutas de Wikiloc.
+
+**Sin mezclar a `main`.** Está en `dev`, probado, listo para cuando se pida.
+
+---
+
+### Lo que había antes
 
 **Qué pasa hoy.** Hay cuatro apps con el mismo código copiado: portada, visor,
 Eslovenia y Asturias. Cada arreglo hay que hacerlo cuatro veces y cada repetición
