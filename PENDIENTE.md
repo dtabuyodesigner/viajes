@@ -6,143 +6,112 @@ Ordenado por lo que más cambia las cosas, no por lo que más cuesta.
 
 ## 1 · Unificar el motor
 
-**Qué pasa hoy.** Hay cuatro apps con el mismo código copiado: la portada, el
-visor, Eslovenia y Asturias. Cada arreglo hay que hacerlo cuatro veces y cada
-repetición es una ocasión de romper algo. Ya pasó: al reescribir los teléfonos
-de Eslovenia se borró el bloque de alojamientos y la pestaña Reservas se quedó
-en blanco con el usuario en carretera.
+**Qué pasa hoy.** Hay cuatro apps con el mismo código copiado: portada, visor,
+Eslovenia y Asturias. Cada arreglo hay que hacerlo cuatro veces y cada repetición
+es una ocasión de romper algo.
+
+**Cuánto duele ya.** En una sola tarde esto provocó, como mínimo: la pestaña de
+Reservas en blanco, la barra inferior oscura en modo claro, textos invisibles al
+sol, `navegarXY` usada sin definir, las fotos colándose en todos los días, y el
+botón de situarme roto en el visor. Todos por lo mismo: tocar lo mismo en varios
+sitios y que uno se quede atrás.
 
 **Qué habría que hacer.** Sacar el motor a `assets/app.js` y que cada viaje sea
 solo su archivo de datos. El service worker lo guarda una vez y sirve para todos,
 así que el funcionamiento sin cobertura no se pierde.
 
-**Por qué no se ha hecho.** Es un cambio grande y hasta ahora la forma de las
-apps seguía moviéndose. Refactorizar mientras se añaden funciones multiplica el
-riesgo. Ahora que la forma está estable, toca.
+**Cuidado con:** las apps a medida tienen bloques propios —Eslovenia tiene
+vuelos, seguros y guía de 39 fichas; Asturias tiene park4night—. El motor debe
+permitirlos sin obligar a que todos los viajes los tengan.
 
-**Cuidado con:** las apps a medida tienen cosas que el motor genérico no —
-Eslovenia tiene vuelos, seguros y pólizas; Asturias tiene park4night. El motor
-debe permitir bloques propios sin obligar a que todos los viajes los tengan.
+**Cuándo.** Ahora. Es lo que más riesgo quita y lo único que impide seguir
+añadiendo con tranquilidad.
 
 ---
 
 ## 2 · Que Eslovenia y Asturias se puedan editar
 
-**Qué pasa hoy.** Son archivos escritos a mano. Cambiar una parada de Asturias
-requiere tocar el código y publicar. El usuario no puede.
+Hoy son archivos escritos a mano: cambiar una parada requiere tocar código y
+publicar. Convertirlas al formato de los viajes creados las haría editables desde
+el móvil y sincronizables como las demás.
 
-**Qué habría que hacer.** Convertir sus datos al formato de los viajes creados y
-que los abra el visor genérico. Los dos viajes quedarían editables desde el
-móvil y se sincronizarían como los demás.
+**Depende del punto 1.** Es la misma faena.
 
-**Depende de:** el punto 1. Es la misma faena, en realidad.
-
-**Cuidado con:** no perder lo que las hace buenas. La guía de 27 fichas de
-Asturias y las 36 de Eslovenia son contenido escrito, no plantilla. Si el
-formato genérico no admite fichas de guía, hay que añadírselo antes.
+**Cuidado con:** no perder las guías. Son contenido escrito, no plantilla.
 
 ---
 
 ## 3 · Mapas sin cobertura
 
-**Qué pasa hoy.** El itinerario funciona sin red, pero el mapa no. En Somiedo
-tienes las paradas y no puedes ver dónde caen.
+**Por qué no está hecho, con honestidad.** Es lo más difícil de la lista: las
+teselas pesan decenas de megas, iOS borra el almacenamiento de las webs que no se
+usan en unas semanas, y OpenStreetMap prohíbe la descarga masiva en sus
+condiciones de uso.
 
-**Qué habría que hacer.** Descargar las teselas de la zona del viaje antes de
-salir y guardarlas para usarlas luego.
+**Alternativa realista.** Que el usuario se descargue la zona en **Organic Maps**
+y enlazar desde la app. Menos vistoso, funciona seguro.
 
-**Por qué no está hecho, con honestidad.** Es la más difícil de la lista:
+---
 
-- Las teselas pesan. Una zona como Somiedo con detalle suficiente son decenas de
-  megas. `localStorage` tiene unos 5 MB: **no cabe**. Habría que usar IndexedDB
-  o la Cache API.
-- iOS borra el almacenamiento de las webs que no se usan en unas semanas. Puede
-  que descargues los mapas en julio y en agosto ya no estén.
-- Los servidores de teselas de OpenStreetMap **prohíben la descarga masiva** en
-  sus condiciones de uso. Habría que usar un proveedor que lo permita, y los que
-  lo permiten suelen cobrar.
+## 4 · Enchufar Organic Maps
 
-**Alternativa realista.** En vez de pelearse con esto, avisar al usuario de que
-se descargue la zona en Organic Maps o en Google Maps, que ya lo hacen bien, y
-enlazar desde la app. Menos vistoso, funciona seguro.
+App de mapas offline con datos de OpenStreetMap: trae caminos de montaña,
+fuentes y refugios que Google no tiene.
+
+**Qué falta.** Comprobar en un iPhone si responde a `om://`. Si abre, añadir un
+botón por parada. Si no, dejar el aviso de «descárgate la zona antes de salir».
 
 ---
 
 ## 5 · Que la app llame sola a la IA
 
-**Qué pasa hoy.** El editor prepara la petición, tú la pegas en Claude o
-ChatGPT, copias la respuesta y la importas. Funciona y no cuesta nada, pero son
-tres pasos manuales.
+Hoy el editor prepara la petición, la pegas en Claude o ChatGPT y traes la
+respuesta a Importar. Funciona y no cuesta nada, pero son tres pasos manuales.
 
-**Qué habría que hacer.** Una función en Supabase que guarde la clave de la API
-y haga de intermediaria. La app la llama con la sesión del usuario.
+**Qué habría que hacer.** Una función en Supabase que guarde la clave y haga de
+intermediaria.
 
-**Coste real.** Con Sonnet, unos 3–5 céntimos por viaje generado. Cargando 5 $
-hay para años. Requiere desplegar la función desde un ordenador.
+**Coste real.** Con Sonnet, unos 3–5 céntimos por viaje generado.
 
-**Cuidado con:** poner un límite de gasto mensual en la consola antes de nada, y
-un tope de peticiones por usuario en la propia función. Una clave que no
-controla el gasto es una factura esperando a pasar.
+**Cuidado con:** poner límite de gasto mensual en la consola antes de nada, y un
+tope de peticiones por usuario en la propia función.
 
 ---
 
-## 6 · Fotos vuestras en Eslovenia y Asturias
+## 6 · Compartir con gente de fuera
 
-El sistema está montado desde la foto de Bled. Al volver del viaje, sustituir
-los dibujos por fotos propias convierte la app en el recuerdo del viaje.
+Las políticas de Supabase dan acceso a todo a **cualquiera que inicie sesión** en
+el proyecto. Mientras lo usen dos personas no hay problema, pero si se comparte
+de verdad hay que cerrarlo: que cada cuenta vea solo lo suyo, o marcar qué viajes
+son compartidos.
 
-Las fotos se comprimen a unos 900 px antes de guardarlas. Ojo con el tope de
-5 MB de `localStorage`: no meter cuarenta.
+Es media hora de SQL. **Hacerlo antes de dar el enlace a nadie más.**
 
 ---
 
 ## 7 · Datos que faltan
 
-- **Asturias:** las fechas de agosto, y los sitios de park4night de cada noche.
+- **Asturias:** las fechas de agosto y los sitios de park4night de cada noche.
 - **Eslovenia:** teléfonos de los alojamientos.
 
-Sin las fechas, Asturias funciona con días numerados. En cuanto se pongan, la
-app arranca sola en el día que toca.
-
----
-
-## 8 · Enchufar Organic Maps
-
-App de mapas que funciona entera sin conexión, con datos de OpenStreetMap: trae
-caminos de montaña, fuentes y refugios que Google no tiene. Gratuita y sin
-cuentas. Resuelve el punto 3 sin pelearse con las teselas.
-
-**Qué falta.** Comprobar en un iPhone si responde al esquema `om://`. Si abre,
-añadir un botón por parada como se hizo con Waze y park4night. Si no, dejar solo
-el aviso de «descárgate la zona antes de salir».
-
-**Cuidado con:** no está documentado. Igual que `p4n://`, hay que probarlo a
-mano y anotar aquí el resultado.
+Sin fechas, Asturias funciona con días numerados. En cuanto se pongan, la app
+arranca sola en el día que toca.
 
 ---
 
 ## Ideas sin decidir
 
-- **Presupuesto por viaje.** La app de gastos ya existe y está enlazada. Podría
-  mostrar en el viaje cuánto lleváis gastado.
-- **Copiar un día a otro viaje.** Útil cuando se repiten zonas.
-- **Plantillas.** «Un fin de semana en la montaña» como punto de partida.
-- **Modo conducción.** Letra grande y solo la siguiente parada.
-- **Compartir un viaje con alguien de fuera** por enlace, sin cuenta.
-
----
-
-## Cosas que se probaron y no funcionan
-
-Para no perder el tiempo repitiéndolas:
-
-| Idea | Por qué no |
-|---|---|
-| Coordenadas en la URL de Wikiloc (`?sw=&ne=`) | Las ignora y abre el mapa del mundo |
-| `wikiloc://map?q=` y variantes | El esquema existe pero ignora toda ruta: abre en tu ubicación |
-| Compartir sesión entre las apps del inicio | En iOS cada una tiene su almacén |
-| `waze.com/ul?q=` desde una app instalada | Falla al saltar; hay que usar `waze://` |
-| Bajar imágenes de bancos libres desde el asistente | La red del entorno no llega a esos dominios |
+- **Lista de lo que hay que reservar.** La app ya lo sabe: está escrito en las
+  notas («reserva online, en verano se agotan») pero enterrado en el día 6.
+  Sacarlo a una lista es casi gratis.
+- **Preparativos antes de salir**, con cuenta atrás: antiparasitario, revisión de
+  la furgo, viñeta, mapas descargados, taxi de madrugada.
+- **Modo conducción:** letra grande, solo la siguiente parada, un botón.
+- **El diario de vuelta:** convertir marcas, notas y fotos en un recuerdo
+  compartible cuando acabe el viaje.
+- **Presupuesto por viaje**, tirando de la app de gastos que ya existe.
+- **Copiar un día a otro viaje.**
+- **Foto del alojamiento** como slot propio, distinta de las del día.
 
 ---
 
@@ -150,17 +119,37 @@ Para no perder el tiempo repitiéndolas:
 
 Para no volver a proponerlo:
 
-| Qué | Cuándo |
+| Qué | Versión |
 |---|---|
-| Aviso al estar cerca de una parada, con interruptor | v53 |
-| Servicios de OpenStreetMap en las tres apps | v53–v58 |
-| Tiempo real en coche por carretera (OSRM) en vez de línea recta | v56 |
-| El tiempo dentro de la app (Open-Meteo) | v57 |
-| Modo claro, automático y oscuro en las cinco apps | v50–v55 |
-| Selector de color en la cabecera | v52 |
 | Editor de viajes propios | v34 |
 | Sincronización de viajes con Supabase | v35 |
-| Diario compartido: marcas y notas entre móviles | v43 |
 | Pedir el viaje a una IA e importar su respuesta | v44–v48 |
 | Reservas con localizadores y teléfonos | v48 |
 | Rama `dev`, pruebas automáticas y documentación | v49 |
+| Modo claro, automático y oscuro en las cinco apps | v50–v55 |
+| Aviso al estar cerca de una parada | v53 |
+| Servicios de OpenStreetMap en las tres apps | v53–v58 |
+| Tiempo real en coche por carretera | v56 |
+| El tiempo dentro de la app | v57 |
+| Cámara y fotos por día | v59 |
+| Fotos compartidas entre móviles | v60 |
+| «Estoy aquí» y recorrido real | v62 |
+| Foto de portada del día | v62 |
+| Nombre automático del sitio por GPS | v64 |
+| Normas de circulación del país | v64 |
+| Compartir la app | v64 |
+| Añadir sitios por los que ya se pasó | v68 |
+| Mapa en cada día | v69–v72 |
+
+---
+
+## Cosas que se probaron y no funcionan
+
+| Idea | Por qué |
+|---|---|
+| Coordenadas en la URL de Wikiloc | Las ignora y abre el mapa del mundo |
+| `wikiloc://map?q=` y variantes | El esquema ignora toda ruta |
+| Compartir sesión entre apps del inicio | En iOS cada una tiene su almacén |
+| `waze.com/ul?q=` desde una app instalada | Falla al saltar; hay que usar `waze://` |
+| Bajar imágenes de bancos libres desde el asistente | La red del entorno no llega |
+| Fotos de hoteles desde Booking | Son suyas: copiarlas sería infracción |
