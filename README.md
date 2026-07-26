@@ -10,27 +10,36 @@ conduce por sitios donde no hay línea.
 ## Qué hay
 
 ```
-/                     portada: elige viaje, sincroniza, actualiza
+/                     portada: elige viaje, sincroniza, actualiza, comparte
 /eslovenia/           Eslovenia y Venecia, 18–29 julio 2026   (a medida)
 /asturias/            Asturias occidental, 5 días             (a medida)
-/crear/               editor: crear y editar viajes propios
+/crear/               editor: crear, pedir a una IA e importar viajes
 /viaje/?id=xxx        visor de los viajes creados
-/sync.js              sincronización con Supabase (compartido por todas)
+/sync.js              nube, diario y fotos: compartido por todas
 /img/  /fotos/        dibujos, mapas y fotos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/probar.js      59 comprobaciones automáticas
+/tests/probar.js      68 comprobaciones automáticas
 ```
 
 Cada carpeta es una app independiente de **un solo archivo HTML** con su CSS y su
 JavaScript dentro. Sin compilar, sin dependencias, sin `node_modules` en
 producción. Se abre el archivo y funciona.
 
+| | líneas | peso |
+|---|--:|--:|
+| portada | 375 | 16 KB |
+| editor | 1.294 | 57 KB |
+| visor | 1.177 | 56 KB |
+| Eslovenia | 2.453 | 139 KB |
+| Asturias | 2.042 | 110 KB |
+| sync.js | 722 | 26 KB |
+
 ---
 
 ## Los tres principios
 
 **1. Manda el móvil, la nube es un espejo.**
-Todo se guarda primero en `localStorage`. La app va igual sin cobertura y sin
+Todo se guarda primero en el propio teléfono. La app va igual sin cobertura y sin
 sesión. Supabase iguala cuando hay red. Si la nube falla, no se entera nadie.
 
 **2. Ninguna espera es infinita.**
@@ -45,8 +54,8 @@ responde, se avisa. Nunca se deja un botón en «Cargando…» para siempre.
 ## Empezar
 
 ```bash
-npm install            # solo jsdom, para las pruebas
-node tests/probar.js   # deben salir las 59 comprobaciones en verde
+npm install            # jsdom y fake-indexeddb, solo para las pruebas
+node tests/probar.js   # deben salir las 68 comprobaciones en verde
 ```
 
 Los cambios van a `dev`. A `main` solo lo probado: `main` es lo publicado y puede
@@ -59,36 +68,43 @@ estar usándose en carretera ahora mismo.
 |  | Portada | Eslovenia | Asturias | Visor | Editor |
 |---|:--:|:--:|:--:|:--:|:--:|
 | Día a día con paradas | | ● | ● | ● | |
-| Navegación Waze + Maps | | ● | ● | ● | |
+| Navegación Waze + ver en mapa | | ● | ● | ● | |
+| Mapa del día y del viaje | | ● | ● | ● | |
 | Marcar paradas y notas | | ● | ● | ● | |
-| Guía de lugares | | 37 fichas | 27 fichas | | |
+| Fotos: cámara, galería y portada | | ● | ● | ● | |
+| «Estoy aquí» y añadir sitios | | ● | ● | ● | |
+| Recorrido real en el mapa | | ● | ● | | |
+| Guía de lugares | | 39 fichas | 27 fichas | | |
 | Reservas y localizadores | | ● | | ● | ● |
-| Mapa de la ruta | | ● | ● | | |
 | Qué tengo cerca | | ● | ● | ● | |
 | Servicios (OpenStreetMap) | | ● | ● | ● | |
+| Tiempo real por carretera | | ● | ● | ● | |
 | El tiempo | | ● | ● | ● | |
 | Aviso de cercanía | | ● | ● | ● | |
 | park4night | | | ● | | |
-| Crear e importar viajes | | | | | ● |
+| Crear, pedir a una IA, importar | | | | | ● |
 | Sincronización | ● | ● | ● | ● | ● |
-| Modo claro / oscuro | ● | ● | ● | ● | ● |
+| Modo claro / automático / oscuro | ● | ● | ● | ● | ● |
 
 ---
 
 ## Cómo se guardan los datos
 
-### En el móvil (`localStorage`)
+### En el móvil
+
+**`localStorage`** para lo pequeño:
 
 | Clave | Qué guarda |
 |---|---|
-| `viajes_propios` | los viajes creados, como lista de objetos |
-| `viajes_pendientes` | ids que faltan por subir a la nube |
-| `diario_<viaje>` | paradas marcadas y notas de ese viaje |
+| `viajes_propios` | los viajes creados |
+| `viajes_pendientes` | ids que faltan por subir |
+| `diario_<viaje>` | marcas, notas, posiciones, visitas y portadas |
+| `fotos_pendientes` | fotos que faltan por subir |
 | `tema_viajes` | `auto`, `claro` u `oscuro`, compartido por todas |
-| `nav_app`, `nav_via`, `nav_avisar` | preferencias de Eslovenia |
-| `ast_app`, `ast_via`, `ast_avisar` | preferencias de Asturias |
-| `gen_app`, `gen_avisar` | preferencias del visor |
-| `sb-…-auth-token` | sesión de Supabase (la pone la librería) |
+| `nav_*` / `ast_*` / `gen_*` | preferencias de cada app |
+
+**IndexedDB** (`viajes_fotos`) para las fotos: en `localStorage` solo caben unos
+5 MB y tres fotos ya lo llenarían.
 
 **Ojo con iOS:** cada app añadida a la pantalla de inicio tiene **su propio
 almacén**, aunque el dominio sea el mismo. Por eso hay que iniciar sesión en cada
@@ -96,12 +112,15 @@ una por separado.
 
 ### En Supabase (proyecto `cmkzcvfjgrgxwqjimtxa`)
 
-**`viajes`** — un viaje por fila, los días en `jsonb`, con `actualizado` para
-resolver conflictos: gana el más reciente.
+| Tabla | Qué guarda | Cómo resuelve conflictos |
+|---|---|---|
+| `viajes` | un viaje por fila, los días en `jsonb` | gana el más reciente |
+| `viaje_diario` | marcas, notas, posiciones, visitas, portadas | **por entrada**, con marca de tiempo propia |
+| `viaje_fotos` | una foto por fila, en base64 | por id, con borrado lógico |
 
-**`viaje_diario`** — marcas y notas. Cada entrada lleva **su propia marca de
-tiempo**, así que si los dos anotáis sin cobertura, al juntarse no se pierde
-nada: para cada parada gana el gesto más reciente.
+Lo del diario es lo más cuidado: si los dos anotáis cosas distintas sin cobertura,
+al juntarse no se pierde nada. Para cada parada gana el gesto más reciente; si
+uno marca y el otro desmarca después, queda desmarcada.
 
 El SQL está en `/sql/`. Las políticas son abiertas para quien haya iniciado
 sesión: son dos personas que comparten todo.
@@ -115,25 +134,26 @@ sesión: son dos personas que comparten todo.
   desde: "2026-09-05",        // vacío = días numerados en vez de fechas
   hasta: "2026-09-12",
   salida: "San Miguel de las Dueñas",
-  actualizado: "2026-07-26T06:00:00Z",
+  normas: ["Andando sin acera se camina por la izquierda", …],
+  actualizado: "2026-07-26T18:00:00Z",
   dias: [{
     t: "Llegada a Zagreb",     // título de la jornada
     dest: "Zagreb",            // dónde se duerme: destino de navegación
-    xy: "46.05,14.50",         // opcional: para el tiempo y el mapa
-    km: "135 km · 2 h",        // opcional
-    lluvia: "Museo de …",      // plan B, opcional
-    foto: "data:image/jpeg…",  // opcional, comprimida a ~900 px
+    xy: "46.05,14.50",         // para el tiempo y el mapa del día
+    km: "135 km · 2 h",
+    lluvia: "Museo de …",      // plan B si llueve
+    foto: "data:image/jpeg…",
     paradas: [{
-      h: "Mañana",             // opcional
+      h: "Mañana",
       txt: "Lagos de Plitvice",
       c: "Plitvice",           // nombre corto para los botones
       n: "Entra por la puerta 2, reserva online",
       mapa: "Plitvicka Jezera ulaz 2",   // lo que se le pasa al navegador
-      w: "Plitvicka jezera",   // opcional: nombre local, mejor para Waze
-      xy: "44.88,15.61",       // opcional: para avisos de cercanía
-      g: "plitvice",           // opcional: id de su ficha en la guía
+      w: "Plitvicka jezera",   // nombre local, mejor para Waze
+      xy: "44.88,15.61",       // para avisos de cercanía y el mapa
+      g: "plitvice",           // id de su ficha en la guía
       key: true,               // imprescindible del día
-      park: { n:"…", w:"…", p:"…", gratis:true }   // aparcamiento
+      park: { n, w, p, gratis }
     }]
   }],
   reservas: {
@@ -144,17 +164,28 @@ sesión: son dos personas que comparten todo.
 }
 ```
 
+### El diario, aparte del viaje
+
+```js
+{
+  hechas:      { "5:0": 1784… },              // parada marcada, con la hora
+  desmarcadas: { "5:1": 1784… },
+  notas:       { "5": { t:"…", ts:1784… } },
+  posiciones:  { "5:0": { xy:"46.3,14.1", ts } },  // dónde estabas al marcar
+  visitas:     [{ id, xy, ts, dia, txt, auto, manual, precision }],
+  portadas:    { "5": { id:"eslovenia:5:178…", ts } }
+}
+```
+
 ---
 
 ## Reglas que no se saltan
 
 **El caché puede dejarte la app vieja.** `sync.js` va con `?v=NN` en la URL y
 está excluido del service worker. Si tocas `sync.js`, **sube el número** en las
-páginas que lo cargan, o la gente seguirá con la versión antigua.
+cinco páginas que lo cargan.
 
-**La versión se ve en pantalla.** `const VERSION` en la portada y en las apps a
-medida. Súbela en cada publicación: es lo que permite saber si el móvil tiene lo
-último.
+**La versión se ve en pantalla.** `const VERSION`. Súbela en cada publicación.
 
 **Nada de claves de API en el repositorio.** Es público. La clave anónima de
 Supabase sí puede estar: está pensada para ser pública y la protege el RLS.
@@ -165,8 +196,12 @@ enlaces de Wikiloc con un formato que daba 404.
 **Nunca `localStorage` sin `try/catch`.** En modo privado de iOS lanza excepción
 y tumbaría la app entera.
 
-**Nada de colores fijos en lo estructural.** Barra, cabecera y tarjetas usan
-variables, o el modo claro se rompe. Hay una prueba que lo vigila.
+**Nada de colores fijos en lo estructural.** Barra, cabecera, tarjetas y textos
+usan variables, o el modo claro se rompe. Hay una prueba que lo vigila.
+
+**Cada vista, sus propios identificadores.** Un día se dibuja dos veces —en Hoy y
+en el detalle— y con ids repetidos las fotos acaban donde no toca. De ahí el
+parámetro `ctx` con valores `hoy` y `det`.
 
 ---
 
@@ -176,13 +211,15 @@ Ninguno necesita clave. Todos son gratuitos para uso personal.
 
 | Para qué | Cómo | Notas |
 |---|---|---|
-| Navegar | `waze://?q=` y `?ll=` | Google Maps de respaldo en cada botón |
-| Rutas a pie | `wikiloc://` y `map.do?q=` | el esquema ignora parámetros: abre en tu ubicación |
+| Navegar | `waze://?q=` y `?ll=` | y `maps/search` para ver dónde está |
+| Rutas a pie | `wikiloc://` y `map.do?q=` | el esquema ignora parámetros |
 | Dormir en furgo | `p4n://` y `park4night.com` | solo en Asturias |
 | Qué es un sitio | Wikipedia, `origin=*` | |
 | Qué hacer allí | Wikivoyage, `origin=*` | |
 | Qué hay cerca | Overpass (OpenStreetMap) | una petición por consulta |
-| Tiempo real por carretera | OSRM `table/v1/driving` | servidor de demostración: máx. 1 petición/s |
+| Tiempo por carretera | OSRM `table/v1/driving` | demo: máx. 1 petición/s |
+| Cómo se llama este sitio | Nominatim `reverse` | máx. 1 petición/s |
+| Buscar un sitio | Nominatim `search` | |
 | El tiempo | Open-Meteo | sin clave, CC BY 4.0 |
 | Free tours | Civitatis | enlace a la ciudad |
 | Sincronizar | Supabase | clave anónima, pública |
@@ -195,7 +232,7 @@ volver a probarlos a mano.
 
 ## Las pruebas
 
-`node tests/probar.js` — 59 comprobaciones, sin tocar la red ni GitHub:
+`node tests/probar.js` — 68 comprobaciones, sin tocar la red ni GitHub:
 
 1. Cada app carga sin errores y todas las pestañas pintan contenido
 2. No hay enlaces con esquemas desconocidos
@@ -205,12 +242,15 @@ volver a probarlos a mano.
 6. La portada nunca se queda en «comprobando…», ni al cambiar de tema
 7. No se usa ninguna función sin definir
 8. Barra, cabecera y tarjetas siguen el tema claro
+9. Cada vista tiene sus propios identificadores
 
 **Una prueba que nunca has visto fallar no sirve.** Después de escribirla,
-reintroduce el fallo a propósito y comprueba que salta.
+reintroduce el fallo a propósito y comprueba que salta. Ha pasado dos veces que
+una prueba diera verde con el error puesto.
 
 ---
 
 ## Lo que falta
 
 Ver `PENDIENTE.md`. Y `AGENTS.md` si quien va a tocar esto es una IA.
+Para usarla sin saber programar, `USO.md`.
