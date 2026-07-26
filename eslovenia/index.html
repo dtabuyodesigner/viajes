@@ -831,7 +831,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v69 · 26/07 17:55";
+const VERSION = "v71 · 26/07 18:01";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -839,6 +839,7 @@ const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
 const mapsXY = (la, lo) => `https://www.google.com/maps/dir/?api=1&destination=${la},${lo}&travelmode=driving`;
 const navegarXY = (la, lo) => PREF.app === "waze" ? wazeXY(la, lo) : mapsXY(la, lo);
 const wikiloc = q => `https://es.wikiloc.com/wikiloc/map.do?q=${encodeURIComponent(q)}`;
+const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 const fecha = f => { const d = new Date(f+"T12:00:00"); return {d, wd:DIAS_SEM[d.getDay()], txt:`${d.getDate()} ${MESES[d.getMonth()]}`}; };
 
@@ -864,7 +865,7 @@ function pintaParadas(dia, iDia, ctx = "hoy"){
       ${p.h ? `<span class="t">${esc(p.h)}</span>` : ""}
       <p>${esc(p.txt)}<button class="tick" aria-label="Marcar">${ok ? "✓" : ""}</button></p>
       ${p.n ? `<small>${esc(p.n)}</small>` : ""}
-      ${p.mapa ? `<small><a href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">Ir con ${comoNavego()} →</a>${PREF.app === "waze" ? ` <a href="${mapsDe(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener" style="color:var(--papel-dim)">· Maps</a>`.replace("--papel-dim", "--paper-dim") : ""}</small>` : ""}
+      ${p.mapa ? `<small><a href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">Ir con ${comoNavego()} →</a>${PREF.app === "waze" ? ` <a href="${mapa(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener" style="color:var(--papel-dim)">· Ver en el mapa</a>`.replace("--papel-dim", "--paper-dim") : ""}</small>` : ""}
       ${p.wl ? `<small><a href="${wikiloc(p.wl)}" target="_blank" rel="noopener">Buscar la ruta en Wikiloc →</a></small>` : ""}
       ${p.g ? `<small><button class="lnk" data-guia="${esc(p.g)}">Qué es y qué ver →</button></small>` : ""}
       ${p.park ? `<div class="park${p.park.gratis ? " free" : ""}">
@@ -1122,14 +1123,14 @@ function botonesRuta(i){
   const chips = tramos.map((p, k) =>
     `<span class="wz-par"><a class="wz" href="${navegar(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener">
        <b>${k+1}</b>${esc(p.c || p.txt)}</a>${PREF.app === "waze"
-         ? `<a class="wz-alt" href="${mapsDe(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener" title="Abrir en Maps">map</a>` : ""}</span>`).join("");
+         ? `<a class="wz-alt" href="${mapa(p.park?.w || p.w || p.mapa)}" target="_blank" rel="noopener" title="Ver dónde está">ver</a>` : ""}</span>`).join("");
 
   return `<div class="ruta">
     <span class="label">Navegar con ${comoNavego()}</span>
     <div class="wz-lista">${chips}
       ${d.dest ? `<span class="wz-par cama-par"><a class="wz cama" href="${navegar(d.dest)}" target="_blank" rel="noopener">
         <b>${tramos.length+1}</b>Alojamiento</a>${PREF.app === "waze"
-          ? `<a class="wz-alt" href="${mapsDe(d.dest)}" target="_blank" rel="noopener">map</a>` : ""}</span>` : ""}</div>
+          ? `<a class="wz-alt" href="${mapa(d.dest)}" target="_blank" rel="noopener" title="Ver dónde está">ver</a>` : ""}</span>` : ""}</div>
     <div class="btns"><button class="btn" id="ir-servicios">Comer, gasolina, tiendas…</button></div>
     <p class="note" style="margin:10px 0 0">Waze solo lleva a un sitio por vez: dale al siguiente número según vayas llegando.
     ${r.n ? `<a href="${r.url}" target="_blank" rel="noopener">Ver la ruta entera en Maps →</a>` : ""}</p>
@@ -2193,6 +2194,7 @@ async function lanzarServicios(){
       </div>
       <div class="btns" style="margin-top:6px">
         <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
+        <a class="btn" href="${mapaXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ver</a>
       </div></li>`).join("")}</ul>
       <p class="note" id="nota-serv">Calculando el tiempo por carretera…</p>`;
     const t = await porCarretera(MIPOS, r.map(x => x.xy));
