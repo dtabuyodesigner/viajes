@@ -48,3 +48,14 @@ create trigger diario_tocar_trg
 --  Comprobación: debe devolver la tabla vacía, sin error
 -- ═══════════════════════════════════════════════════════════
 select * from public.viaje_diario;
+
+-- ═══════════════════════════════════════════════════════════
+--  Añadido: dónde estabais de verdad al marcar cada parada.
+--  Ejecutar también esto si la tabla ya existía.
+-- ═══════════════════════════════════════════════════════════
+alter table public.viaje_diario
+  add column if not exists posiciones jsonb not null default '{}'::jsonb;
+
+alter table public.viaje_diario
+  add column if not exists visitas  jsonb not null default '[]'::jsonb,
+  add column if not exists portadas jsonb not null default '{}'::jsonb;
