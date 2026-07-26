@@ -68,17 +68,6 @@ enlazar desde la app. Menos vistoso, funciona seguro.
 
 ---
 
-## 4 · Aviso al llegar cerca de algo
-
-**Qué habría que hacer.** La app sabe dónde estás y dónde están las paradas.
-Podría decir «estás a 2 km del mirador de Ojstrica» sin que preguntes.
-
-**Cuidado con:** la batería. Vigilar la posición en segundo plano la vacía.
-Mejor comprobar solo cuando la app está abierta, o cuando se abre la pestaña de
-hoy. Y que se pueda apagar.
-
----
-
 ## 5 · Que la app llame sola a la IA
 
 **Qué pasa hoy.** El editor prepara la petición, tú la pegas en Claude o
@@ -154,3 +143,24 @@ Para no perder el tiempo repitiéndolas:
 | Compartir sesión entre las apps del inicio | En iOS cada una tiene su almacén |
 | `waze.com/ul?q=` desde una app instalada | Falla al saltar; hay que usar `waze://` |
 | Bajar imágenes de bancos libres desde el asistente | La red del entorno no llega a esos dominios |
+
+---
+
+## Ya está hecho
+
+Para no volver a proponerlo:
+
+| Qué | Cuándo |
+|---|---|
+| Aviso al estar cerca de una parada, con interruptor | v53 |
+| Servicios de OpenStreetMap en las tres apps | v53–v58 |
+| Tiempo real en coche por carretera (OSRM) en vez de línea recta | v56 |
+| El tiempo dentro de la app (Open-Meteo) | v57 |
+| Modo claro, automático y oscuro en las cinco apps | v50–v55 |
+| Selector de color en la cabecera | v52 |
+| Editor de viajes propios | v34 |
+| Sincronización de viajes con Supabase | v35 |
+| Diario compartido: marcas y notas entre móviles | v43 |
+| Pedir el viaje a una IA e importar su respuesta | v44–v48 |
+| Reservas con localizadores y teléfonos | v48 |
+| Rama `dev`, pruebas automáticas y documentación | v49 |
