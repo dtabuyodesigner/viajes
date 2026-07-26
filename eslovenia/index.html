@@ -201,7 +201,7 @@ ul.plain li span{color:var(--paper-dim)}
 .lugar.abierto .mas{transform:rotate(45deg)}
 .lugar-cuerpo{display:none;padding:0 2px 18px}
 .lugar.abierto .lugar-cuerpo{display:block}
-.lugar-cuerpo p{margin:0 0 12px;font-size:14.5px;line-height:1.55;color:#CBDAD5}
+.lugar-cuerpo p{margin:0 0 12px;font-size:14.5px;line-height:1.55;color:var(--paper)}
 .datos{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
 .dato{background:rgba(79,195,184,.09);border:1px solid var(--line);border-radius:10px;padding:7px 11px}
 .dato b{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
@@ -300,6 +300,9 @@ header{position:relative}
   nav{background:var(--karst)}
   header{background:var(--karst)}
 }
+
+.km i{display:block;font-style:normal;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;opacity:.6;color:var(--paper-dim)}
 </style>
 </head>
 <body>
@@ -704,7 +707,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v54 · 25/07 22:03";
+const VERSION = "v55 · 26/07 05:36";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
@@ -1045,7 +1048,7 @@ async function avisoCerca(i){
     if (!mejor || mejor.km > 5) return;
     const d = mejor.km < 1 ? Math.round(mejor.km * 1000) + " m" : mejor.km.toFixed(1) + " km";
     z.innerHTML = `<div class="cerca-aviso"><span class="ic">◎</span>
-      <div><b>Estás a ${d} de ${esc(mejor.p.c || mejor.p.txt)}</b>
+      <div><b>Tienes ${d} en línea recta hasta ${esc(mejor.p.c || mejor.p.txt)}</b>
       ${mejor.p.n ? `<small>${esc(mejor.p.n)}</small>` : ""}</div></div>`;
   } catch {}
 }
@@ -1641,12 +1644,12 @@ async function lanzarServicios(){
     cont.innerHTML = `<ul class="plain">${r.map(x => `
       <li><div class="serv-fila">
         <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
-        <span class="km">${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}</span>
+        <span class="km">${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i></span>
       </div>
       <div class="btns" style="margin-top:6px">
         <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
       </div></li>`).join("")}</ul>
-      <p class="note">Datos de OpenStreetMap: los mantienen voluntarios, puede faltar algo.</p>`;
+      <p class="note">Distancias en línea recta. Datos de OpenStreetMap, mantenidos por voluntarios: puede faltar algo.</p>`;
   } catch {
     cont.innerHTML = `<p class="note">No se pudo consultar. ¿Hay cobertura?</p>`;
   }
@@ -1673,8 +1676,10 @@ function bloqueCerca(){
     <h3>Lo que tienes más cerca</h3>
     <ul class="plain">${lista.map(({l,km}) =>
       `<li><button class="lnk" data-guia="${esc(l.id)}">${esc(l.n)}</button>
-       <span class="km">${km} km</span></li>`).join("")}</ul>
-    <p class="note">Distancias en línea recta y aproximadas: sirven para ordenar, no para navegar.</p>
+       <span class="km">${km} km<i>recto</i></span></li>`).join("")}</ul>
+    <p class="note"><b>En línea recta, no por carretera.</b> En montaña la diferencia es enorme:
+     un sitio a 14 km en línea recta puede estar a 60 por carretera si hay que rodear un macizo.
+     Sirve para saber qué tienes al lado, no para calcular el viaje.</p>
     <div class="btns"><button class="btn" id="btn-cerca">Actualizar</button></div>
   </div>`;
 }
