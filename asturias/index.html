@@ -344,7 +344,7 @@ header{position:relative}
   <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
 </nav>
 
-<script src="../sync.js?v=62"></script>
+<script src="../sync.js?v=64"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -663,7 +663,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v63 · 26/07 10:45";
+const VERSION = "v64 · 26/07 16:38";
 const VIAJE_ID = "asturias";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
@@ -1171,8 +1171,9 @@ function pintaAqui(i, ctx = "hoy"){
     const hora = `${String(h.getHours()).padStart(2,"0")}:${String(h.getMinutes()).padStart(2,"0")}`;
     return `<li class="visita">
       <div>
-        <b>${esc(v.txt) || "Sin nombre"}</b>
-        <small>${hora}</small>
+        <b>${esc(v.txt) || "Buscando el nombre…"}</b>
+        <small>${hora}${v.auto ? " · según OpenStreetMap" : ""}${
+          v.precision ? ` · ±${v.precision} m` : ""}</small>
       </div>
       <div class="btns" style="margin-top:6px">
         <button class="btn fino" data-nombrar="${v.id}">${v.txt ? "Cambiar nombre" : "Ponerle nombre"}</button>
@@ -1203,11 +1204,12 @@ function activaAqui(i, ctx = "hoy"){
     const antes = b.textContent;
     b.textContent = "Localizando…";
     try {
-      const v = await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
+      await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
       b.textContent = "Guardado";
       pintaAqui(i, ctx);
-      const t = prompt("Guardado. ¿Le pones nombre?", "");
-      if (t && t.trim()){ DIARIO_SYNC.renombrarVisita(VIAJE_ID, v.id, t.trim()); pintaAqui(i, ctx); }
+      // el nombre llega un momento después, de OpenStreetMap
+      setTimeout(() => pintaAqui(i, ctx), 1500);
+      setTimeout(() => pintaAqui(i, ctx), 4000);
     } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
     setTimeout(() => { b.textContent = antes; }, 2200);
   });
@@ -1516,7 +1518,7 @@ function bloqueServicios(){
     <p class="note" style="margin-top:0">Gasolineras, tiendas y sitios para comer alrededor.</p>
     <div class="cats">${CATEGORIAS.map(c =>
       `<button class="cat${catActiva === c.id ? " on" : ""}" data-cat="${c.id}">${c.n}</button>`).join("")}</div>
-    <div class="radios">${[2,5,10,25].map(k =>
+    <div class="radios">${[5,10,25,50,100].map(k =>
       `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>
     <div id="res-serv"></div>
   </div>`;
