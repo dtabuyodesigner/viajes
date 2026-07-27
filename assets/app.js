@@ -255,6 +255,51 @@ function enganchaPernocta(i, ctx){
   }));
 }
 
+
+/* ---- Servicios cerca, con OpenStreetMap ---- */
+async function buscarServicios(cat, pos, km){
+  // Tres servidores: si uno está saturado, se prueba el siguiente.
+  // Y cada intento pide menos: mejor quince sitios que ninguno.
+  const SERVIDORES = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
+  ];
+  const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
+  const intentos = [ {tope:40, espera:25}, {tope:20, espera:15}, {tope:10, espera:10} ];
+
+  let ultimo = "";
+  for (let n = 0; n < intentos.length; n++){
+    const { tope, espera } = intentos[n];
+    const servidor = SERVIDORES[n % SERVIDORES.length];
+    const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
+    const ctrl = new AbortController();
+    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
+    try {
+      const r = await fetch(servidor + "?data=" + encodeURIComponent(consulta), { signal: ctrl.signal });
+      clearTimeout(corte);
+      if (!r.ok){
+        ultimo = r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status);
+        continue;
+      }
+      const d = await r.json();
+      const sitios = (d.elements || []).map(e => {
+        const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
+        if (la == null) return null;
+        return { nombre: e.tags?.name || cat.n,
+                 detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
+                 xy:[la, lo], km: distancia(pos, [la, lo]) };
+      }).filter(Boolean).sort((a,b) => a.km - b.km);
+      if (sitios.length) return sitios.slice(0, 20);
+      if (n === 0) return [];          // no hay nada de verdad
+    } catch (e){
+      clearTimeout(corte);
+      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+    }
+  }
+  throw new Error(ultimo || "sin respuesta");
+}
+
 /* ---- Cámara y fotos del día ---- */
 function cajaFotos(i, ctx = "hoy"){
   return `<div class="fotos-dia" id="fotos-${ctx}-${i}">
