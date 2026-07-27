@@ -59,3 +59,6 @@ alter table public.viaje_diario
 alter table public.viaje_diario
   add column if not exists visitas  jsonb not null default '[]'::jsonb,
   add column if not exists portadas jsonb not null default '{}'::jsonb;
+
+alter table public.viaje_diario
+  add column if not exists pernoctas jsonb not null default '[]'::jsonb;
