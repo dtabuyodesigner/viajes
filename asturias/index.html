@@ -414,7 +414,7 @@ header{position:relative}
 </nav>
 
 <script src="../sync.js?v=76"></script>
-<script src="../assets/app.js?v=76"></script>
+<script src="../assets/app.js?v=77"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -733,7 +733,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v76 · 27/07 06:29";
+const VERSION = "v77 · 27/07 07:08";
 const VIAJE_ID = "asturias";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
@@ -1418,31 +1418,6 @@ const CATEGORIAS = [
 ];
 let catActiva = null, radioKm = 5;
 
-async function buscarServicios(cat, pos, km){
-  // En radios grandes, cosas como las gasolineras salen a miles y el servidor
-  // se atraganta. Se le pide el mínimo y se corta pronto.
-  const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
-  const tope = km >= 50 ? 60 : 40;
-  const espera = km >= 50 ? 50 : 25;
-  const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-  const ctrl = new AbortController();
-  const corte = setTimeout(() => ctrl.abort(), (espera + 8) * 1000);
-  try {
-    const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(consulta),
-                          { signal: ctrl.signal });
-    clearTimeout(corte);
-    if (!r.ok) throw new Error(r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : r.status);
-    const d = await r.json();
-    return (d.elements || []).map(e => {
-      const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
-      if (la == null) return null;
-      return { nombre: e.tags?.name || cat.n,
-               detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
-               xy:[la, lo], km: distancia(pos, [la, lo]) };
-    }).filter(Boolean).sort((a,b) => a.km - b.km).slice(0, 12);
-  } catch (e){ clearTimeout(corte); throw e; }
-}
-
 function bloqueServicios(){
   if (!MIPOS) return `<div class="card" id="c-servicios">
     <h3>Servicios cerca</h3>
@@ -1506,7 +1481,8 @@ async function lanzarServicios(){
     cont.innerHTML = `<p class="note">${
       motivo === "ocupado" ? "El servidor de mapas está saturado ahora mismo. Prueba en un minuto."
       : motivo === "lento" || /abort/i.test(motivo)
-        ? `Demasiados resultados en ${radioKm} km y el servidor no da abasto. Prueba con un radio menor.`
+        ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
+            ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
       : "No se pudo consultar. ¿Hay cobertura?"}</p>`;
   }
 }
