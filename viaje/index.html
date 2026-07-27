@@ -503,7 +503,7 @@ async function avisoCerca(i){
     const pos = await pedirUbicacion();
     let mejor = null;
     for (const { p, k } of conXY){
-      const km = distKm(pos, p.xy.split(",").map(Number));
+      const km = distancia(pos, p.xy.split(",").map(Number));
       if (!mejor || km < mejor.km) mejor = { p, k, km };
     }
     if (!mejor || mejor.km > 5) return;
@@ -709,7 +709,7 @@ const CATEGORIAS = [
 
 let miPos = null, catActiva = null, radioKm = 5;
 
-function distKm(a, b){
+function distancia(a, b){
   const R = 6371, r = x => x * Math.PI / 180;
   const dLat = r(b[0]-a[0]), dLon = r(b[1]-a[1]);
   const h = Math.sin(dLat/2)**2 + Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLon/2)**2;
@@ -746,7 +746,7 @@ async function buscarCerca(cat, pos, km){
       if (la == null) return null;
       return { nombre: e.tags?.name || cat.n,
                detalle: e.tags?.["addr:street"] || e.tags?.operator || e.tags?.description || "",
-               xy:[la, lo], km: distKm(pos, [la, lo]) };
+               xy:[la, lo], km: distancia(pos, [la, lo]) };
     }).filter(Boolean).sort((a,b) => a.km - b.km).slice(0, 12);
   } catch (e){ clearTimeout(corte); throw e; }
 }
