@@ -229,7 +229,11 @@ function funcionesDefinidas(){
                      "tiempoEn","distancia","distKm","ubicacion","pedirUbicacion",
                      "esc","mapa","xyDeParada","buscarServicios","lanzarServicios"];
   for (const a of archivos){
-    const src = fs.readFileSync(path.join(RAIZ, a), "utf8");
+    // el motor común cuenta como parte de cada app: lo cargan todas
+    const motor = fs.existsSync(path.join(RAIZ, "assets/app.js"))
+      ? fs.readFileSync(path.join(RAIZ, "assets/app.js"), "utf8") : "";
+    const propio = fs.readFileSync(path.join(RAIZ, a), "utf8");
+    const src = propio.includes("assets/app.js") ? propio + "\n" + motor : propio;
     // no cuentan los usos protegidos: typeof x === "function" ? x() : otra()
     const limpio = src.replace(/typeof\s+(\w+)\s*===\s*"function"\s*\?[^:]*:/g, "");
     const usadas = vigiladas.filter(f => new RegExp("[^\\w.]" + f + "\\s*\\(").test(limpio));

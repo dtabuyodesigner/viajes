@@ -137,6 +137,8 @@ Están aquí para que no se repitan:
 | Los servicios salían desordenados | Se ordenaban en recto y los tiempos reales se metían en su sitio sin reordenar | Ya estaba corregido en otro bloque: el motor común evita repetir el fallo |
 | «Nada en 100 km» con gasolineras | Overpass se atraganta con miles de resultados y devuelve 504 | Tope y timeout según el radio, y decir qué pasa |
 | «Demasiados resultados en 10 km» | Se culpaba al radio de un fallo del servidor, sin reintentar | Tres servidores alternativos y tres intentos pidiendo menos cada vez |
+| Se volvió a publicar con pruebas en rojo | Segunda vez. Se lanzó la subida en el mismo comando que las pruebas, sin leer la salida | **Ejecutar las pruebas en un comando aparte, leerlas, y solo entonces subir** |
+| El motor usaba `distancia()` y el visor `distKm()` | Al unificar, los nombres deben unificarse también | La prueba de funciones sin definir lo cazó al enseñarle qué es el motor |
 
 El patrón se repite: **dar algo por bueno sin ejecutarlo**. Por eso existen las
 pruebas.
