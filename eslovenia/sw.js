@@ -2,8 +2,8 @@
    Con red: trae siempre la versión más reciente y la guarda.
    Sin red: sirve lo último que se guardó en el móvil. */
 
-const CACHE = "eslovenia26-v7";
-const ARCHIVOS = ["./", "./index.html", "./fotos/bled-osojnica.jpg", "../img/eslovenia-ilustrado.jpg"];
+const CACHE = "eslovenia26-v8";
+const ARCHIVOS = ["./", "./index.html", "./fotos/bled-osojnica.jpg", "../img/eslovenia-ilustrado.jpg", "../assets/app.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
@@ -31,6 +31,13 @@ self.addEventListener("fetch", e => {
         }
         return res;
       })
-      .catch(() => caches.match(e.request).then(g => g || caches.match("./index.html")))
+      .catch(() => caches.match(e.request).then(g => {
+        if (g) return g;
+        // el respaldo de la página solo vale para páginas: devolver HTML
+        // donde se espera un script rompe la app entera
+        if (e.request.destination === "document" || e.request.mode === "navigate")
+          return caches.match("./index.html");
+        return new Response("", { status: 504, statusText: "sin conexión" });
+      }))
   );
 });

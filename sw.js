@@ -1,6 +1,6 @@
 /* Portada de viajes — funcionamiento sin cobertura */
 
-const CACHE = "portada-v5";
+const CACHE = "portada-v6";
 const ARCHIVOS = ["./", "./index.html", "./img/eslovenia-portada.svg"];
 
 self.addEventListener("install", e => {
@@ -30,6 +30,13 @@ self.addEventListener("fetch", e => {
         }
         return res;
       })
-      .catch(() => caches.match(e.request).then(g => g || caches.match("./index.html")))
+      .catch(() => caches.match(e.request).then(g => {
+        if (g) return g;
+        // el respaldo de la página solo vale para páginas: devolver HTML
+        // donde se espera un script rompe la app entera
+        if (e.request.destination === "document" || e.request.mode === "navigate")
+          return caches.match("./index.html");
+        return new Response("", { status: 504, statusText: "sin conexión" });
+      }))
   );
 });

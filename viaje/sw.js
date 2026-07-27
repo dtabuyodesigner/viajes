@@ -1,7 +1,7 @@
 /* Visor de viajes propios — funcionamiento sin cobertura */
 
-const CACHE = "generico-v1";
-const ARCHIVOS = ["./", "./index.html"];
+const CACHE = "generico-v2";
+const ARCHIVOS = ["./", "./index.html", "../assets/app.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));
@@ -29,6 +29,13 @@ self.addEventListener("fetch", e => {
         }
         return res;
       })
-      .catch(() => caches.match(e.request).then(g => g || caches.match("./index.html")))
+      .catch(() => caches.match(e.request).then(g => {
+        if (g) return g;
+        // el respaldo de la página solo vale para páginas: devolver HTML
+        // donde se espera un script rompe la app entera
+        if (e.request.destination === "document" || e.request.mode === "navigate")
+          return caches.match("./index.html");
+        return new Response("", { status: 504, statusText: "sin conexión" });
+      }))
   );
 });
