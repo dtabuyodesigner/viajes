@@ -209,10 +209,11 @@ const DIARIO_SYNC = {
         || { hechas:{}, desmarcadas:{}, notas:{} };
       d.posiciones = d.posiciones || {};   // dónde estabas al marcar: { "5:0": {xy, ts} }
       d.visitas = d.visitas || [];         // «estoy aquí»: [{id, xy, ts, dia, txt}]
+      d.pernoctas = d.pernoctas || [];     // dónde dormimos: [{id, xy, ts, dia, txt, tipo, valorada}]
       d.portadas = d.portadas || {};       // foto de portada por día: { "5": {id, ts} }
       return d;
     }
-    catch { return { hechas:{}, desmarcadas:{}, notas:{}, posiciones:{}, visitas:[], portadas:{} }; }
+    catch { return { hechas:{}, desmarcadas:{}, notas:{}, posiciones:{}, visitas:[], pernoctas:[], portadas:{} }; }
   },
 
   guardarLocal(viaje, d){
@@ -364,6 +365,62 @@ const DIARIO_SYNC = {
     this.subir(viaje).catch(()=>{});
   },
 
+  /* ---- Dónde dormimos: para volver, o para no volver ---- */
+  async apuntarPernocta(viaje, dia, datos = {}){
+    return new Promise((ok, mal) => {
+      if (!navigator.geolocation) return mal("Este móvil no da la ubicación");
+      navigator.geolocation.getCurrentPosition(async p => {
+        const la = p.coords.latitude, lo = p.coords.longitude;
+        const d = this.local(viaje);
+        d.pernoctas = d.pernoctas || [];
+        const n = {
+          id: "p" + Date.now().toString(36),
+          xy: `${la.toFixed(5)},${lo.toFixed(5)}`,
+          ts: Date.now(), dia,
+          txt: datos.txt || "", tipo: datos.tipo || "", nota: datos.nota || "",
+          valorada: datos.valorada || 0        // 0 sin valorar, 1 mal, 2 normal, 3 repetiría
+        };
+        d.pernoctas.push(n);
+        this.guardarLocal(viaje, d);
+        ok(n);
+        if (!n.txt){
+          const nombre = await this.comoSeLlama(la, lo);
+          if (nombre){
+            const d2 = this.local(viaje);
+            const n2 = (d2.pernoctas || []).find(x => x.id === n.id);
+            if (n2 && !n2.txt){ n2.txt = nombre; n2.auto = true; this.guardarLocal(viaje, d2); }
+          }
+        }
+        this.subir(viaje).catch(()=>{});
+      }, () => mal("No se pudo obtener la ubicación"),
+         { enableHighAccuracy:true, timeout:12000, maximumAge:20000 });
+    });
+  },
+
+  pernoctaDelDia(viaje, dia){
+    return (this.local(viaje).pernoctas || [])
+      .filter(x => String(x.dia) === String(dia) && !x.borrada)
+      .sort((a,b) => b.ts - a.ts)[0] || null;
+  },
+
+  todasLasPernoctas(viaje){
+    return (this.local(viaje).pernoctas || [])
+      .filter(x => !x.borrada).sort((a,b) => a.ts - b.ts);
+  },
+
+  editarPernocta(viaje, id, cambios){
+    const d = this.local(viaje);
+    const n = (d.pernoctas || []).find(x => x.id === id);
+    if (!n) return;
+    Object.assign(n, cambios, { ts_edit: Date.now() });
+    this.guardarLocal(viaje, d);
+    this.subir(viaje).catch(()=>{});
+  },
+
+  borrarPernocta(viaje, id){
+    this.editarPernocta(viaje, id, { borrada: true });
+  },
+
   /* ---- Foto de portada del día ---- */
   portada(viaje, dia){ return this.local(viaje).portadas?.[dia]?.id || null; },
   ponPortada(viaje, dia, id){
@@ -426,6 +483,13 @@ const DIARIO_SYNC = {
     }
     r.visitas = [...porId.values()].sort((x,y) => x.ts - y.ts);
 
+    const pn = new Map();
+    for (const x of [...(a.pernoctas||[]), ...(b.pernoctas||[])]){
+      const antes = pn.get(x.id);
+      if (!antes || (x.ts_edit || x.ts || 0) > (antes.ts_edit || antes.ts || 0)) pn.set(x.id, x);
+    }
+    r.pernoctas = [...pn.values()].sort((x,y) => x.ts - y.ts);
+
     r.portadas = {};
     const dp = new Set([...Object.keys(a.portadas||{}), ...Object.keys(b.portadas||{})]);
     for (const k of dp){
@@ -453,7 +517,7 @@ const DIARIO_SYNC = {
     try {
       const { error } = await c.from("viaje_diario").upsert({
         viaje, hechas:d.hechas, desmarcadas:d.desmarcadas, notas:d.notas,
-        posiciones:d.posiciones, visitas:d.visitas, portadas:d.portadas,
+        posiciones:d.posiciones, visitas:d.visitas, pernoctas:d.pernoctas, portadas:d.portadas,
         actualizado: new Date().toISOString()
       });
       return !error;
@@ -478,7 +542,7 @@ const DIARIO_SYNC = {
     const fundido = this.fundir(antes, {
       hechas: remoto.hechas || {}, desmarcadas: remoto.desmarcadas || {},
       notas: remoto.notas || {}, posiciones: remoto.posiciones || {},
-      visitas: remoto.visitas || [], portadas: remoto.portadas || {}
+      visitas: remoto.visitas || [], pernoctas: remoto.pernoctas || [], portadas: remoto.portadas || {}
     });
     const cambios = JSON.stringify(fundido) !== JSON.stringify(antes);
     this.guardarLocal(viaje, fundido);

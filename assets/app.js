@@ -153,6 +153,108 @@ function activaAqui(i, ctx = "hoy"){
   });
 }
 
+
+/* ---- Dónde dormimos ---- */
+const TIPOS_CAMA = [["furgo","En la furgo"],["camping","Camping"],
+                    ["hotel","Hotel o casa"],["area","Área de autocaravanas"]];
+const VALORES = [[3,"★ Repetiría"],[2,"Correcto"],[1,"No volvería"]];
+
+function cajaPernocta(i, ctx = "hoy"){
+  return `<div class="cama-zona" id="cama-${ctx}-${i}">
+    <span class="label">Dónde dormimos</span>
+    <div id="cama-lista-${ctx}-${i}"></div>
+  </div>`;
+}
+
+function pintaPernocta(i, ctx = "hoy"){
+  const z = document.getElementById(`cama-lista-${ctx}-${i}`);
+  if (!z || typeof DIARIO_SYNC === "undefined") return;
+  const p = DIARIO_SYNC.pernoctaDelDia(VIAJE_ID, i);
+
+  if (!p){
+    z.innerHTML = `<p class="note" style="margin:6px 0 10px">Guarda el sitio exacto donde pasáis la noche: para volver, o para acordaros de no volver.</p>
+      <div class="btns"><button class="btn solid" data-dormir="${ctx}:${i}">Dormimos aquí</button></div>`;
+  } else {
+    const val = VALORES.find(v => v[0] === p.valorada);
+    z.innerHTML = `<div class="cama-ficha">
+      <div class="cama-cab">
+        <div>
+          <b>${esc(p.txt) || "Buscando el nombre…"}</b>
+          <small>${p.tipo ? esc((TIPOS_CAMA.find(t => t[0] === p.tipo) || [,""])[1]) : ""}${
+            p.auto && !p.tipo ? "según OpenStreetMap" : ""}</small>
+        </div>
+        ${val ? `<span class="cama-val v${p.valorada}">${esc(val[1])}</span>` : ""}
+      </div>
+      ${p.nota ? `<p class="cama-nota">${esc(p.nota)}</p>` : ""}
+      <div class="tipos">${TIPOS_CAMA.map(([id, n]) =>
+        `<button class="tipo${p.tipo === id ? " on" : ""}" data-tipo="${ctx}:${i}:${id}">${n}</button>`).join("")}</div>
+      <div class="tipos">${VALORES.map(([v, n]) =>
+        `<button class="tipo val${v}${p.valorada === v ? " on" : ""}" data-val="${ctx}:${i}:${v}">${n}</button>`).join("")}</div>
+      <div class="btns">
+        <a class="btn solid" href="${navegarXY(...p.xy.split(",").map(Number))}" target="_blank" rel="noopener">Volver aquí</a>
+        <a class="btn" href="${mapaXY(...p.xy.split(",").map(Number))}" target="_blank" rel="noopener">Ver</a>
+        <button class="btn" data-nota-cama="${ctx}:${i}">${p.nota ? "Cambiar nota" : "Apuntar algo"}</button>
+        <button class="btn borrar-v" data-quitar-cama="${ctx}:${i}">Quitar</button>
+      </div>
+    </div>`;
+  }
+  enganchaPernocta(i, ctx);
+}
+
+function enganchaPernocta(i, ctx){
+  const z = document.getElementById(`cama-lista-${ctx}-${i}`);
+  if (!z) return;
+
+  z.querySelectorAll(`[data-dormir]`).forEach(b => b.addEventListener("click", async () => {
+    b.textContent = "Localizando…";
+    try {
+      await DIARIO_SYNC.apuntarPernocta(VIAJE_ID, i);
+      pintaPernocta(i, ctx);
+      setTimeout(() => pintaPernocta(i, ctx), 1600);
+      setTimeout(() => pintaPernocta(i, ctx), 4000);
+    } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
+  }));
+
+  const actual = () => DIARIO_SYNC.pernoctaDelDia(VIAJE_ID, i);
+
+  z.querySelectorAll("[data-tipo]").forEach(b => b.addEventListener("click", () => {
+    const tipo = b.dataset.tipo.split(":")[2];
+    const p = actual(); if (!p) return;
+    DIARIO_SYNC.editarPernocta(VIAJE_ID, p.id, { tipo: p.tipo === tipo ? "" : tipo });
+    pintaPernocta(i, ctx);
+  }));
+
+  z.querySelectorAll("[data-val]").forEach(b => b.addEventListener("click", () => {
+    const v = +b.dataset.val.split(":")[2];
+    const p = actual(); if (!p) return;
+    DIARIO_SYNC.editarPernocta(VIAJE_ID, p.id, { valorada: p.valorada === v ? 0 : v });
+    pintaPernocta(i, ctx);
+  }));
+
+  z.querySelectorAll("[data-nota-cama]").forEach(b => b.addEventListener("click", () => {
+    const p = actual(); if (!p) return;
+    const t = prompt("¿Qué conviene recordar de este sitio?", p.nota || "");
+    if (t === null) return;
+    DIARIO_SYNC.editarPernocta(VIAJE_ID, p.id, { nota: t.trim() });
+    pintaPernocta(i, ctx);
+  }));
+
+  z.querySelectorAll("[data-quitar-cama]").forEach(b => b.addEventListener("click", () => {
+    const p = actual(); if (!p) return;
+    if (!confirm("¿Quitar este sitio?")) return;
+    DIARIO_SYNC.borrarPernocta(VIAJE_ID, p.id);
+    pintaPernocta(i, ctx);
+  }));
+
+  z.querySelectorAll("[data-nombrar-cama]").forEach(b => b.addEventListener("click", () => {
+    const p = actual(); if (!p) return;
+    const t = prompt("¿Cómo se llama el sitio?", p.txt || "");
+    if (t === null) return;
+    DIARIO_SYNC.editarPernocta(VIAJE_ID, p.id, { txt: t.trim(), auto: false });
+    pintaPernocta(i, ctx);
+  }));
+}
+
 /* ---- Cámara y fotos del día ---- */
 function cajaFotos(i, ctx = "hoy"){
   return `<div class="fotos-dia" id="fotos-${ctx}-${i}">

@@ -75,6 +75,7 @@ estar usándose en carretera ahora mismo.
 | Marcar paradas y notas | | ● | ● | ● | |
 | Fotos: cámara, galería y portada | | ● | ● | ● | |
 | «Estoy aquí» y añadir sitios | | ● | ● | ● | |
+| Dónde dormimos, con valoración | | ● | ● | ● | |
 | Recorrido real en el mapa | | ● | ● | | |
 | Guía de lugares | | 39 fichas | 27 fichas | | |
 | Reservas y localizadores | | ● | | ● | ● |
@@ -176,6 +177,7 @@ sesión: son dos personas que comparten todo.
   notas:       { "5": { t:"…", ts:1784… } },
   posiciones:  { "5:0": { xy:"46.3,14.1", ts } },  // dónde estabas al marcar
   visitas:     [{ id, xy, ts, dia, txt, auto, manual, precision }],
+  pernoctas:   [{ id, xy, ts, dia, txt, tipo, nota, valorada }],
   portadas:    { "5": { id:"eslovenia:5:178…", ts } }
 }
 ```

@@ -57,6 +57,11 @@ elige qué buscas. Te lo ordena por **tiempo en coche**, no en línea recta.
 deja elegir varias. La estrella de una miniatura la pone como portada del día.
 Se comparten con el otro móvil.
 
+**Dónde dormimos.** *Dormimos aquí* guarda el sitio exacto de la noche, con su
+nombre puesto solo. Luego lo clasificas —furgo, camping, hotel, área— y lo
+valoras: repetiría, correcto, no volvería. Puedes apuntar por qué. Meses después,
+el botón *Volver aquí* te lleva al punto exacto.
+
 **Por dónde hemos pasado.** *Estoy aquí* guarda el punto donde estés y le pone
 nombre solo, preguntándoselo a OpenStreetMap. Si ya te has ido del sitio, usa
 *Añadir un sitio* y búscalo por el nombre: se coloca en su hora dentro de ese día.

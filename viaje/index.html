@@ -272,6 +272,25 @@ header{position:relative}
 .vistazo .v-nota::before,.vistazo .v-ayer::before{content:"“";color:var(--ac);font-style:normal}
 .vistazo .v-nota::after,.vistazo .v-ayer::after{content:"”";color:var(--ac);font-style:normal}
 .vistazo .v-hecho{color:var(--ac)}
+
+.cama-zona{margin:18px 0 8px}
+.cama-ficha{background:var(--f2);border:1px solid var(--line);border-radius:14px;
+  padding:14px;margin-top:8px}
+.cama-cab{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.cama-cab b{font-size:16px;color:var(--t)}
+.cama-cab small{display:block;font-size:12.5px;color:var(--td);margin-top:2px}
+.cama-val{flex:0 0 auto;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;padding:4px 9px;border-radius:999px}
+.cama-val.v3{background:rgba(127,176,105,.18);color:var(--ac)}
+.cama-val.v2{background:rgba(200,155,60,.16);color:var(--am)}
+.cama-val.v1{background:rgba(178,84,58,.16);color:var(--rj)}
+.cama-nota{margin:9px 0 0;font-size:14px;line-height:1.5;color:var(--td);font-style:italic}
+.tipos{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tipo{padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:transparent;
+  color:var(--td);font-family:var(--sans);font-size:12.5px;cursor:pointer}
+.tipo.on{border-color:var(--ac);color:var(--ac);background:rgba(127,176,105,.1)}
+.tipo.val3.on{border-color:var(--ac);color:var(--ac)}
+.tipo.val1.on{border-color:var(--rj);color:var(--rj);background:rgba(178,84,58,.1)}
 </style>
 </head>
 <body>
@@ -300,8 +319,8 @@ header{position:relative}
   <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
 </nav>
 
-<script src="../sync.js?v=68"></script>
-<script src="../assets/app.js?v=72"></script>
+<script src="../sync.js?v=76"></script>
+<script src="../assets/app.js?v=76"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -452,7 +471,7 @@ function pintaParadas(d, i, ctx = "hoy"){
     + `<div class="diario"><span class="label">Notas del día</span>
        <textarea class="nota-txt" data-dia="${i}" rows="2"
          placeholder="Qué tal fue, dónde comisteis, cuánto costó…">${esc(P.nota(i))}</textarea></div>`
-    + cajaAqui(i, ctx) + cajaFotos(i, ctx);
+    + cajaAqui(i, ctx) + cajaPernocta(i, ctx) + cajaFotos(i, ctx);
 }
 
 function activaDiario(){
@@ -636,7 +655,7 @@ function vistaHoy(){
   document.getElementById("v-hoy").innerHTML = h;
   activaDiario();
   activaCamara(i, "hoy"); pintaGaleria(i, true, "hoy");
-  activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); activaMapaCab(i, "hoy"); pintaPortada(i, "hoy");
+  activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); pintaPernocta(i, "hoy"); activaMapaCab(i, "hoy"); pintaPortada(i, "hoy");
   pintaVistazo(i);
   if (P.avisar) avisoCerca(i);
   const conXY = (d.paradas || []).find(p => p.xy);
@@ -672,7 +691,7 @@ function vistaDias(){
     activaDiario();
     pintaVistazo(i, "det");
     activaCamara(i, "det"); pintaGaleria(i, true, "det");
-    activaAqui(i, "det"); activaBuscarSitio(i, "det"); pintaAqui(i, "det"); activaMapaCab(i, "det"); pintaPortada(i, "det");
+    activaAqui(i, "det"); activaBuscarSitio(i, "det"); pintaAqui(i, "det"); pintaPernocta(i, "det"); activaMapaCab(i, "det"); pintaPortada(i, "det");
     det.scrollIntoView?.({behavior:"smooth", block:"start"});
   }));
 }
