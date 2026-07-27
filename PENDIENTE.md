@@ -162,6 +162,7 @@ Para no volver a proponerlo:
 | Servicios ordenados por tiempo real | v74 |
 | Búsquedas en radios grandes sin atragantar al servidor | v75 |
 | Dónde dormimos: guardar, clasificar y valorar la pernocta | v76 |
+| Servicios: tres servidores y reintentos, hasta 20 resultados | v77 |
 
 ---
 
