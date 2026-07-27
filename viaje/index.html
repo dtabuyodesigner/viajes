@@ -320,7 +320,7 @@ header{position:relative}
 </nav>
 
 <script src="../sync.js?v=76"></script>
-<script src="../assets/app.js?v=76"></script>
+<script src="../assets/app.js?v=77"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -900,7 +900,8 @@ async function lanzarCerca(){
     cont.innerHTML = `<p class="note">${
       motivo === "ocupado" ? "El servidor de mapas está saturado ahora mismo. Prueba en un minuto."
       : motivo === "lento" || /abort/i.test(motivo)
-        ? `Demasiados resultados en ${radioKm} km y el servidor no da abasto. Prueba con un radio menor.`
+        ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
+            ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
       : "No se pudo consultar. ¿Hay cobertura?"}</p>`;
   }
 }
