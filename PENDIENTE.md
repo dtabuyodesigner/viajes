@@ -161,6 +161,7 @@ Para no volver a proponerlo:
 | El vistazo recuerda tus notas de ayer y de días pasados | v73 |
 | Servicios ordenados por tiempo real | v74 |
 | Búsquedas en radios grandes sin atragantar al servidor | v75 |
+| Dónde dormimos: guardar, clasificar y valorar la pernocta | v76 |
 
 ---
 
