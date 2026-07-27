@@ -221,7 +221,7 @@ Ninguno necesita clave. Todos son gratuitos para uso personal.
 | Dormir en furgo | `p4n://` y `park4night.com` | solo en Asturias |
 | Qué es un sitio | Wikipedia, `origin=*` | |
 | Qué hacer allí | Wikivoyage, `origin=*` | |
-| Qué hay cerca | Overpass (OpenStreetMap) | una petición por consulta |
+| Qué hay cerca | Overpass (OpenStreetMap) | tres servidores, con reintentos |
 | Tiempo por carretera | OSRM `table/v1/driving` | demo: máx. 1 petición/s |
 | Cómo se llama este sitio | Nominatim `reverse` | máx. 1 petición/s |
 | Buscar un sitio | Nominatim `search` | |
