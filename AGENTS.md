@@ -136,6 +136,7 @@ Están aquí para que no se repitan:
 | Se publicó con una prueba en rojo | Se lanzó la subida sin mirar el resultado | Leer la salida antes de subir, no después |
 | Los servicios salían desordenados | Se ordenaban en recto y los tiempos reales se metían en su sitio sin reordenar | Ya estaba corregido en otro bloque: el motor común evita repetir el fallo |
 | «Nada en 100 km» con gasolineras | Overpass se atraganta con miles de resultados y devuelve 504 | Tope y timeout según el radio, y decir qué pasa |
+| «Demasiados resultados en 10 km» | Se culpaba al radio de un fallo del servidor, sin reintentar | Tres servidores alternativos y tres intentos pidiendo menos cada vez |
 
 El patrón se repite: **dar algo por bueno sin ejecutarlo**. Por eso existen las
 pruebas.
