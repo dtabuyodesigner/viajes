@@ -257,6 +257,34 @@ function enganchaPernocta(i, ctx){
 
 
 
+/* ---- El alojamiento del día ---- */
+function bloqueHotel(d){
+  const nombre = (d.hotel || d.dest || "").trim();
+  if (!nombre) return "";
+  const donde = (d.dest && d.dest !== nombre) ? `${nombre} ${d.dest}` : nombre;
+  const q = encodeURIComponent(donde);
+
+  // Los enlaces los construye la app: pedírselos a una IA sale mal, se los inventa
+  return `<div class="hotel-zona">
+    <span class="label">Dónde dormís</span>
+    <div class="card" style="margin-top:8px">
+      <h3>${esc(nombre)}</h3>
+      <div class="btns">
+        <a class="btn solid" href="${navegar(donde)}" target="_blank" rel="noopener">Ir con ${comoNavego()}</a>
+        <a class="btn" href="${mapa(donde)}" target="_blank" rel="noopener">Ver</a>
+      </div>
+      <div class="btns">
+        ${d.hotelWeb ? `<a class="btn" href="${esc(d.hotelWeb)}" target="_blank" rel="noopener">Su web</a>` : ""}
+        <a class="btn" target="_blank" rel="noopener"
+           href="https://www.booking.com/searchresults.es.html?ss=${q}">Booking</a>
+        <a class="btn" target="_blank" rel="noopener"
+           href="https://www.google.com/search?q=${q}">Buscar</a>
+      </div>
+      <p class="note">Los enlaces buscan por el nombre: comprueba que es el sitio correcto antes de fiarte de precios u horarios.</p>
+    </div>
+  </div>`;
+}
+
 /* ---- Qué ver por aquí: lo que merece la pena alrededor ---- */
 const QUE_VER = [
   { id:"mirador", n:"Miradores",  q:'node["tourism"="viewpoint"]' },
@@ -801,15 +829,46 @@ function mapaDia(i, ctx = "hoy"){
 let MI_POS = null;
 // si el aviso de cercanía ya pidió la ubicación, se reutiliza
 
+/* Situarse rápido: primero lo que el móvil sepa ya (wifi, antenas), y si el
+   GPS afina después, se corrige. Esperar al GPS antes de pintar nada hace que
+   parezca colgado. */
+function ubicacionRapida(){
+  return new Promise((ok, mal) => {
+    if (!navigator.geolocation) return mal("sin gps");
+    let resuelto = false;
+    const listo = p => {
+      if (resuelto) return;
+      resuelto = true;
+      ok([p.coords.latitude, p.coords.longitude]);
+    };
+    // primero, cualquier posición reciente que ya tenga el móvil
+    navigator.geolocation.getCurrentPosition(listo, () => {},
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 300000 });
+    // y en paralelo la buena, que corrige si llega antes de resolverse
+    navigator.geolocation.getCurrentPosition(listo,
+      e => { if (!resuelto){ resuelto = true; mal(e.message || "sin ubicación"); } },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+  });
+}
+
 function activaMapaDia(i, ctx = "hoy"){
   document.querySelectorAll(`[data-mi-pos="${ctx}:${i}"]`).forEach(b => {
     if (b.dataset.listo) return; b.dataset.listo = "1";
     b.addEventListener("click", async () => {
       b.textContent = "localizando…";
       try {
-        const p = await pedirUbicacion();
+        const p = await ubicacionRapida();
         MI_POS = Array.isArray(p) ? p.join(",") : p;
         refrescaMapaDia(i, ctx);
+        // el GPS suele afinar unos segundos después: se corrige en silencio
+        if (typeof ubicacionFresca === "function")
+          ubicacionFresca().then(mejor => {
+            if (!mejor) return;
+            const antes = comoPar(MI_POS);
+            if (antes && distancia(antes, mejor) < 0.05) return;   // ya era buena
+            MI_POS = mejor.join(",");
+            refrescaMapaDia(i, ctx);
+          }).catch(()=>{});
       } catch { b.textContent = "no se pudo"; }
     });
   });
