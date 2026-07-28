@@ -163,6 +163,8 @@ Para no volver a proponerlo:
 | Búsquedas en radios grandes sin atragantar al servidor | v75 |
 | Dónde dormimos: guardar, clasificar y valorar la pernocta | v76 |
 | Servicios: tres servidores y reintentos, hasta 20 resultados | v77 |
+| El service worker guarda el motor común | v79 |
+| Buscar «de camino hoy» además de «cerca de aquí» | v80 |
 
 ---
 
