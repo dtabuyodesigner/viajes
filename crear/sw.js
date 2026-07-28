@@ -1,6 +1,6 @@
 /* Editor de viajes — funcionamiento sin cobertura */
 
-const CACHE = "editor-v3";
+const CACHE = "editor-v4";
 const ARCHIVOS = ["./", "./index.html"];
 
 self.addEventListener("install", e => {
@@ -13,6 +13,11 @@ self.addEventListener("activate", e => {
       .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// La portada puede pedir que el nuevo tome el mando sin esperar
+self.addEventListener("message", e => {
+  if (e.data && e.data.tipo === "aplicar") self.skipWaiting();
 });
 
 self.addEventListener("fetch", e => {
