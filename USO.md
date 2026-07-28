@@ -58,10 +58,9 @@ sobre fondo blanco para que el lector pueda con el código, y se pasa de una
 tarjeta a otra con las flechas. Sube el brillo.
 
 **Dónde dormís.** Si el viaje trae alojamiento, en el día sale con botones para
-ir, verlo en el mapa, su web propia si se conoce, «Ficha y fotos»
-para ver la tarjeta de Google con fotos y teléfono, «Opiniones», y «En Booking»
-para llegar a su página. Ninguno pide fechas: el buscador de Booking con fechas
-dice que no hay nada si no queda hueco, y eso no es lo que quieres ver.
+ir, verlo en el mapa, su web propia si se conoce, y «Ficha
+y fotos», que abre la tarjeta de Google con fotos, teléfono y opiniones sin
+pedir fechas.
 
 **Qué ver por aquí.** En la pestaña Guía. Das la ubicación y eliges: monumentos,
 miradores, museos, naturaleza, iglesias o plazas. Te saca lo que merece la pena
@@ -86,6 +85,7 @@ el botón *Volver aquí* te lleva al punto exacto.
 **Por dónde hemos pasado.** *Estoy aquí* guarda el punto donde estés y le pone
 nombre solo, preguntándoselo a OpenStreetMap. Si ya te has ido del sitio, usa
 *Añadir un sitio* y búscalo por el nombre: se coloca en su hora dentro de ese día.
+El nombre de cada punto se puede tocar para buscarlo en Google y ver qué es.
 
 **Modo de color.** Arriba a la derecha: ◐ automático, ☀ claro, ☾ oscuro. El
 claro es para cuando da el sol en la pantalla.
