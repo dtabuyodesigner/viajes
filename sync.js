@@ -614,7 +614,8 @@ const FOTOS = {
       p.onsuccess = e => {
         const c = e.target.result;
         if (!c) return ok(fuera.sort((a,b) => a.cuando - b.cuando));
-        if (c.value.viaje === viaje && String(c.value.dia) === String(dia)) fuera.push(c.value);
+        if (c.value.viaje === viaje && String(c.value.dia) === String(dia) && !c.value.doc)
+          fuera.push(c.value);
         c.continue();
       };
       p.onerror = () => ok([]);
@@ -631,7 +632,7 @@ const FOTOS = {
       p.onsuccess = e => {
         const c = e.target.result;
         if (!c) return ok(n);
-        if (c.value.viaje === viaje) n[c.value.dia] = (n[c.value.dia] || 0) + 1;
+        if (c.value.viaje === viaje && !c.value.doc) n[c.value.dia] = (n[c.value.dia] || 0) + 1;
         c.continue();
       };
       p.onerror = () => ok({});
@@ -744,6 +745,32 @@ const FOTOS = {
       } catch {}
     }
     return nuevas;
+  },
+
+  /* ---- Documentos: tarjetas de embarque, reservas, seguros ---- */
+  async guardarDoc(viaje, clave, datos, nombre){
+    const t = await this._tienda("readwrite");
+    if (!t) return null;
+    const id = `doc:${viaje}:${clave}`;
+    return new Promise(ok => {
+      const p = t.put({ id, viaje, dia:-1, doc:clave, nombre: nombre || "", datos, cuando: Date.now() });
+      p.onsuccess = () => ok(id);
+      p.onerror = () => ok(null);
+    });
+  },
+
+  async doc(viaje, clave){
+    return this._porId(`doc:${viaje}:${clave}`);
+  },
+
+  async borrarDoc(viaje, clave){
+    const t = await this._tienda("readwrite");
+    if (!t) return false;
+    return new Promise(ok => {
+      const p = t.delete(`doc:${viaje}:${clave}`);
+      p.onsuccess = () => ok(true);
+      p.onerror = () => ok(false);
+    });
   },
 
   /* Cuánto ocupan, para avisar antes de llenar el móvil */
