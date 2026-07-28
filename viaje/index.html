@@ -330,7 +330,7 @@ header{position:relative}
 </nav>
 
 <script src="../sync.js?v=76"></script>
-<script src="../assets/app.js?v=80"></script>
+<script src="../assets/app.js?v=81"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -922,7 +922,9 @@ async function lanzarCerca(){
       : motivo === "lento" || /abort/i.test(motivo)
         ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
             ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
-      : "No se pudo consultar. ¿Hay cobertura?"}</p>`;
+      : navigator.onLine
+        ? `El servidor de mapas no responde${modoBusca === "ruta" ? " a la búsqueda por el camino" : ""}. Prueba «Cerca de aquí» o vuelve en un momento.`
+        : "Sin conexión. Esto necesita red."}</p>`;
   }
 }
 
