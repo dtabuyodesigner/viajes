@@ -50,6 +50,11 @@ Waze; el pequeño de al lado, **map**, abre Google Maps por si Waze falla.
 **Marcar y anotar.** El círculo de cada parada la tacha. Abajo de cada día hay
 un campo para escribir. Todo se sincroniza con el otro móvil.
 
+**Las tarjetas de embarque.** En Reservas, debajo de cada vuelo: *Añadir* para
+cogerlas del carrete o *Hacer foto* si las tienes en papel. Se guardan en el
+móvil y se ven sin cobertura. En el aeropuerto, *Ver a pantalla completa*: sale
+sobre fondo blanco para que el lector pueda con el código. Sube el brillo.
+
 **Dónde dormís.** Si el viaje trae alojamiento, en el día sale con botones para
 ir, verlo en el mapa, su web propia si se conoce, y buscarlo en Booking o en
 Google. Los enlaces los arma la app buscando por el nombre: comprueba que es el
