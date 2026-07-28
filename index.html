@@ -94,6 +94,11 @@ header{position:relative}
   nav{background:var(--fondo)}
   header{background:var(--fondo)}
 }
+
+.aviso-nueva{position:fixed;left:14px;right:14px;bottom:calc(16px + env(safe-area-inset-bottom));
+  z-index:60;padding:14px;border-radius:14px;border:0;background:#5BC8B4;color:#12181C;
+  font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer;
+  box-shadow:0 6px 24px rgba(0,0,0,.3)}
 </style>
 </head>
 <body>
@@ -165,7 +170,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v84 · 28/07 07:46";
+const VERSION = "v85 · 28/07 07:53";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -367,8 +372,42 @@ if ("serviceWorker" in navigator){
     try {
       const reg = await navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
       reg.update();
+
+      // Si hay una versión nueva esperando, no vale con recargar: el service
+      // worker viejo sigue mandando hasta que se cierran todas las pestañas.
+      // Se avisa y se recarga una sola vez, ya con el nuevo al mando.
+      const avisar = sw => {
+        if (!sw) return;
+        sw.addEventListener("statechange", () => {
+          if (sw.state === "installed" && navigator.serviceWorker.controller) muestraNueva(reg);
+        });
+      };
+      if (reg.waiting) muestraNueva(reg);
+      avisar(reg.installing);
+      reg.addEventListener("updatefound", () => avisar(reg.installing));
+
+      let recargado = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (recargado) return;
+        recargado = true;
+        location.reload();
+      });
     } catch {}
   });
+
+  function muestraNueva(reg){
+    if (document.getElementById("hay-nueva")) return;
+    const b = document.createElement("button");
+    b.id = "hay-nueva";
+    b.className = "aviso-nueva";
+    b.textContent = "Hay una versión nueva · tocar para usarla";
+    b.addEventListener("click", () => {
+      b.textContent = "Actualizando…";
+      reg.waiting?.postMessage({ tipo: "aplicar" });
+      setTimeout(() => location.reload(), 900);
+    });
+    document.body.appendChild(b);
+  }
 }
 </script>
 </body>
