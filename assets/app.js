@@ -284,32 +284,29 @@ async function buscarEnRuta(cat, i, km){
   const todos = puntosDeRuta(i);
   if (todos.length < 2) return null;          // sin ruta que seguir
 
+  // Un solo rectángulo que engloba el día, en vez de un círculo por parada:
+  // para Overpass es muchísimo más barato y responde a la primera.
+  const lats = todos.map(p => p[0]), lons = todos.map(p => p[1]);
+  const margen = Math.min(km, 12) / 111;      // en grados, aprox.
+  const caja = [
+    (Math.min(...lats) - margen).toFixed(4),
+    (Math.min(...lons) - margen * 1.4).toFixed(4),
+    (Math.max(...lats) + margen).toFixed(4),
+    (Math.max(...lons) + margen * 1.4).toFixed(4)
+  ].join(",");
+
   const SERVIDORES = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter"
   ];
-  // Cada intento pide menos: menos puntos del camino, radio más corto y
-  // menos resultados. Mejor traer algo que rendirse.
-  const intentos = [
-    { puntos: 6, radio: 8,  tope: 60, espera: 30 },
-    { puntos: 4, radio: 6,  tope: 30, espera: 20 },
-    { puntos: 3, radio: 5,  tope: 15, espera: 12 }
-  ];
+  const intentos = [ {tope:80, espera:25}, {tope:40, espera:15}, {tope:20, espera:10} ];
 
   let ultimo = "";
   for (let n = 0; n < intentos.length; n++){
-    const { puntos: cuantos, radio, tope, espera } = intentos[n];
-    // repartidos por todo el día, no los primeros seguidos
-    const paso = Math.max(1, Math.ceil(todos.length / cuantos));
-    const usados = todos.filter((_, k) => k % paso === 0 || k === todos.length - 1).slice(0, cuantos);
-
-    const partes = [];
-    for (const t of cat.q.split(";"))
-      for (const p of usados)
-        partes.push(`${t}(around:${Math.min(km, radio) * 1000},${p[0]},${p[1]});`);
-    const consulta = `[out:json][timeout:${espera}];(${partes.join("")});out center ${tope};`;
-
+    const { tope, espera } = intentos[n];
+    const partes = cat.q.split(";").map(t => `${t}(${caja});`).join("");
+    const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
     const ctrl = new AbortController();
     const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
     try {
@@ -325,14 +322,16 @@ async function buscarEnRuta(cat, i, km){
       const sitios = (d.elements || []).map(e => {
         const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
         if (la == null) return null;
-        // lo que importa es cuánto te desvías, no lo lejos que esté
+        // lo que importa es cuánto te desvías del camino, no lo lejos que esté
         const desvio = Math.min(...todos.map(p => distancia(p, [la, lo])));
         return { nombre: e.tags?.name || cat.n,
                  detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
                  xy:[la, lo], km: distancia(origen, [la, lo]), desvio };
-      }).filter(Boolean).sort((a,b) => a.desvio - b.desvio);
+      }).filter(Boolean)
+        .filter(x => x.desvio <= Math.min(km, 12))   // fuera lo que queda lejos del camino
+        .sort((a,b) => a.desvio - b.desvio);
       if (sitios.length) return sitios.slice(0, 20);
-      if (n === 0) return [];                 // de verdad no hay nada
+      if (n === 0) return [];
     } catch (e){
       clearTimeout(corte);
       ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
