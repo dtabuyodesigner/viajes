@@ -271,27 +271,32 @@ function cajaDoc(clave, titulo, pista){
 async function pintaDoc(clave, titulo, pista){
   const z = document.getElementById(`doc-cuerpo-${clave}`);
   if (!z) return;
-  const d = await FOTOS.doc(VIAJE_ID, clave);
+  const ds = await FOTOS.docs(VIAJE_ID, clave);
 
-  if (!d){
-    z.innerHTML = `<p class="note" style="margin:6px 0 10px">${esc(pista)}</p>
-      <div class="btns">
-        <label class="btn solid" style="cursor:pointer">
-          <input type="file" accept="image/*" data-doc="${clave}" hidden>
-          <span>Añadir</span>
-        </label>
-        <label class="btn" style="cursor:pointer">
-          <input type="file" accept="image/*" capture="environment" data-doc="${clave}" hidden>
-          <span>Hacer foto</span>
-        </label>
-      </div>`;
+  const botones = `<div class="btns">
+      <label class="btn${ds.length ? "" : " solid"}" style="cursor:pointer">
+        <input type="file" accept="image/*" multiple data-doc="${clave}" hidden>
+        <span>${ds.length ? "Añadir otra" : "Añadir"}</span>
+      </label>
+      <label class="btn" style="cursor:pointer">
+        <input type="file" accept="image/*" capture="environment" data-doc="${clave}" hidden>
+        <span>Hacer foto</span>
+      </label>
+    </div>`;
+
+  if (!ds.length){
+    z.innerHTML = `<p class="note" style="margin:6px 0 10px">${esc(pista)}</p>${botones}`;
   } else {
-    z.innerHTML = `<img class="doc-img" src="${d.datos}" alt="${esc(titulo)}">
-      <div class="btns">
-        <button class="btn solid" data-doc-grande="${clave}">Ver a pantalla completa</button>
-        <button class="btn borrar-v" data-doc-quitar="${clave}">Quitar</button>
-      </div>
-      <p class="note">Guardada en este móvil. Se ve sin cobertura.</p>`;
+    z.innerHTML = ds.map(d => `
+      <div class="doc-una">
+        <img class="doc-img" src="${d.datos}" alt="${esc(titulo)}" data-doc-grande="${esc(d.id)}">
+        <div class="btns">
+          <button class="btn solid" data-doc-grande="${esc(d.id)}">Ver a pantalla completa</button>
+          <button class="btn borrar-v" data-doc-quitar="${esc(d.id)}">Quitar</button>
+        </div>
+      </div>`).join("")
+      + botones
+      + `<p class="note">${ds.length === 1 ? "Guardada" : ds.length + " guardadas"} en este móvil. Se ven sin cobertura.</p>`;
   }
   enganchaDoc(clave, titulo, pista);
 }
@@ -303,45 +308,67 @@ function enganchaDoc(clave, titulo, pista){
   z.querySelectorAll(`[data-doc="${clave}"]`).forEach(inp => {
     if (inp.dataset.listo) return; inp.dataset.listo = "1";
     inp.addEventListener("change", async e => {
-      const f = e.target.files?.[0];
-      if (!f) return;
+      const archivos = [...(e.target.files || [])];
+      if (!archivos.length) return;
       const eti = inp.parentElement.querySelector("span");
       const antes = eti ? eti.textContent : "";
-      if (eti) eti.textContent = "Guardando…";
-      try {
-        // poca compresión: el código de barras tiene que poder leerse
-        const datos = await comprimirFoto(f, 1800, 0.92);
-        const id = await FOTOS.guardarDoc(VIAJE_ID, clave, datos, f.name);
-        if (!id) throw new Error("no se pudo");
-      } catch {
-        if (eti) eti.textContent = antes;
-        alert("No se pudo guardar. ¿Queda sitio en el móvil?");
-        return;
+      if (eti) eti.textContent = archivos.length > 1 ? `Guardando ${archivos.length}…` : "Guardando…";
+      let fallos = 0;
+      for (const f of archivos){
+        try {
+          // poca compresión: el código de barras tiene que poder leerse
+          const datos = await comprimirFoto(f, 1800, 0.92);
+          const id = await FOTOS.guardarDoc(VIAJE_ID, clave, datos, f.name);
+          if (!id) fallos++;
+        } catch { fallos++; }
       }
+      if (eti) eti.textContent = antes;
       inp.value = "";
+      if (fallos) alert(fallos === archivos.length
+        ? "No se pudo guardar. ¿Queda sitio en el móvil?"
+        : `${fallos} de ${archivos.length} no se pudieron guardar.`);
       pintaDoc(clave, titulo, pista);
     });
   });
 
   z.querySelectorAll("[data-doc-grande]").forEach(b => b.addEventListener("click", async () => {
-    const d = await FOTOS.doc(VIAJE_ID, clave);
-    if (d) verDocGrande(d.datos);
+    const ds = await FOTOS.docs(VIAJE_ID, clave);
+    const d = ds.find(x => x.id === b.dataset.docGrande);
+    if (d) verDocGrande(d.datos, ds.map(x => x.datos), ds.indexOf(d));
   }));
 
   z.querySelectorAll("[data-doc-quitar]").forEach(b => b.addEventListener("click", async () => {
     if (!confirm("¿Quitar este documento del móvil?")) return;
-    await FOTOS.borrarDoc(VIAJE_ID, clave);
+    await FOTOS.borrarDoc(VIAJE_ID, b.dataset.docQuitar);
     pintaDoc(clave, titulo, pista);
   }));
 }
 
+
 /* A pantalla completa y con el brillo al máximo: los lectores del aeropuerto
    necesitan contraste, y con la pantalla a media luz no leen el código. */
-function verDocGrande(src){
+function verDocGrande(src, todas, desde){
+  const lista = (todas && todas.length) ? todas : [src];
+  let n = Math.max(0, desde || 0);
   const v = document.createElement("div");
   v.className = "doc-visor";
-  v.innerHTML = `<img src="${src}" alt=""><button class="cerrar">Cerrar</button>`;
-  v.addEventListener("click", e => { if (e.target !== v.querySelector("img")) v.remove(); });
+  const pinta = () => {
+    v.innerHTML = `<img src="${lista[n]}" alt="">
+      ${lista.length > 1 ? `<div class="doc-pasar">
+        <button class="paso" data-ir="-1">‹</button>
+        <span>${n + 1} de ${lista.length}</span>
+        <button class="paso" data-ir="1">›</button>
+      </div>` : ""}
+      <button class="cerrar">Cerrar</button>`;
+    v.querySelectorAll("[data-ir]").forEach(b => b.addEventListener("click", ev => {
+      ev.stopPropagation();
+      n = (n + Number(b.dataset.ir) + lista.length) % lista.length;
+      pinta();
+    }));
+    v.querySelector(".cerrar").addEventListener("click", () => v.remove());
+  };
+  pinta();
+  v.addEventListener("click", e => { if (e.target === v) v.remove(); });
   document.body.appendChild(v);
 }
 
