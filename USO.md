@@ -51,9 +51,11 @@ Waze; el pequeño de al lado, **map**, abre Google Maps por si Waze falla.
 un campo para escribir. Todo se sincroniza con el otro móvil.
 
 **Las tarjetas de embarque.** En Reservas, debajo de cada vuelo: *Añadir* para
-cogerlas del carrete o *Hacer foto* si las tienes en papel. Se guardan en el
+cogerlas del carrete —puedes elegir varias a la vez, una por persona— o *Hacer
+foto* si las tienes en papel. Se guardan en el
 móvil y se ven sin cobertura. En el aeropuerto, *Ver a pantalla completa*: sale
-sobre fondo blanco para que el lector pueda con el código. Sube el brillo.
+sobre fondo blanco para que el lector pueda con el código, y se pasa de una
+tarjeta a otra con las flechas. Sube el brillo.
 
 **Dónde dormís.** Si el viaje trae alojamiento, en el día sale con botones para
 ir, verlo en el mapa, su web propia si se conoce, y buscarlo en Booking o en
