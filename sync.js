@@ -594,7 +594,7 @@ const FOTOS = {
   async guardar(viaje, dia, datos, xy){
     const t = await this._tienda("readwrite");
     if (!t) return null;
-    const id = `${viaje}:${dia}:${Date.now()}`;
+    const id = `${viaje}:${dia}:${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
     const guardado = await new Promise(ok => {
       const p = t.put({ id, viaje, dia, datos, xy: xy || null, cuando: Date.now() });
       p.onsuccess = () => ok(id);
@@ -748,10 +748,12 @@ const FOTOS = {
   },
 
   /* ---- Documentos: tarjetas de embarque, reservas, seguros ---- */
+  /* Varios documentos por clave: en un vuelo hay una tarjeta por persona */
   async guardarDoc(viaje, clave, datos, nombre){
     const t = await this._tienda("readwrite");
     if (!t) return null;
-    const id = `doc:${viaje}:${clave}`;
+    // dos archivos seguidos caen en el mismo milisegundo: hace falta algo más
+    const id = `doc:${viaje}:${clave}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
     return new Promise(ok => {
       const p = t.put({ id, viaje, dia:-1, doc:clave, nombre: nombre || "", datos, cuando: Date.now() });
       p.onsuccess = () => ok(id);
@@ -759,15 +761,28 @@ const FOTOS = {
     });
   },
 
-  async doc(viaje, clave){
-    return this._porId(`doc:${viaje}:${clave}`);
+  /* Todos los de una clave, en el orden en que se guardaron */
+  async docs(viaje, clave){
+    const t = await this._tienda("readonly");
+    if (!t) return [];
+    return new Promise(ok => {
+      const fuera = [];
+      const p = t.openCursor();
+      p.onsuccess = e => {
+        const c = e.target.result;
+        if (!c) return ok(fuera.sort((a,b) => a.cuando - b.cuando));
+        if (c.value.viaje === viaje && c.value.doc === clave) fuera.push(c.value);
+        c.continue();
+      };
+      p.onerror = () => ok([]);
+    });
   },
 
-  async borrarDoc(viaje, clave){
+  async borrarDoc(viaje, id){
     const t = await this._tienda("readwrite");
     if (!t) return false;
     return new Promise(ok => {
-      const p = t.delete(`doc:${viaje}:${clave}`);
+      const p = t.delete(id);
       p.onsuccess = () => ok(true);
       p.onerror = () => ok(false);
     });
