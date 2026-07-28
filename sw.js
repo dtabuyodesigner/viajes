@@ -1,6 +1,6 @@
 /* Portada de viajes — funcionamiento sin cobertura */
 
-const CACHE = "portada-v6";
+const CACHE = "portada-v7";
 const ARCHIVOS = ["./", "./index.html", "./img/eslovenia-portada.svg"];
 
 self.addEventListener("install", e => {
@@ -19,7 +19,7 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   if (url.origin !== location.origin) return;
-  if (url.pathname.endsWith("/sync.js")) return;   // siempre fresco   // Maps y la web de Wizz van siempre a la red
+     // Maps y la web de Wizz van siempre a la red
 
   e.respondWith(
     fetch(e.request)
