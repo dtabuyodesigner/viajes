@@ -838,45 +838,51 @@ Construye el viaje ALREDEDOR de esos horarios:
    Nunca ir y volver por el mismo tramo, ni cruzar la zona de lado a lado
    dos veces. Cada día debe dejarme más cerca del siguiente.
 
-2. POCAS BASES, MÁS NOCHES
+2. EL ALOJAMIENTO, CON SU NOMBRE
+   En «Alojamiento» pon el nombre tal cual aparece, para poder buscarlo después.
+   Si conoces su web propia, añádela tras un « · ». Si no la sabes con certeza,
+   no la inventes: deja solo el nombre.
+   No pongas enlaces de Booking ni de otros buscadores: la app los genera sola.
+
+3. POCAS BASES, MÁS NOCHES
    Prioriza quedarte 2 o 3 noches en el mismo alojamiento y salir desde allí,
    antes que cambiar de sitio cada noche. Cambiar de base cuesta media mañana.
    Cambia solo cuando el salto geográfico lo justifique de verdad.
    Los alojamientos, cerca de lo que se visita ese día, no a 40 minutos.
 
-3. TIEMPO AL VOLANTE
+4. TIEMPO AL VOLANTE
    Ningún día debe pasar mucho de ${d.coche} horas de coche.
    Escribe en cada día los kilómetros y el tiempo aproximados.
    Cuenta que en carretera de montaña se va mucho más lento de lo que dice el mapa.
 
-4. AVÍSAME DE LO QUE HAY QUE RESERVAR
+5. AVÍSAME DE LO QUE HAY QUE RESERVAR
    Cuando una parada tenga visita guiada, entrada con hora, ferri o último
    teleférico, dilo en la nota para que lo reserve yo con tiempo, y colócala
    a la hora que tenga sentido dentro del día.
 
-5. UN IMPRESCINDIBLE POR DÍA
+6. UN IMPRESCINDIBLE POR DÍA
    Marca con ★ al principio la parada que no habría que perderse ese día.
 
-6. RITMO ALTERNO
+7. RITMO ALTERNO
    No pongas dos jornadas exigentes seguidas. Después de un día largo,
    uno suave. Y evita amontonar: entre 2 y 4 paradas de verdad por día.
 
-7. PRIMERO Y ÚLTIMO DÍA REALISTAS
+8. PRIMERO Y ÚLTIMO DÍA REALISTAS
    El día de llegada, poco y cerca. El de vuelta, con margen de sobra
    y sin nada que no se pueda saltar.
 
-8. MASIFICACIÓN
+9. MASIFICACIÓN
    En los sitios famosos, di a qué hora conviene ir para no coincidir con todos.
 
-9. PLAN B
+10. PLAN B
    En los días de montaña o de mar, añade al final una línea
    «Si llueve:» con una alternativa cercana a cubierto o suave.
 
-10. LO PRÁCTICO
+11. LO PRÁCTICO
     Dónde llenar la nevera, dónde repostar antes de meterse en zona vacía,
     aparcamientos que se llenan pronto y si son de pago.
 
-11. NORMAS DEL PAÍS (solo si no es España)
+12. NORMAS DEL PAÍS (solo si no es España)
     Al final, después de los días, añade un apartado «## Normas» con lo que
     cambia respecto a España y de verdad afecta al día a día. Sé concreto:
 
@@ -902,6 +908,7 @@ Salida: punto de partida
 
 ## Día 1 — Título de la jornada
 Duermes en: pueblo o ciudad
+Alojamiento: Nombre exacto del hotel o casa · web propia si la sabes
 Coche: 120 km · 2 h
 
 - **Mañana** · ★ Nombre del sitio — Qué es y lo práctico que haya que saber. [Nombre exacto para el GPS]
@@ -1105,6 +1112,7 @@ function aMarkdown(v){
   (v.dias || []).forEach((d, i) => {
     L.push(`## Día ${i+1} — ${d.t || "Sin título"}`);
     if (d.dest) L.push(`Duermes en: ${d.dest}`);
+    if (d.hotel) L.push(`Alojamiento: ${d.hotel}${d.hotelWeb ? " · " + d.hotelWeb : ""}`);
     if (d.km)   L.push(`Coche: ${d.km}`);
     L.push("");
     (d.paradas || []).forEach(p => {
@@ -1177,11 +1185,20 @@ function leerMarkdown(texto){
     // Salida: / Duermes en:
     m = l.match(/^\**\s*salida\s*:\**\s*(.+)$/i);
     if (m){ v.salida = m[1].replace(/\*/g,"").trim(); continue; }
-    m = l.match(/^\**\s*(?:duermes?\s+en|noche|alojamiento)\s*:\**\s*(.+)$/i);
+    m = l.match(/^\**\s*(?:duermes?\s+en|noche)\s*:\**\s*(.+)$/i);
     if (m && dia){ dia.dest = m[1].replace(/\*/g,"").trim(); continue; }
 
     m = l.match(/^\**\s*(?:coche|conducci[óo]n|trayecto|km)\s*:\**\s*(.+)$/i);
     if (m && dia){ dia.km = m[1].replace(/\*/g,"").trim(); continue; }
+
+    m = l.match(/^\**\s*(?:alojamiento|hotel|d[óo]nde\s+dormir)\s*:\**\s*(.+)$/i);
+    if (m && dia){
+      const partes = m[1].replace(/\*/g,"").split("·").map(x => x.trim());
+      dia.hotel = partes[0];
+      const web = partes.slice(1).find(x => /^https?:\/\//i.test(x));
+      if (web) dia.hotelWeb = web;
+      continue;
+    }
 
     // - **Hora** · Sitio — Nota [GPS]
     m = l.match(/^[-*•]\s+(.*)$/);
@@ -1225,6 +1242,8 @@ function normalizar(v){
       t: texto(d.t || d.titulo || d.nombre || ""),
       dest: texto(d.dest || d.destino || d.duerme || ""),
       km: texto(d.km || ""),
+      hotel: texto(d.hotel || ""),
+      hotelWeb: texto(d.hotelWeb || ""),
       lluvia: texto(d.lluvia || ""),
       paradas: (Array.isArray(d.paradas) ? d.paradas : []).map(p => ({
         h: texto(p.h || p.hora || ""),
