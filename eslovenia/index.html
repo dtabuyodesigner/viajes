@@ -431,6 +431,7 @@ header{position:relative}
 .dnd{flex:1;padding:9px 10px;border-radius:10px;border:1px solid var(--line);
   background:transparent;color:var(--paper-dim);font-family:var(--sans);font-size:13px;cursor:pointer}
 .dnd.on{border-color:var(--soca);color:var(--soca);font-weight:600;background:rgba(127,176,105,.1)}
+.motivo{font-family:var(--mono);font-size:11px;opacity:.75;color:var(--paper-dim)}
 </style>
 </head>
 <body>
@@ -459,8 +460,8 @@ header{position:relative}
   <button data-v="info"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>Info</button>
 </nav>
 
-<script src="../sync.js?v=76"></script>
-<script src="../assets/app.js?v=82"></script>
+<script src="../sync.js"></script>
+<script src="../assets/app.js"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -874,7 +875,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v82 · 28/07 07:29";
+const VERSION = "v83 · 28/07 07:38";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -1991,9 +1992,19 @@ async function lanzarServicios(){
       : motivo === "lento" || /abort/i.test(motivo)
         ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
             ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
-      : navigator.onLine
-        ? `El servidor de mapas no responde${modoBusca === "ruta" ? " a la búsqueda por el camino" : ""}. Prueba «Cerca de aquí» o vuelve en un momento.`
-        : "Sin conexión. Esto necesita red."}</p>`;
+      : !navigator.onLine ? "Sin conexión. Esto necesita red."
+      : `No se pudo consultar${modoBusca === "ruta" ? " por el camino" : ""}.
+          <button class="lnk" id="ver-motivo">ver por qué</button>`}</p>
+      <div id="detalle-fallo"></div>`;
+    const vm = document.getElementById("ver-motivo");
+    if (vm) vm.addEventListener("click", () => {
+      const f = (typeof ULTIMO_FALLO !== "undefined" && ULTIMO_FALLO) || {};
+      document.getElementById("detalle-fallo").innerHTML =
+        `<p class="motivo">${esc(motivo)}${f.servidor ? " · " + esc(f.servidor.replace("https://","").split("/")[0]) : ""}${
+          f.estado ? " · " + f.estado : ""}${f.detalle ? "<br>" + esc(f.detalle) : ""}${
+          f.remark ? "<br>" + esc(String(f.remark)) : ""}${
+          f.consulta ? "<br><br>" + esc(String(f.consulta).slice(0, 180)) : ""}</p>`;
+    });
   }
 }
 
