@@ -165,6 +165,8 @@ Para no volver a proponerlo:
 | Servicios: tres servidores y reintentos, hasta 20 resultados | v77 |
 | El service worker guarda el motor común | v79 |
 | Buscar «de camino hoy» además de «cerca de aquí» | v80 |
+| Localizar de nuevo antes de cada búsqueda | v87 |
+| «Qué ver por aquí»: monumentos, museos y miradores alrededor | v90 |
 
 ---
 
