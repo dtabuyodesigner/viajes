@@ -419,7 +419,7 @@ header{position:relative}
 </nav>
 
 <script src="../sync.js?v=76"></script>
-<script src="../assets/app.js?v=80"></script>
+<script src="../assets/app.js?v=81"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -738,7 +738,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v80 · 28/07 06:46";
+const VERSION = "v81 · 28/07 07:23";
 const VIAJE_ID = "asturias";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
@@ -1496,7 +1496,9 @@ async function lanzarServicios(){
       : motivo === "lento" || /abort/i.test(motivo)
         ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
             ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
-      : "No se pudo consultar. ¿Hay cobertura?"}</p>`;
+      : navigator.onLine
+        ? `El servidor de mapas no responde${modoBusca === "ruta" ? " a la búsqueda por el camino" : ""}. Prueba «Cerca de aquí» o vuelve en un momento.`
+        : "Sin conexión. Esto necesita red."}</p>`;
   }
 }
 
