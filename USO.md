@@ -58,9 +58,10 @@ sobre fondo blanco para que el lector pueda con el código, y se pasa de una
 tarjeta a otra con las flechas. Sube el brillo.
 
 **Dónde dormís.** Si el viaje trae alojamiento, en el día sale con botones para
-ir, verlo en el mapa, su web propia si se conoce, y buscarlo en Booking o en
-Google. Los enlaces los arma la app buscando por el nombre: comprueba que es el
-sitio correcto antes de fiarte de precios.
+ir, verlo en el mapa, su web propia si se conoce, «Ficha y fotos»
+para ver la tarjeta de Google con fotos y teléfono, «Opiniones», y «En Booking»
+para llegar a su página. Ninguno pide fechas: el buscador de Booking con fechas
+dice que no hay nada si no queda hueco, y eso no es lo que quieres ver.
 
 **Qué ver por aquí.** En la pestaña Guía. Das la ubicación y eliges: monumentos,
 miradores, museos, naturaleza, iglesias o plazas. Te saca lo que merece la pena
