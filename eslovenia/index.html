@@ -437,6 +437,7 @@ header{position:relative}
   z-index:60;padding:13px;border-radius:14px;border:0;background:var(--soca);color:var(--karst);
   font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;
   box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.hotel-zona{margin:18px 0 8px}
 </style>
 </head>
 <body>
@@ -880,7 +881,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v90 · 28/07 13:21";
+const VERSION = "v91 · 28/07 18:54";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -921,7 +922,7 @@ function pintaParadas(dia, iDia, ctx = "hoy"){
         <span class="pk">P</span>
         <div><b>${esc(p.park.n)}</b><small>${esc(p.park.p)}</small></div>
       </div>` : ""}
-    </div>`; }).join("") + `</div>` + cajaAqui(iDia, ctx) + cajaPernocta(iDia, ctx) + cajaNota(iDia) + cajaFotos(iDia, ctx);
+    </div>`; }).join("") + `</div>` + bloqueHotel(dia) + cajaAqui(iDia, ctx) + cajaPernocta(iDia, ctx) + cajaNota(iDia) + cajaFotos(iDia, ctx);
 }
 
 function cajaNota(i){
