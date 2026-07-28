@@ -168,6 +168,7 @@ Para no volver a proponerlo:
 | Localizar de nuevo antes de cada búsqueda | v87 |
 | «Qué ver por aquí»: monumentos, museos y miradores alrededor | v90 |
 | Alojamiento con web propia, Booking y búsqueda | v91 |
+| Guardar las tarjetas de embarque en el móvil | v93 |
 | El mapa se sitúa al momento, sin esperar al GPS | v91 |
 
 ---
