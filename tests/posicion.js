@@ -2,7 +2,8 @@ const fs = require('fs');
 const M = fs.readFileSync('/home/claude/viaje/assets/app.js','utf8');
 
 function probar(nombre, MIPOS, miPos){
-  const VIAJE = { dias:[{ xy:"46.281,14.322", paradas:[
+  const distancia = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1]) * 111;
+    const VIAJE = { dias:[{ xy:"46.281,14.322", paradas:[
     { xy:"46.368,14.095" }, { g:"vintgar" }, { txt:"sin coords" } ]}]};
   const LUGARES = { vintgar:{ xy:"46.393,14.058" } };
   const ctx = { VIAJE, LUGARES, MIPOS, miPos, Number, Array, String };
