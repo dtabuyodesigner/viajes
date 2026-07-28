@@ -393,6 +393,11 @@ header{position:relative}
   background:transparent;color:var(--papel-dim);font-family:var(--sans);font-size:13px;cursor:pointer}
 .dnd.on{border-color:var(--prau);color:var(--prau);font-weight:600;background:rgba(127,176,105,.1)}
 .motivo{font-family:var(--mono);font-size:11px;opacity:.75;color:var(--papel-dim)}
+
+.aviso-nueva{position:fixed;left:14px;right:14px;bottom:calc(78px + env(safe-area-inset-bottom));
+  z-index:60;padding:13px;border-radius:14px;border:0;background:var(--prau);color:var(--monte);
+  font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;
+  box-shadow:0 6px 24px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
@@ -739,7 +744,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v88 · 28/07 08:15";
+const VERSION = "v89 · 28/07 13:14";
 const VIAJE_ID = "asturias";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
@@ -1784,20 +1789,38 @@ if ("serviceWorker" in navigator){
     try {
       const reg = await navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
       reg.update();                                   // busca versión nueva en cada arranque
-      // Si entra un service worker nuevo, recarga sola una vez para mostrarlo
-      reg.addEventListener("updatefound", () => {
-        const sw = reg.installing;
-        sw && sw.addEventListener("statechange", () => {
-          if (sw.state === "installed" && navigator.serviceWorker.controller) {
-            if (!sessionStorage.getItem("recargado")) {
-              sessionStorage.setItem("recargado", "1");
-              location.reload();
-            }
-          }
-        });
+
+      // Recargar no basta: el service worker viejo sigue mandando hasta que se
+      // cierran todas las pestañas. Hay que pedirle al nuevo que tome el mando.
+      const vigila = sw => sw && sw.addEventListener("statechange", () => {
+        if (sw.state === "installed" && navigator.serviceWorker.controller) avisaNueva(reg);
+      });
+      if (reg.waiting) avisaNueva(reg);
+      vigila(reg.installing);
+      reg.addEventListener("updatefound", () => vigila(reg.installing));
+
+      let yaRecargado = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (yaRecargado) return;
+        yaRecargado = true;
+        location.reload();
       });
     } catch {}
   });
+
+  function avisaNueva(reg){
+    if (document.getElementById("hay-nueva")) return;
+    const b = document.createElement("button");
+    b.id = "hay-nueva";
+    b.className = "aviso-nueva";
+    b.textContent = "Versión nueva · tocar para usarla";
+    b.addEventListener("click", () => {
+      b.textContent = "Actualizando…";
+      reg.waiting?.postMessage({ tipo: "aplicar" });
+      setTimeout(() => location.reload(), 900);
+    });
+    document.body.appendChild(b);
+  }
 }
 </script>
 </body>
