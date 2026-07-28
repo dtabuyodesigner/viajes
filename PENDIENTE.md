@@ -167,6 +167,8 @@ Para no volver a proponerlo:
 | Buscar «de camino hoy» además de «cerca de aquí» | v80 |
 | Localizar de nuevo antes de cada búsqueda | v87 |
 | «Qué ver por aquí»: monumentos, museos y miradores alrededor | v90 |
+| Alojamiento con web propia, Booking y búsqueda | v91 |
+| El mapa se sitúa al momento, sin esperar al GPS | v91 |
 
 ---
 
