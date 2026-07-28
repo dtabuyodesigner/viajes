@@ -291,6 +291,16 @@ header{position:relative}
 .tipo.on{border-color:var(--ac);color:var(--ac);background:rgba(127,176,105,.1)}
 .tipo.val3.on{border-color:var(--ac);color:var(--ac)}
 .tipo.val1.on{border-color:var(--rj);color:var(--rj);background:rgba(178,84,58,.1)}
+
+.donde{display:flex;gap:6px;margin:10px 0}
+.dnd{flex:1;padding:9px 10px;border-radius:10px;border:1px solid var(--line);
+  background:transparent;color:var(--td);font-family:var(--sans);font-size:13px;cursor:pointer}
+.dnd.on{border-color:var(--ac);color:var(--ac);font-weight:600;background:rgba(127,176,105,.1)}
+
+.donde{display:flex;gap:6px;margin:10px 0}
+.dnd{flex:1;padding:9px 10px;border-radius:10px;border:1px solid var(--line);
+  background:transparent;color:var(--td);font-family:var(--sans);font-size:13px;cursor:pointer}
+.dnd.on{border-color:var(--ac);color:var(--ac);font-weight:600;background:rgba(91,200,180,.1)}
 </style>
 </head>
 <body>
@@ -320,7 +330,7 @@ header{position:relative}
 </nav>
 
 <script src="../sync.js?v=76"></script>
-<script src="../assets/app.js?v=77"></script>
+<script src="../assets/app.js?v=80"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -831,8 +841,13 @@ function vistaCerca(){
       </div>` : `
       <div class="cats">${CATEGORIAS.map(c =>
         `<button class="cat${catActiva === c.id ? " on" : ""}" data-cat="${c.id}">${c.n}</button>`).join("")}</div>
-      <div class="radios">${[5,10,25,50,100].map(k =>
-        `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>
+      <div class="donde">
+        <button class="dnd${modoBusca === "cerca" ? " on" : ""}" data-donde="cerca">Cerca de aquí</button>
+        <button class="dnd${modoBusca === "ruta" ? " on" : ""}" data-donde="ruta">De camino hoy</button>
+      </div>
+      ${modoBusca === "cerca" ? `<div class="radios">${[5,10,25,50,100].map(k =>
+        `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>`
+        : `<p class="note" style="margin:8px 0 10px">Busca a lo largo del recorrido de hoy y ordena por lo poco que te desvías.</p>`}
       <div id="res-cerca"></div>`}`;
 
   const b = document.getElementById("dar-pos");
@@ -845,6 +860,9 @@ function vistaCerca(){
 
   z.querySelectorAll("[data-cat]").forEach(x => x.addEventListener("click", () => {
     catActiva = x.dataset.cat; vistaCerca(); lanzarCerca();
+  }));
+  z.querySelectorAll("[data-donde]").forEach(x => x.addEventListener("click", () => {
+    modoBusca = x.dataset.donde; vistaCerca(); if (catActiva) lanzarCerca();
   }));
   z.querySelectorAll("[data-km]").forEach(x => x.addEventListener("click", () => {
     radioKm = +x.dataset.km; vistaCerca(); if (catActiva) lanzarCerca();
@@ -885,7 +903,9 @@ async function lanzarCerca(){
           <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
           <span class="km">${x.t
             ? `${formatoTiempo(x.t.seg)}<i>${x.t.km != null ? Math.round(x.t.km) + " km" : "en coche"}</i>`
-            : `${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i>`}</span>
+            : x.desvio != null
+              ? `${x.desvio < 1 ? Math.round(x.desvio*1000) + " m" : x.desvio.toFixed(1) + " km"}<i>de desvío</i>`
+              : `${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i>`}</span>
         </div>
         <div class="btns" style="margin-top:6px">
           <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
