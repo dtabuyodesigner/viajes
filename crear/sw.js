@@ -1,6 +1,6 @@
 /* Editor de viajes — funcionamiento sin cobertura */
 
-const CACHE = "editor-v2";
+const CACHE = "editor-v3";
 const ARCHIVOS = ["./", "./index.html"];
 
 self.addEventListener("install", e => {
