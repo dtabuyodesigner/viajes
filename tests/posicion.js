@@ -7,6 +7,8 @@ function probar(nombre, MIPOS, miPos){
   const LUGARES = { vintgar:{ xy:"46.393,14.058" } };
   const ctx = { VIAJE, LUGARES, MIPOS, miPos, Number, Array, String };
   const fn = new Function(...Object.keys(ctx),
+    M.match(/function comoTexto[\s\S]*?\n\}/)[0] + "\n" +
+    M.match(/function comoPar[\s\S]*?\n\}/)[0] + "\n" +
     M.match(/function xyDeParada[\s\S]*?\n\}/)[0] + "\n" +
     M.match(/function puntosDeRuta[\s\S]*?\n\}/)[0] + "\nreturn puntosDeRuta;");
   try {
