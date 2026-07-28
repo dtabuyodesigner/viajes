@@ -855,7 +855,7 @@ function vistaCerca(){
       ${modoBusca === "cerca" ? `<div class="radios">${[5,10,25,50,100].map(k =>
         `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>`
         : `<p class="note" style="margin:8px 0 10px">Te localiza y busca en el tramo que te queda por delante, hasta unos 60 km. Lo más próximo, primero.</p>`}
-      <div id="res-cerca"></div>`}`;
+      <div id="res-cerca"></div>` + bloqueQueVer()}`;
 
   const b = document.getElementById("dar-pos");
   if (b) b.addEventListener("click", async () => {
@@ -868,6 +868,7 @@ function vistaCerca(){
   z.querySelectorAll("[data-cat]").forEach(x => x.addEventListener("click", () => {
     catActiva = x.dataset.cat; vistaCerca(); lanzarCerca();
   }));
+  activaQueVer();
   z.querySelectorAll("[data-donde]").forEach(x => x.addEventListener("click", () => {
     modoBusca = x.dataset.donde; vistaCerca(); if (catActiva) lanzarCerca();
   }));
