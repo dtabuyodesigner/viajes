@@ -2,7 +2,7 @@
    Con red: trae siempre la versión más reciente y la guarda.
    Sin red: sirve lo último que se guardó en el móvil. */
 
-const CACHE = "eslovenia26-v9";
+const CACHE = "eslovenia26-v10";
 const ARCHIVOS = ["./", "./index.html", "./fotos/bled-osojnica.jpg", "../img/eslovenia-ilustrado.jpg", "../assets/app.js"];
 
 self.addEventListener("install", e => {
@@ -15,6 +15,11 @@ self.addEventListener("activate", e => {
       .then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+// La portada puede pedir que el nuevo tome el mando sin esperar
+self.addEventListener("message", e => {
+  if (e.data && e.data.tipo === "aplicar") self.skipWaiting();
 });
 
 self.addEventListener("fetch", e => {
