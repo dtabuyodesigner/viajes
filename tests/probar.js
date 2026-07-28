@@ -303,6 +303,33 @@ function idsUnicos(){
   }
 }
 
+/* ═══ 8. La posición se admite en sus dos formas ═══ */
+function posicionEnDosFormas(){
+  console.log(`\n${gris("──")} La ubicación vale como texto y como lista`);
+  const M = fs.readFileSync(path.join(RAIZ, "assets/app.js"), "utf8");
+  const trozo = sel => (M.match(sel) || [""])[0];
+
+  const casos = [
+    ["lista [lat, lon]",  [46.36, 14.11], undefined, 4],
+    ["texto «lat,lon»",   undefined, "46.36,14.11", 4],
+    ["sin ubicación",     null, null, 3],
+    ["valores no válidos", ["x","y"], null, 3]
+  ];
+  for (const [nombre, MIPOS, miPos, esperados] of casos){
+    const VIAJE = { dias:[{ xy:"46.281,14.322", paradas:[
+      { xy:"46.368,14.095" }, { g:"vintgar" }, { txt:"sin coords" } ]}]};
+    const LUGARES = { vintgar:{ xy:"46.393,14.058" } };
+    let n = -1, fallo = "";
+    try {
+      const fn = new Function("VIAJE","LUGARES","MIPOS","miPos",
+        trozo(/function xyDeParada[\s\S]*?\n\}/) + "\n" +
+        trozo(/function puntosDeRuta[\s\S]*?\n\}/) + "\nreturn puntosDeRuta;");
+      n = fn(VIAJE, LUGARES, MIPOS, miPos)(0).length;
+    } catch (e){ fallo = e.message; }
+    comprobar(`${nombre}: ${esperados} puntos`, n === esperados, fallo || `salieron ${n}`);
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -330,6 +357,7 @@ function idsUnicos(){
   funcionesDefinidas();
   temaClaroCompleto();
   idsUnicos();
+  posicionEnDosFormas();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);

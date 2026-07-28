@@ -268,17 +268,29 @@ function xyDeParada(p){
 function puntosDeRuta(i){
   const d = VIAJE && VIAJE.dias && VIAJE.dias[i];
   if (!d) return [];
+
+  // La posición llega unas veces como "46.3,14.1" y otras como [46.3, 14.1]:
+  // cada app la guarda a su manera. Se admiten las dos.
+  const aPar = v => {
+    if (!v) return null;
+    const p = Array.isArray(v) ? v.map(Number) : String(v).split(",").map(Number);
+    return (p.length === 2 && p.every(n => Number.isFinite(n))) ? p : null;
+  };
+
   const pts = [];
-  const mete = xy => { if (xy && !pts.includes(xy)) pts.push(xy); };
+  const mete = v => {
+    const p = aPar(v);
+    if (p && !pts.some(q => q[0] === p[0] && q[1] === p[1])) pts.push(p);
+  };
+
   if (typeof MIPOS !== "undefined" && MIPOS) mete(MIPOS);
   else if (typeof miPos !== "undefined" && miPos) mete(miPos);
-  (d.paradas || []).forEach(p => {
-    const xy = (typeof xyDeParada === "function") ? xyDeParada(p) : p.xy;
-    mete(xy);
-  });
+  (d.paradas || []).forEach(p => mete(typeof xyDeParada === "function" ? xyDeParada(p) : p.xy));
   mete(d.xy);
-  return pts.map(x => x.split(",").map(Number));
+  return pts;
 }
+
+let ULTIMO_FALLO = null;   // para poder enseñar qué pasó exactamente
 
 async function buscarEnRuta(cat, i, km){
   const todos = puntosDeRuta(i);
@@ -314,10 +326,18 @@ async function buscarEnRuta(cat, i, km){
                             { signal: ctrl.signal });
       clearTimeout(corte);
       if (!r.ok){
-        ultimo = r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status);
+        // el cuerpo del error suele explicar qué no le gustó
+        let detalle = "";
+        try { detalle = (await r.text()).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120); } catch {}
+        ultimo = r.status === 429 ? "ocupado"
+               : r.status === 504 ? "lento"
+               : `HTTP ${r.status}${detalle ? " · " + detalle : ""}`;
+        ULTIMO_FALLO = { servidor: SERVIDORES[n % SERVIDORES.length], estado: r.status, detalle, consulta };
         continue;
       }
       const d = await r.json();
+      if (d.remark){ ultimo = "aviso: " + String(d.remark).slice(0, 100);
+                     ULTIMO_FALLO = { remark: d.remark, consulta }; continue; }
       const origen = todos[0];
       const sitios = (d.elements || []).map(e => {
         const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
