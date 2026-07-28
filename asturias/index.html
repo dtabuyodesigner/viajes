@@ -739,7 +739,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v86 · 28/07 08:03";
+const VERSION = "v87 · 28/07 08:09";
 const VIAJE_ID = "asturias";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
@@ -889,6 +889,8 @@ const DIARIO = {
 
 /* ---- Dónde estamos ---- */
 let MIPOS = null;
+// el motor común la llama cuando refresca la ubicación
+function guardaPosicion(par){ MIPOS = par; }
 function pedirUbicacion(){
   return new Promise((ok, mal) => {
     if (!navigator.geolocation) return mal("sin gps");
@@ -1447,6 +1449,8 @@ async function lanzarServicios(){
   if (!cont || !cat) return;
   cont.innerHTML = `<p class="note">Buscando ${cat.n.toLowerCase()} en ${radioKm} km…</p>`;
   try {
+    // dónde estamos AHORA, no donde estábamos hace dos horas
+    if (typeof ubicacionFresca === "function") await ubicacionFresca();
     let r = null;
     if (modoBusca === "ruta"){
       r = await buscarEnRuta(cat, indiceHoy(), radioKm);

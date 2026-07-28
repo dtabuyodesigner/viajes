@@ -718,6 +718,7 @@ const CATEGORIAS = [
   { id:"comer",  n:"Comer",         q:'node["amenity"="restaurant"];node["amenity"="cafe"]' }
 ];
 
+function guardaPosicion(par){ miPos = par.join(","); }
 let miPos = null, catActiva = null, radioKm = 5;
 
 function distancia(a, b){
