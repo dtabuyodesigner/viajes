@@ -849,7 +849,7 @@ function vistaCerca(){
       </div>
       ${modoBusca === "cerca" ? `<div class="radios">${[5,10,25,50,100].map(k =>
         `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>`
-        : `<p class="note" style="margin:8px 0 10px">Busca a lo largo del recorrido de hoy y ordena por lo poco que te desvías.</p>`}
+        : `<p class="note" style="margin:8px 0 10px">Te localiza y busca en el tramo que te queda por delante, hasta unos 60 km. Lo más próximo, primero.</p>`}
       <div id="res-cerca"></div>`}`;
 
   const b = document.getElementById("dar-pos");
@@ -875,7 +875,9 @@ async function lanzarCerca(){
   const cont = document.getElementById("res-cerca");
   const cat = CATEGORIAS.find(c => c.id === catActiva);
   if (!cont || !cat) return;
-  cont.innerHTML = `<p class="note">Buscando ${cat.n.toLowerCase()} en ${radioKm} km…</p>`;
+  cont.innerHTML = `<p class="note">${modoBusca === "ruta"
+    ? `Localizando y buscando ${cat.n.toLowerCase()} por delante…`
+    : `Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`}</p>`;
   try {
     const r = await buscarCerca(cat, miPos, radioKm);
     if (!r.length){ cont.innerHTML = `<p class="note">Nada en ${radioKm} km. Prueba a ampliar el radio.</p>`; return; }
@@ -913,9 +915,13 @@ async function lanzarCerca(){
           <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
           <a class="btn" href="${mapaXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ver</a>
         </div></li>`).join("");
-      if (ns) ns.textContent = "Ordenado por tiempo en coche. Datos de OpenStreetMap, mantenidos por voluntarios.";
+      if (ns) ns.textContent = modoBusca === "ruta"
+        ? "Por delante de ti, ordenado por lo pronto que lo pillas. Datos de OpenStreetMap."
+        : "Ordenado por tiempo en coche. Datos de OpenStreetMap, mantenidos por voluntarios.";
     } else if (ns){
-      ns.innerHTML = "<b>Distancias en línea recta.</b> Datos de OpenStreetMap.";
+      ns.innerHTML = modoBusca === "ruta"
+        ? "<b>Por delante de ti</b>, en línea recta: no se pudo calcular el tiempo en coche. Datos de OpenStreetMap."
+        : "<b>Distancias en línea recta.</b> Datos de OpenStreetMap.";
     }
   } catch (e) {
     const motivo = String(e?.message || "");
