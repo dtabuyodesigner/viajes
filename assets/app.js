@@ -278,7 +278,7 @@ function xyDeParada(p){
 }
 
 /* Puntos repartidos por el camino de hoy: para buscar «de paso» */
-function puntosDeRuta(i){
+function puntosDeRuta(i, posAhora){
   const d = VIAJE && VIAJE.dias && VIAJE.dias[i];
   if (!d) return [];
 
@@ -288,7 +288,8 @@ function puntosDeRuta(i){
     if (p && !pts.some(q => q[0] === p[0] && q[1] === p[1])) pts.push(p);
   };
 
-  const yo = comoPar((typeof MIPOS !== "undefined" && MIPOS) ||
+  const yo = comoPar(posAhora) ||
+             comoPar((typeof MIPOS !== "undefined" && MIPOS) ||
                      (typeof miPos !== "undefined" && miPos) || null);
 
   // Todo el recorrido del día, en orden
@@ -329,8 +330,28 @@ function puntosDeRuta(i){
 
 let ULTIMO_FALLO = null;   // para poder enseñar qué pasó exactamente
 
+/* Vuelve a preguntar dónde estás. La posición guardada envejece: en un día de
+   traslado, buscar «de camino» con la posición de hace dos horas ofrece sitios
+   que ya has pasado. */
+async function ubicacionFresca(){
+  return new Promise(ok => {
+    if (!navigator.geolocation) return ok(null);
+    navigator.geolocation.getCurrentPosition(
+      p => {
+        const par = [p.coords.latitude, p.coords.longitude];
+        // cada app guarda la posición a su manera: se le pide que la actualice
+        try { if (typeof guardaPosicion === "function") guardaPosicion(par); } catch {}
+        ok(par);
+      },
+      () => ok(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }   // como mucho medio minuto
+    );
+  });
+}
+
 async function buscarEnRuta(cat, i, km){
-  const todos = puntosDeRuta(i);
+  const aqui = await ubicacionFresca();        // primero, dónde estamos AHORA
+  const todos = puntosDeRuta(i, aqui);
   if (todos.length < 2) return null;          // sin ruta que seguir
 
   // Un solo rectángulo que engloba el día, en vez de un círculo por parada:
