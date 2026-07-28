@@ -50,6 +50,11 @@ Waze; el pequeño de al lado, **map**, abre Google Maps por si Waze falla.
 **Marcar y anotar.** El círculo de cada parada la tacha. Abajo de cada día hay
 un campo para escribir. Todo se sincroniza con el otro móvil.
 
+**Dónde dormís.** Si el viaje trae alojamiento, en el día sale con botones para
+ir, verlo en el mapa, su web propia si se conoce, y buscarlo en Booking o en
+Google. Los enlaces los arma la app buscando por el nombre: comprueba que es el
+sitio correcto antes de fiarte de precios.
+
 **Qué ver por aquí.** En la pestaña Guía. Das la ubicación y eliges: monumentos,
 miradores, museos, naturaleza, iglesias o plazas. Te saca lo que merece la pena
 alrededor, lo más interesante primero, y los que tienen artículo en Wikipedia
