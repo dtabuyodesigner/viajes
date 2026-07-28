@@ -41,14 +41,15 @@ const w = dom.window, d = w.document;
   console.log("  título:", zonas[0]?.querySelector(".label")?.textContent);
   console.log("  botones:", [...zonas[1].querySelectorAll("label span")].map(x=>x.textContent).join(" / "));
 
-  console.log("\n═══ SUBIR LA TARJETA DEL VUELO DE VUELTA ═══");
+  console.log("\n═══ SUBIR LAS DOS TARJETAS ═══");
   const inp = zonas[1].querySelector("[data-doc]");
-  Object.defineProperty(inp, "files", { value:[{ name:"tarjeta-dani.jpg" }], configurable:true });
+  Object.defineProperty(inp, "files", { value:[{ name:"dani.jpg" }, { name:"pilar.jpg" }], configurable:true });
   inp.dispatchEvent(new w.Event("change", { bubbles:true }));
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise(r => setTimeout(r, 700));
 
   const z2 = d.querySelectorAll("#v-reservas .doc-zona")[1];
-  console.log("  imagen guardada:", z2.querySelector(".doc-img") ? "sí" : "NO");
+  console.log("  tarjetas guardadas:", z2.querySelectorAll(".doc-img").length);
+  console.log("  texto:", z2.querySelector(".note")?.textContent);
   console.log("  calidad:", dom.calidad, "· lado mayor:", dom.lado, "px");
   console.log("  botones ahora:", [...z2.querySelectorAll("button")].map(b=>b.textContent).join(" / "));
 
@@ -57,9 +58,13 @@ const w = dom.window, d = w.document;
   await new Promise(r => setTimeout(r, 300));
   const v = d.querySelector(".doc-visor");
   console.log("  se abre:", v ? "sí" : "NO");
+  console.log("  contador:", v?.querySelector(".doc-pasar span")?.textContent);
+  v?.querySelector('[data-ir="1"]')?.click();
+  await new Promise(r => setTimeout(r, 100));
+  console.log("  al pasar:", d.querySelector(".doc-pasar span")?.textContent);
   console.log("  fondo blanco para el lector:", v && /background:#fff/.test(
     [...d.styleSheets[0].cssRules].map(r=>r.cssText).join("")) ? "sí" : "(comprobar CSS)");
-  v.querySelector(".cerrar").click();
+  d.querySelector(".doc-visor .cerrar").click();
   await new Promise(r => setTimeout(r, 100));
   console.log("  se cierra:", d.querySelector(".doc-visor") ? "NO" : "sí");
 
