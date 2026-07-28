@@ -81,6 +81,7 @@ estar usándose en carretera ahora mismo.
 | Reservas y localizadores | | ● | | ● | ● |
 | Qué tengo cerca | | ● | ● | ● | |
 | Servicios (OpenStreetMap) | | ● | ● | ● | |
+| Qué ver por aquí | | ● | ● | ● | |
 | Tiempo real por carretera | | ● | ● | ● | |
 | El tiempo | | ● | ● | ● | |
 | Aviso de cercanía | | ● | ● | ● | |
