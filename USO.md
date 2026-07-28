@@ -51,7 +51,10 @@ Waze; el pequeño de al lado, **map**, abre Google Maps por si Waze falla.
 un campo para escribir. Todo se sincroniza con el otro móvil.
 
 **Comer, gasolina, tiendas.** Botón en el día, o pestaña Guía. Da la ubicación y
-elige qué buscas. Te lo ordena por **tiempo en coche**, no en línea recta.
+elige qué buscas. Dos formas de buscar: **Cerca de aquí**, con el radio que
+quieras, o **De camino hoy**, que busca a lo largo del recorrido del día y ordena
+por lo poco que te desvías. Te lo ordena por **tiempo en coche**, no en línea
+recta.
 
 **Fotos.** Al final de cada día: *Hacer una foto* abre la cámara, *Del carrete*
 deja elegir varias. La estrella de una miniatura la pone como portada del día.

@@ -387,6 +387,11 @@ header{position:relative}
 .tipo.on{border-color:var(--prau);color:var(--prau);background:rgba(127,176,105,.1)}
 .tipo.val3.on{border-color:var(--prau);color:var(--prau)}
 .tipo.val1.on{border-color:var(--oso);color:var(--oso);background:rgba(178,84,58,.1)}
+
+.donde{display:flex;gap:6px;margin:10px 0}
+.dnd{flex:1;padding:9px 10px;border-radius:10px;border:1px solid var(--line);
+  background:transparent;color:var(--papel-dim);font-family:var(--sans);font-size:13px;cursor:pointer}
+.dnd.on{border-color:var(--prau);color:var(--prau);font-weight:600;background:rgba(127,176,105,.1)}
 </style>
 </head>
 <body>
@@ -414,7 +419,7 @@ header{position:relative}
 </nav>
 
 <script src="../sync.js?v=76"></script>
-<script src="../assets/app.js?v=77"></script>
+<script src="../assets/app.js?v=80"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -733,7 +738,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v79 · 27/07 08:24";
+const VERSION = "v80 · 28/07 06:46";
 const VIAJE_ID = "asturias";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
@@ -1134,12 +1139,6 @@ function rotulo(dias){
 
 
 /* ---- Aviso si tienes una parada al lado ---- */
-function xyDeParada(p){
-  if (p.xy) return p.xy;
-  if (p.g && LUGARES[p.g] && LUGARES[p.g].xy) return LUGARES[p.g].xy;
-  return null;
-}
-
 async function avisoCerca(i){
   const z = document.getElementById("aviso-cerca");
   if (!z) return;
@@ -1416,7 +1415,7 @@ const CATEGORIAS = [
   { id:"vista",  n:"Miradores",     q:'node["tourism"="viewpoint"]' },
   { id:"camper", n:"Autocaravanas", q:'node["tourism"="caravan_site"];way["tourism"="caravan_site"]' }
 ];
-let catActiva = null, radioKm = 5;
+let catActiva = null, radioKm = 5, modoBusca = "cerca";
 
 function bloqueServicios(){
   if (!MIPOS) return `<div class="card" id="c-servicios">
@@ -1430,8 +1429,13 @@ function bloqueServicios(){
     <p class="note" style="margin-top:0">Gasolineras, tiendas y sitios para comer alrededor.</p>
     <div class="cats">${CATEGORIAS.map(c =>
       `<button class="cat${catActiva === c.id ? " on" : ""}" data-cat="${c.id}">${c.n}</button>`).join("")}</div>
-    <div class="radios">${[5,10,25,50,100].map(k =>
-      `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>
+    <div class="donde">
+      <button class="dnd${modoBusca === "cerca" ? " on" : ""}" data-donde="cerca">Cerca de aquí</button>
+      <button class="dnd${modoBusca === "ruta" ? " on" : ""}" data-donde="ruta">De camino hoy</button>
+    </div>
+    ${modoBusca === "cerca" ? `<div class="radios">${[5,10,25,50,100].map(k =>
+      `<button class="radio${radioKm === k ? " on" : ""}" data-km="${k}">${k} km</button>`).join("")}</div>`
+      : `<p class="note" style="margin:8px 0 10px">Busca a lo largo del recorrido de hoy y ordena por lo poco que te desvías.</p>`}
     <div id="res-serv"></div>
   </div>`;
 }
@@ -1442,7 +1446,14 @@ async function lanzarServicios(){
   if (!cont || !cat) return;
   cont.innerHTML = `<p class="note">Buscando ${cat.n.toLowerCase()} en ${radioKm} km…</p>`;
   try {
-    const r = await buscarServicios(cat, MIPOS, radioKm);
+    let r = null;
+    if (modoBusca === "ruta"){
+      r = await buscarEnRuta(cat, indiceHoy(), radioKm);
+      if (r === null){            // el día no tiene ruta: se busca alrededor
+        modoBusca = "cerca"; vistaGuia();
+        r = await buscarServicios(cat, MIPOS, radioKm);
+      }
+    } else r = await buscarServicios(cat, MIPOS, radioKm);
     if (!r.length){ cont.innerHTML = `<p class="note">Nada en ${radioKm} km. Prueba a ampliar el radio.</p>`; return; }
     cont.innerHTML = `<ul class="plain">${r.map((x, i) => `
       <li><div class="serv-fila">
@@ -1466,7 +1477,9 @@ async function lanzarServicios(){
           <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
           <span class="km">${x.t
             ? `${formatoTiempo(x.t.seg)}<i>${x.t.km != null ? Math.round(x.t.km) + " km" : "en coche"}</i>`
-            : `${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i>`}</span>
+            : x.desvio != null
+              ? `${x.desvio < 1 ? Math.round(x.desvio*1000) + " m" : x.desvio.toFixed(1) + " km"}<i>de desvío</i>`
+              : `${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i>`}</span>
         </div>
         <div class="btns" style="margin-top:6px">
           <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
@@ -1496,6 +1509,11 @@ function activaServicios(){
   });
   document.querySelectorAll("[data-cat]").forEach(x => x.addEventListener("click", () => {
     catActiva = x.dataset.cat; vistaGuia(); lanzarServicios(); }));
+  document.querySelectorAll("[data-donde]").forEach(x => x.addEventListener("click", () => {
+    modoBusca = x.dataset.donde;
+    if (typeof vistaGuia === "function") vistaGuia(); else vistaCerca();
+    if (catActiva) lanzarServicios();
+  }));
   document.querySelectorAll("[data-km]").forEach(x => x.addEventListener("click", () => {
     radioKm = +x.dataset.km; vistaGuia(); if (catActiva) lanzarServicios(); }));
 }

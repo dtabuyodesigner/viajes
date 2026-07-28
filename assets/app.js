@@ -257,6 +257,61 @@ function enganchaPernocta(i, ctx){
 
 
 /* ---- Servicios cerca, con OpenStreetMap ---- */
+/* Coordenadas de una parada: propias, o las de su ficha en la guía */
+function xyDeParada(p){
+  if (p.xy) return p.xy;
+  if (p.g && typeof LUGARES !== "undefined" && LUGARES[p.g] && LUGARES[p.g].xy) return LUGARES[p.g].xy;
+  return null;
+}
+
+/* Puntos repartidos por el camino de hoy: para buscar «de paso» */
+function puntosDeRuta(i){
+  const d = VIAJE && VIAJE.dias && VIAJE.dias[i];
+  if (!d) return [];
+  const pts = [];
+  const mete = xy => { if (xy && !pts.includes(xy)) pts.push(xy); };
+  if (typeof MIPOS !== "undefined" && MIPOS) mete(MIPOS);
+  else if (typeof miPos !== "undefined" && miPos) mete(miPos);
+  (d.paradas || []).forEach(p => {
+    const xy = (typeof xyDeParada === "function") ? xyDeParada(p) : p.xy;
+    mete(xy);
+  });
+  mete(d.xy);
+  return pts.map(x => x.split(",").map(Number));
+}
+
+async function buscarEnRuta(cat, i, km){
+  const puntos = puntosDeRuta(i);
+  if (puntos.length < 2) return null;          // sin ruta que seguir
+  // un círculo pequeño alrededor de cada punto del día, todo en una consulta
+  const radio = Math.min(km, 15) * 1000;
+  const partes = [];
+  for (const t of cat.q.split(";"))
+    for (const p of puntos.slice(0, 8))
+      partes.push(`${t}(around:${radio},${p[0]},${p[1]});`);
+  const consulta = `[out:json][timeout:30];(${partes.join("")});out center 60;`;
+
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), 36000);
+  try {
+    const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(consulta),
+                          { signal: ctrl.signal });
+    clearTimeout(corte);
+    if (!r.ok) throw new Error(r.status === 429 ? "ocupado" : "lento");
+    const d = await r.json();
+    const origen = puntos[0];
+    return (d.elements || []).map(e => {
+      const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
+      if (la == null) return null;
+      // lo que importa es lo que te desvías, no lo lejos que esté
+      const desvio = Math.min(...puntos.map(p => distancia(p, [la, lo])));
+      return { nombre: e.tags?.name || cat.n,
+               detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
+               xy:[la, lo], km: distancia(origen, [la, lo]), desvio };
+    }).filter(Boolean).sort((a,b) => a.desvio - b.desvio).slice(0, 20);
+  } catch (e){ clearTimeout(corte); throw e; }
+}
+
 async function buscarServicios(cat, pos, km){
   // Tres servidores: si uno está saturado, se prueba el siguiente.
   // Y cada intento pide menos: mejor quince sitios que ninguno.
