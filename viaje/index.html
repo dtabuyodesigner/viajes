@@ -302,6 +302,11 @@ header{position:relative}
   background:transparent;color:var(--td);font-family:var(--sans);font-size:13px;cursor:pointer}
 .dnd.on{border-color:var(--ac);color:var(--ac);font-weight:600;background:rgba(91,200,180,.1)}
 .motivo{font-family:var(--mono);font-size:11px;opacity:.75;color:var(--td)}
+
+.aviso-nueva{position:fixed;left:14px;right:14px;bottom:calc(78px + env(safe-area-inset-bottom));
+  z-index:60;padding:13px;border-radius:14px;border:0;background:var(--ac);color:var(--f);
+  font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;
+  box-shadow:0 6px 24px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
@@ -1017,8 +1022,41 @@ if (typeof DIARIO_SYNC !== "undefined"){
 
 if ("serviceWorker" in navigator){
   window.addEventListener("load", async () => {
-    try { const r = await navigator.serviceWorker.register("sw.js", {updateViaCache:"none"}); r.update(); } catch {}
+    try {
+      const reg = await navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
+      reg.update();
+
+      // Recargar no basta: el service worker viejo sigue mandando hasta que se
+      // cierran todas las pestañas. Hay que pedirle al nuevo que tome el mando.
+      const vigila = sw => sw && sw.addEventListener("statechange", () => {
+        if (sw.state === "installed" && navigator.serviceWorker.controller) avisaNueva(reg);
+      });
+      if (reg.waiting) avisaNueva(reg);
+      vigila(reg.installing);
+      reg.addEventListener("updatefound", () => vigila(reg.installing));
+
+      let yaRecargado = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (yaRecargado) return;
+        yaRecargado = true;
+        location.reload();
+      });
+    } catch {}
   });
+
+  function avisaNueva(reg){
+    if (document.getElementById("hay-nueva")) return;
+    const b = document.createElement("button");
+    b.id = "hay-nueva";
+    b.className = "aviso-nueva";
+    b.textContent = "Versión nueva · tocar para usarla";
+    b.addEventListener("click", () => {
+      b.textContent = "Actualizando…";
+      reg.waiting?.postMessage({ tipo: "aplicar" });
+      setTimeout(() => location.reload(), 900);
+    });
+    document.body.appendChild(b);
+  }
 }
 </script>
 </body>
