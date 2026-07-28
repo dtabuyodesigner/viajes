@@ -170,7 +170,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v88 · 28/07 08:15";
+const VERSION = "v89 · 28/07 13:14";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -259,7 +259,17 @@ function pintaPie(){
     const b = e.target;
     b.textContent = "Limpiando…";
     try {
+      // Cada carpeta tiene su propio service worker y getRegistrations() solo
+      // devuelve el de esta. Hay que ir a por los demás uno por uno.
       if ("serviceWorker" in navigator){
+        const carpetas = ["./", "eslovenia/", "asturias/", "viaje/", "crear/"];
+        for (const c of carpetas){
+          try {
+            const reg = await navigator.serviceWorker.getRegistration(c);
+            if (reg) await reg.unregister();
+          } catch {}
+        }
+        // y por si quedara alguno más
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map(r => r.unregister()));
       }
