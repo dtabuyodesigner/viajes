@@ -389,13 +389,17 @@ function bloqueHotel(d){
         <a class="btn" href="${mapa(donde)}" target="_blank" rel="noopener">Ver</a>
       </div>
       <div class="btns">
-        ${d.hotelWeb ? `<a class="btn" href="${esc(d.hotelWeb)}" target="_blank" rel="noopener">Su web</a>` : ""}
+        ${d.hotelWeb ? `<a class="btn solid" href="${esc(d.hotelWeb)}" target="_blank" rel="noopener">Su web</a>` : ""}
         <a class="btn" target="_blank" rel="noopener"
-           href="https://www.booking.com/searchresults.es.html?ss=${q}">Booking</a>
+           href="https://www.google.com/search?q=${encodeURIComponent(donde + " hotel")}">Ficha y fotos</a>
         <a class="btn" target="_blank" rel="noopener"
-           href="https://www.google.com/search?q=${q}">Buscar</a>
+           href="https://www.google.com/search?q=${encodeURIComponent(donde + " opiniones")}">Opiniones</a>
       </div>
-      <p class="note">Los enlaces buscan por el nombre: comprueba que es el sitio correcto antes de fiarte de precios u horarios.</p>
+      <div class="btns">
+        <a class="btn" target="_blank" rel="noopener"
+           href="https://www.google.com/search?q=${encodeURIComponent(donde + " booking.com")}">En Booking</a>
+      </div>
+      <p class="note">«Ficha y fotos» abre la tarjeta de Google con fotos, teléfono y horarios: se ve sin poner fechas. «En Booking» lleva a su página del hotel, no al buscador con fechas, que si no hay hueco dice que no existe nada.</p>
     </div>
   </div>`;
 }
