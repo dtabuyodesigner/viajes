@@ -322,6 +322,8 @@ function posicionEnDosFormas(){
     let n = -1, fallo = "";
     try {
       const fn = new Function("VIAJE","LUGARES","MIPOS","miPos",
+        trozo(/function comoTexto[\s\S]*?\n\}/) + "\n" +
+        trozo(/function comoPar[\s\S]*?\n\}/) + "\n" +
         trozo(/function xyDeParada[\s\S]*?\n\}/) + "\n" +
         trozo(/function puntosDeRuta[\s\S]*?\n\}/) + "\nreturn puntosDeRuta;");
       n = fn(VIAJE, LUGARES, MIPOS, miPos)(0).length;
