@@ -257,6 +257,94 @@ function enganchaPernocta(i, ctx){
 
 
 
+/* ---- Documentos: tarjetas de embarque y demás ----
+   Se guardan en el propio móvil, no en la nube: son datos personales con
+   nombre y código de barras. Menos comprimidos que las fotos, que aquí el
+   código tiene que poder leerse en el lector del aeropuerto. */
+function cajaDoc(clave, titulo, pista){
+  return `<div class="doc-zona" id="doc-${clave}">
+    <span class="label">${esc(titulo)}</span>
+    <div id="doc-cuerpo-${clave}"></div>
+  </div>`;
+}
+
+async function pintaDoc(clave, titulo, pista){
+  const z = document.getElementById(`doc-cuerpo-${clave}`);
+  if (!z) return;
+  const d = await FOTOS.doc(VIAJE_ID, clave);
+
+  if (!d){
+    z.innerHTML = `<p class="note" style="margin:6px 0 10px">${esc(pista)}</p>
+      <div class="btns">
+        <label class="btn solid" style="cursor:pointer">
+          <input type="file" accept="image/*" data-doc="${clave}" hidden>
+          <span>Añadir</span>
+        </label>
+        <label class="btn" style="cursor:pointer">
+          <input type="file" accept="image/*" capture="environment" data-doc="${clave}" hidden>
+          <span>Hacer foto</span>
+        </label>
+      </div>`;
+  } else {
+    z.innerHTML = `<img class="doc-img" src="${d.datos}" alt="${esc(titulo)}">
+      <div class="btns">
+        <button class="btn solid" data-doc-grande="${clave}">Ver a pantalla completa</button>
+        <button class="btn borrar-v" data-doc-quitar="${clave}">Quitar</button>
+      </div>
+      <p class="note">Guardada en este móvil. Se ve sin cobertura.</p>`;
+  }
+  enganchaDoc(clave, titulo, pista);
+}
+
+function enganchaDoc(clave, titulo, pista){
+  const z = document.getElementById(`doc-cuerpo-${clave}`);
+  if (!z) return;
+
+  z.querySelectorAll(`[data-doc="${clave}"]`).forEach(inp => {
+    if (inp.dataset.listo) return; inp.dataset.listo = "1";
+    inp.addEventListener("change", async e => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      const eti = inp.parentElement.querySelector("span");
+      const antes = eti ? eti.textContent : "";
+      if (eti) eti.textContent = "Guardando…";
+      try {
+        // poca compresión: el código de barras tiene que poder leerse
+        const datos = await comprimirFoto(f, 1800, 0.92);
+        const id = await FOTOS.guardarDoc(VIAJE_ID, clave, datos, f.name);
+        if (!id) throw new Error("no se pudo");
+      } catch {
+        if (eti) eti.textContent = antes;
+        alert("No se pudo guardar. ¿Queda sitio en el móvil?");
+        return;
+      }
+      inp.value = "";
+      pintaDoc(clave, titulo, pista);
+    });
+  });
+
+  z.querySelectorAll("[data-doc-grande]").forEach(b => b.addEventListener("click", async () => {
+    const d = await FOTOS.doc(VIAJE_ID, clave);
+    if (d) verDocGrande(d.datos);
+  }));
+
+  z.querySelectorAll("[data-doc-quitar]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("¿Quitar este documento del móvil?")) return;
+    await FOTOS.borrarDoc(VIAJE_ID, clave);
+    pintaDoc(clave, titulo, pista);
+  }));
+}
+
+/* A pantalla completa y con el brillo al máximo: los lectores del aeropuerto
+   necesitan contraste, y con la pantalla a media luz no leen el código. */
+function verDocGrande(src){
+  const v = document.createElement("div");
+  v.className = "doc-visor";
+  v.innerHTML = `<img src="${src}" alt=""><button class="cerrar">Cerrar</button>`;
+  v.addEventListener("click", e => { if (e.target !== v.querySelector("img")) v.remove(); });
+  document.body.appendChild(v);
+}
+
 /* ---- El alojamiento del día ---- */
 function bloqueHotel(d){
   const nombre = (d.hotel || d.dest || "").trim();
