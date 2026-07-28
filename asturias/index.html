@@ -744,7 +744,7 @@ const VIAJE = {
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v89 · 28/07 13:14";
+const VERSION = "v90 · 28/07 13:21";
 const VIAJE_ID = "asturias";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
@@ -1371,7 +1371,7 @@ let filtroGuia = "";
 function vistaGuia(){
   const q = filtroGuia.trim().toLowerCase();
   const ok = l => !q || (l.n + " " + l.t + " " + l.zona).toLowerCase().includes(q);
-  let html = `<input class="buscador" id="q" type="search" placeholder="Buscar un sitio…" value="${esc(filtroGuia)}">` + bloqueCerca() + bloqueServicios();
+  let html = `<input class="buscador" id="q" type="search" placeholder="Buscar un sitio…" value="${esc(filtroGuia)}">` + bloqueCerca() + bloqueQueVer() + bloqueServicios();
   let total = 0;
   VIAJE.guia.forEach(z => {
     const ls = z.lugares.filter(ok);
@@ -1390,7 +1390,7 @@ function vistaGuia(){
     vistaGuia();
     const n = document.getElementById("q"); n.focus(); n.setSelectionRange(pos,pos);
   });
-  activaFichas(); activaCerca(); activaServicios(); activaEnlacesGuia();
+  activaFichas(); activaCerca(); activaQueVer(); activaServicios(); activaEnlacesGuia();
   ponTiempos();
 }
 
@@ -1411,6 +1411,7 @@ function rutasCercanas(z){
 
 /* ---- Lo que tengo más cerca ---- */
 let ordenCercania = false;
+
 
 
 /* ---- Servicios cerca, con OpenStreetMap ---- */
