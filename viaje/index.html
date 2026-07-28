@@ -307,6 +307,7 @@ header{position:relative}
   z-index:60;padding:13px;border-radius:14px;border:0;background:var(--ac);color:var(--f);
   font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;
   box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.hotel-zona{margin:18px 0 8px}
 </style>
 </head>
 <body>
@@ -384,6 +385,21 @@ const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","S�
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
 /* ---- Cargar el viaje ---- */
+/* Navegación. Fuera de arrancar() a propósito: el motor común las necesita,
+   y dentro de la función no serían visibles desde fuera. */
+const waze = q => `waze://?q=${encodeURIComponent(q)}&navigate=yes`;
+const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
+const mapsXY = (la, lo) => `https://www.google.com/maps/dir/?api=1&destination=${la},${lo}&travelmode=driving`;
+const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
+const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
+const tiempoEn = q => `https://www.google.com/search?q=${encodeURIComponent("tiempo " + q)}`;
+// P se define dentro de arrancar(), así que se consulta al llamar, no antes
+const comoApp = () => (typeof P !== "undefined" && P.app) || "waze";
+const navegar = q => comoApp() === "waze" ? waze(q) : mapsDe(q);
+const navegarXY = (la, lo) => comoApp() === "waze" ? wazeXY(la, lo) : mapsXY(la, lo);
+const comoNavego = () => comoApp() === "waze" ? "Waze" : "Maps";
+
 const ID = new URLSearchParams(location.search).get("id");
 let VIAJE = null;
 try { VIAJE = (JSON.parse(localStorage.getItem("viajes_propios")) || []).find(v => v.id === ID); } catch {}
@@ -428,16 +444,6 @@ const P = {
   set avisar(v){ try { localStorage.setItem("gen_avisar", v ? "si" : "no"); } catch {} },
 };
 
-const waze = q => `waze://?q=${encodeURIComponent(q)}&navigate=yes`;
-const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
-const mapsXY = (la, lo) => `https://www.google.com/maps/dir/?api=1&destination=${la},${lo}&travelmode=driving`;
-const navegarXY = (la, lo) => PREF.app === "waze" ? wazeXY(la, lo) : mapsXY(la, lo);
-const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
-const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
-const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
-const navegar = q => P.app === "waze" ? waze(q) : mapsDe(q);
-const comoNavego = () => P.app === "waze" ? "Waze" : "Maps";
-const tiempoEn = q => `https://www.google.com/search?q=${encodeURIComponent("tiempo " + q)}`;
 
 function hoyISO(){ const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
@@ -487,7 +493,7 @@ function pintaParadas(d, i, ctx = "hoy"){
     + `<div class="diario"><span class="label">Notas del día</span>
        <textarea class="nota-txt" data-dia="${i}" rows="2"
          placeholder="Qué tal fue, dónde comisteis, cuánto costó…">${esc(P.nota(i))}</textarea></div>`
-    + cajaAqui(i, ctx) + cajaPernocta(i, ctx) + cajaFotos(i, ctx);
+    + bloqueHotel(d) + cajaAqui(i, ctx) + cajaPernocta(i, ctx) + cajaFotos(i, ctx);
 }
 
 function activaDiario(){
