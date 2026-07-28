@@ -445,6 +445,14 @@ header{position:relative}
 .doc-visor{position:fixed;inset:0;z-index:100;background:#fff;
   display:grid;place-items:center;padding:10px}
 .doc-visor img{max-width:100%;max-height:88vh}
+.doc-una + .doc-una{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.doc-img{cursor:pointer}
+.doc-pasar{position:absolute;top:calc(14px + env(safe-area-inset-top));left:50%;
+  transform:translateX(-50%);display:flex;align-items:center;gap:14px;
+  background:#0000000d;border-radius:999px;padding:5px 8px}
+.doc-pasar span{font-family:var(--mono);font-size:12px;color:#333}
+.paso{width:34px;height:34px;border-radius:50%;border:1px solid #0002;background:#fff;
+  color:#111;font-size:18px;line-height:1;cursor:pointer}
 .doc-visor .cerrar{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));
   padding:12px 26px;border-radius:999px;border:1px solid #0002;background:#f4f4f4;
   color:#111;font-family:var(--sans);font-size:15px;cursor:pointer}
@@ -895,7 +903,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v93 · 28/07 19:24";
+const VERSION = "v94 · 28/07 20:05";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
