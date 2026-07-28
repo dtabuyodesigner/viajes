@@ -71,7 +71,7 @@ function pintaAqui(i, ctx = "hoy"){
       </div>
       <div class="btns" style="margin-top:6px">
         <button class="btn fino" data-nombrar="${v.id}">${v.txt ? "Cambiar nombre" : "Ponerle nombre"}</button>
-        <a class="btn fino" href="${navegarXY(...v.xy.split(",").map(Number))}" target="_blank" rel="noopener">Volver</a>
+        <a class="btn fino" href="${navegarXY(...comoPar(v.xy))}" target="_blank" rel="noopener">Volver</a>
         <button class="btn fino borrar-v" data-quitar-v="${v.id}">Quitar</button>
       </div>
     </li>`; }).join("")}</ul>` : "";
@@ -191,8 +191,8 @@ function pintaPernocta(i, ctx = "hoy"){
       <div class="tipos">${VALORES.map(([v, n]) =>
         `<button class="tipo val${v}${p.valorada === v ? " on" : ""}" data-val="${ctx}:${i}:${v}">${n}</button>`).join("")}</div>
       <div class="btns">
-        <a class="btn solid" href="${navegarXY(...p.xy.split(",").map(Number))}" target="_blank" rel="noopener">Volver aquí</a>
-        <a class="btn" href="${mapaXY(...p.xy.split(",").map(Number))}" target="_blank" rel="noopener">Ver</a>
+        <a class="btn solid" href="${navegarXY(...comoPar(p.xy))}" target="_blank" rel="noopener">Volver aquí</a>
+        <a class="btn" href="${mapaXY(...comoPar(p.xy))}" target="_blank" rel="noopener">Ver</a>
         <button class="btn" data-nota-cama="${ctx}:${i}">${p.nota ? "Cambiar nota" : "Apuntar algo"}</button>
         <button class="btn borrar-v" data-quitar-cama="${ctx}:${i}">Quitar</button>
       </div>
@@ -257,6 +257,19 @@ function enganchaPernocta(i, ctx){
 
 
 /* ---- Servicios cerca, con OpenStreetMap ---- */
+/* La posición llega unas veces como "46.3,14.1" y otras como [46.3, 14.1]:
+   cada app la guarda a su manera. Esta función admite ambas y devuelve
+   siempre el mismo formato de texto, o null si no vale. */
+function comoTexto(v){
+  if (!v) return null;
+  const p = Array.isArray(v) ? v.map(Number) : String(v).split(",").map(Number);
+  return (p.length === 2 && p.every(n => Number.isFinite(n))) ? `${p[0]},${p[1]}` : null;
+}
+function comoPar(v){
+  const t = comoTexto(v);
+  return t ? t.split(",").map(Number) : null;
+}
+
 /* Coordenadas de una parada: propias, o las de su ficha en la guía */
 function xyDeParada(p){
   if (p.xy) return p.xy;
@@ -269,17 +282,9 @@ function puntosDeRuta(i){
   const d = VIAJE && VIAJE.dias && VIAJE.dias[i];
   if (!d) return [];
 
-  // La posición llega unas veces como "46.3,14.1" y otras como [46.3, 14.1]:
-  // cada app la guarda a su manera. Se admiten las dos.
-  const aPar = v => {
-    if (!v) return null;
-    const p = Array.isArray(v) ? v.map(Number) : String(v).split(",").map(Number);
-    return (p.length === 2 && p.every(n => Number.isFinite(n))) ? p : null;
-  };
-
   const pts = [];
   const mete = v => {
-    const p = aPar(v);
+    const p = comoPar(v);
     if (p && !pts.some(q => q[0] === p[0] && q[1] === p[1])) pts.push(p);
   };
 
@@ -511,11 +516,13 @@ function mapaDia(i, ctx = "hoy"){
   const reales = (typeof DIARIO_SYNC !== "undefined")
     ? DIARIO_SYNC.recorridoReal(VIAJE_ID).filter(r => String(r.dia) === String(i)) : [];
 
-  const todos = [...previstas, ...(dormir ? [dormir] : []), ...reales.map(r => ({ xy:r.xy }))];
-  if (typeof MI_POS !== "undefined" && MI_POS) todos.push({ xy: MI_POS });
+  const yo = (typeof MI_POS !== "undefined") ? comoTexto(MI_POS) : null;
+  const todos = [...previstas, ...(dormir ? [dormir] : []), ...reales.map(r => ({ xy:r.xy }))]
+    .map(x => ({ ...x, xy: comoTexto(x.xy) })).filter(x => x.xy);
+  if (yo) todos.push({ xy: yo });
   if (todos.length < 2) return "";
 
-  const pts = todos.map(x => x.xy.split(",").map(Number));
+  const pts = todos.map(x => comoPar(x.xy));
   const lats = pts.map(p => p[0]), lons = pts.map(p => p[1]);
   const k = Math.cos((Math.min(...lats) + Math.max(...lats)) / 2 * Math.PI / 180);
   let y0 = Math.min(...lats), y1 = Math.max(...lats);
@@ -528,16 +535,16 @@ function mapaDia(i, ctx = "hoy"){
   const dx = (W - (x1 - x0) * esc2) / 2, dy = (H - (y1 - y0) * esc2) / 2;
   const cx = lon => ((lon * k - x0) * esc2 + dx).toFixed(1);
   const cy = lat => (H - ((lat - y0) * esc2 + dy)).toFixed(1);
-  const XY = xy => { const [a, b] = xy.split(",").map(Number); return `${cx(b)},${cy(a)}`; };
+  const XY = xy => { const [a, b] = comoPar(xy); return `${cx(b)},${cy(a)}`; };
 
   const lineaPrev = [...previstas, ...(dormir ? [dormir] : [])].map(x => XY(x.xy)).join(" ");
-  const lineaReal = reales.map(r => XY(r.xy)).join(" ");
+  const lineaReal = reales.map(r => comoTexto(r.xy)).filter(Boolean).map(XY).join(" ");
 
   return `<div class="mapa-dia">
     <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa del día">
       ${lineaPrev ? `<polyline class="prev" points="${lineaPrev}"/>` : ""}
       ${reales.length > 1 ? `<polyline class="real" points="${lineaReal}"/>` : ""}
-      ${reales.map(r => `<circle class="pisada" cx="${XY(r.xy).split(",")[0]}" cy="${XY(r.xy).split(",")[1]}" r="3"/>`).join("")}
+      ${reales.map(r => comoTexto(r.xy)).filter(Boolean).map(t => `<circle class="pisada" cx="${XY(t).split(",")[0]}" cy="${XY(t).split(",")[1]}" r="3"/>`).join("")}
       ${previstas.map(x => `<g class="pp" data-parada="${x.k}">
           <circle cx="${XY(x.xy).split(",")[0]}" cy="${XY(x.xy).split(",")[1]}" r="6.5"/>
           <text x="${XY(x.xy).split(",")[0]}" y="${+XY(x.xy).split(",")[1] + 3.2}">${x.k + 1}</text>
@@ -545,16 +552,16 @@ function mapaDia(i, ctx = "hoy"){
       ${dormir ? `<g class="cama-d">
           <circle cx="${XY(dormir.xy).split(",")[0]}" cy="${XY(dormir.xy).split(",")[1]}" r="7"/>
         </g>` : ""}
-      ${(typeof MI_POS !== "undefined" && MI_POS) ? `<g class="yo">
-          <circle class="halo" cx="${XY(MI_POS).split(",")[0]}" cy="${XY(MI_POS).split(",")[1]}" r="11"/>
-          <circle cx="${XY(MI_POS).split(",")[0]}" cy="${XY(MI_POS).split(",")[1]}" r="4.5"/>
+      ${yo ? `<g class="yo">
+          <circle class="halo" cx="${XY(yo).split(",")[0]}" cy="${XY(yo).split(",")[1]}" r="11"/>
+          <circle cx="${XY(yo).split(",")[0]}" cy="${XY(yo).split(",")[1]}" r="4.5"/>
         </g>` : ""}
     </svg>
     <div class="leyenda">
       <span><i class="c-prev"></i>Lo previsto</span>
       ${reales.length ? `<span><i class="c-real"></i>Por dónde fuimos</span>` : ""}
-      ${(typeof MI_POS !== "undefined" && MI_POS) ? `<span><i class="c-yo"></i>Estás aquí</span>` : ""}
-      ${!(typeof MI_POS !== "undefined" && MI_POS) ? `<button class="lnk" data-mi-pos="${ctx}:${i}">situarme</button>` : ""}
+      ${yo ? `<span><i class="c-yo"></i>Estás aquí</span>` : ""}
+      ${!yo ? `<button class="lnk" data-mi-pos="${ctx}:${i}">situarme</button>` : ""}
     </div>
   </div>`;
 }
