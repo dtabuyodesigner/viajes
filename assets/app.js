@@ -63,15 +63,20 @@ function pintaAqui(i, ctx = "hoy"){
   z.innerHTML = vs.length ? `<ul class="plain">${vs.map(v => {
     const h = new Date(v.ts);
     const hora = `${String(h.getHours()).padStart(2,"0")}:${String(h.getMinutes()).padStart(2,"0")}`;
+    const busca = (v.txt || "").trim()
+      ? `https://www.google.com/search?q=${encodeURIComponent(v.txt)}`
+      : `https://www.google.com/maps/search/?api=1&query=${v.xy}`;
     return `<li class="visita">
       <div>
-        <b>${esc(v.txt) || "Buscando el nombre…"}</b>
+        <a class="visita-nom" href="${busca}" target="_blank" rel="noopener">${
+          esc(v.txt) || "Buscando el nombre…"}</a>
         <small>${v.manual ? "añadido a mano" : hora}${v.auto ? " · según OpenStreetMap" : ""}${
           v.precision ? ` · ±${v.precision} m` : ""}</small>
       </div>
       <div class="btns" style="margin-top:6px">
-        <button class="btn fino" data-nombrar="${v.id}">${v.txt ? "Cambiar nombre" : "Ponerle nombre"}</button>
+        <a class="btn fino" href="${mapaXY(...comoPar(v.xy))}" target="_blank" rel="noopener">Ver en el mapa</a>
         <a class="btn fino" href="${navegarXY(...comoPar(v.xy))}" target="_blank" rel="noopener">Volver</a>
+        <button class="btn fino" data-nombrar="${v.id}">${v.txt ? "Renombrar" : "Ponerle nombre"}</button>
         <button class="btn fino borrar-v" data-quitar-v="${v.id}">Quitar</button>
       </div>
     </li>`; }).join("")}</ul>` : "";
@@ -392,14 +397,7 @@ function bloqueHotel(d){
         ${d.hotelWeb ? `<a class="btn solid" href="${esc(d.hotelWeb)}" target="_blank" rel="noopener">Su web</a>` : ""}
         <a class="btn" target="_blank" rel="noopener"
            href="https://www.google.com/search?q=${encodeURIComponent(donde + " hotel")}">Ficha y fotos</a>
-        <a class="btn" target="_blank" rel="noopener"
-           href="https://www.google.com/search?q=${encodeURIComponent(donde + " opiniones")}">Opiniones</a>
       </div>
-      <div class="btns">
-        <a class="btn" target="_blank" rel="noopener"
-           href="https://www.google.com/search?q=${encodeURIComponent(donde + " booking.com")}">En Booking</a>
-      </div>
-      <p class="note">«Ficha y fotos» abre la tarjeta de Google con fotos, teléfono y horarios: se ve sin poner fechas. «En Booking» lleva a su página del hotel, no al buscador con fechas, que si no hay hueco dice que no existe nada.</p>
     </div>
   </div>`;
 }
