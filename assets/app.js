@@ -281,35 +281,64 @@ function puntosDeRuta(i){
 }
 
 async function buscarEnRuta(cat, i, km){
-  const puntos = puntosDeRuta(i);
-  if (puntos.length < 2) return null;          // sin ruta que seguir
-  // un círculo pequeño alrededor de cada punto del día, todo en una consulta
-  const radio = Math.min(km, 15) * 1000;
-  const partes = [];
-  for (const t of cat.q.split(";"))
-    for (const p of puntos.slice(0, 8))
-      partes.push(`${t}(around:${radio},${p[0]},${p[1]});`);
-  const consulta = `[out:json][timeout:30];(${partes.join("")});out center 60;`;
+  const todos = puntosDeRuta(i);
+  if (todos.length < 2) return null;          // sin ruta que seguir
 
-  const ctrl = new AbortController();
-  const corte = setTimeout(() => ctrl.abort(), 36000);
-  try {
-    const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(consulta),
-                          { signal: ctrl.signal });
-    clearTimeout(corte);
-    if (!r.ok) throw new Error(r.status === 429 ? "ocupado" : "lento");
-    const d = await r.json();
-    const origen = puntos[0];
-    return (d.elements || []).map(e => {
-      const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
-      if (la == null) return null;
-      // lo que importa es lo que te desvías, no lo lejos que esté
-      const desvio = Math.min(...puntos.map(p => distancia(p, [la, lo])));
-      return { nombre: e.tags?.name || cat.n,
-               detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
-               xy:[la, lo], km: distancia(origen, [la, lo]), desvio };
-    }).filter(Boolean).sort((a,b) => a.desvio - b.desvio).slice(0, 20);
-  } catch (e){ clearTimeout(corte); throw e; }
+  const SERVIDORES = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
+  ];
+  // Cada intento pide menos: menos puntos del camino, radio más corto y
+  // menos resultados. Mejor traer algo que rendirse.
+  const intentos = [
+    { puntos: 6, radio: 8,  tope: 60, espera: 30 },
+    { puntos: 4, radio: 6,  tope: 30, espera: 20 },
+    { puntos: 3, radio: 5,  tope: 15, espera: 12 }
+  ];
+
+  let ultimo = "";
+  for (let n = 0; n < intentos.length; n++){
+    const { puntos: cuantos, radio, tope, espera } = intentos[n];
+    // repartidos por todo el día, no los primeros seguidos
+    const paso = Math.max(1, Math.ceil(todos.length / cuantos));
+    const usados = todos.filter((_, k) => k % paso === 0 || k === todos.length - 1).slice(0, cuantos);
+
+    const partes = [];
+    for (const t of cat.q.split(";"))
+      for (const p of usados)
+        partes.push(`${t}(around:${Math.min(km, radio) * 1000},${p[0]},${p[1]});`);
+    const consulta = `[out:json][timeout:${espera}];(${partes.join("")});out center ${tope};`;
+
+    const ctrl = new AbortController();
+    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
+    try {
+      const r = await fetch(SERVIDORES[n % SERVIDORES.length] + "?data=" + encodeURIComponent(consulta),
+                            { signal: ctrl.signal });
+      clearTimeout(corte);
+      if (!r.ok){
+        ultimo = r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status);
+        continue;
+      }
+      const d = await r.json();
+      const origen = todos[0];
+      const sitios = (d.elements || []).map(e => {
+        const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
+        if (la == null) return null;
+        // lo que importa es cuánto te desvías, no lo lejos que esté
+        const desvio = Math.min(...todos.map(p => distancia(p, [la, lo])));
+        return { nombre: e.tags?.name || cat.n,
+                 detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
+                 xy:[la, lo], km: distancia(origen, [la, lo]), desvio };
+      }).filter(Boolean).sort((a,b) => a.desvio - b.desvio);
+      if (sitios.length) return sitios.slice(0, 20);
+      if (n === 0) return [];                 // de verdad no hay nada
+    } catch (e){
+      clearTimeout(corte);
+      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+    }
+  }
+  throw new Error(ultimo || "sin respuesta");
 }
 
 async function buscarServicios(cat, pos, km){

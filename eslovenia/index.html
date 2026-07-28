@@ -460,7 +460,7 @@ header{position:relative}
 </nav>
 
 <script src="../sync.js?v=76"></script>
-<script src="../assets/app.js?v=80"></script>
+<script src="../assets/app.js?v=81"></script>
 <script>
 
 /* ---- Modo de color, compartido por todas las apps ---- */
@@ -874,7 +874,7 @@ GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v80 · 28/07 06:46";
+const VERSION = "v81 · 28/07 07:23";
 const VIAJE_ID = "eslovenia";
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
@@ -1991,7 +1991,9 @@ async function lanzarServicios(){
       : motivo === "lento" || /abort/i.test(motivo)
         ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
             ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
-      : "No se pudo consultar. ¿Hay cobertura?"}</p>`;
+      : navigator.onLine
+        ? `El servidor de mapas no responde${modoBusca === "ruta" ? " a la búsqueda por el camino" : ""}. Prueba «Cerca de aquí» o vuelve en un momento.`
+        : "Sin conexión. Esto necesita red."}</p>`;
   }
 }
 
