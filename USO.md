@@ -50,6 +50,11 @@ Waze; el pequeño de al lado, **map**, abre Google Maps por si Waze falla.
 **Marcar y anotar.** El círculo de cada parada la tacha. Abajo de cada día hay
 un campo para escribir. Todo se sincroniza con el otro móvil.
 
+**Qué ver por aquí.** En la pestaña Guía. Das la ubicación y eliges: monumentos,
+miradores, museos, naturaleza, iglesias o plazas. Te saca lo que merece la pena
+alrededor, lo más interesante primero, y los que tienen artículo en Wikipedia
+llevan un botón «Qué es». Sirve en cualquier sitio, esté o no en el viaje.
+
 **Comer, gasolina, tiendas.** Botón en el día, o pestaña Guía. Da la ubicación y
 elige qué buscas. Dos formas de buscar: **Cerca de aquí**, con el radio que
 quieras, o **De camino hoy**, que busca en el tramo que te queda por delante —hasta unos

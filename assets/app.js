@@ -256,6 +256,181 @@ function enganchaPernocta(i, ctx){
 }
 
 
+
+/* ---- Qué ver por aquí: lo que merece la pena alrededor ---- */
+const QUE_VER = [
+  { id:"mirador", n:"Miradores",  q:'node["tourism"="viewpoint"]' },
+  { id:"monum",   n:"Monumentos", q:'node["historic"];way["historic"];node["tourism"="attraction"];way["tourism"="attraction"]' },
+  { id:"museo",   n:"Museos",     q:'node["tourism"="museum"];way["tourism"="museum"]' },
+  { id:"natura",  n:"Naturaleza", q:'node["natural"="peak"];node["waterway"="waterfall"];node["natural"="cave_entrance"];way["natural"="beach"]' },
+  { id:"iglesia", n:"Iglesias",   q:'way["building"="church"];way["building"="cathedral"];node["amenity"="place_of_worship"]' },
+  { id:"paseo",   n:"Plazas y paseos", q:'node["place"="square"];way["place"="square"];way["leisure"="park"]' }
+];
+
+/* Un sitio sin nombre no vale para «qué ver»: sería un punto anónimo */
+function meritoDe(e){
+  const t = e.tags || {};
+  if (!t.name) return 0;
+  let m = 1;
+  if (t.wikipedia || t.wikidata) m += 3;      // si tiene artículo, algo tendrá
+  if (t.heritage || t.historic) m += 2;
+  if (t.tourism === "attraction" || t.tourism === "museum") m += 2;
+  if (t.description || t["description:es"]) m += 1;
+  if (t.website || t.opening_hours) m += 1;
+  return m;
+}
+
+async function queVerCerca(cat, pos, km){
+  const SERVIDORES = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter"
+  ];
+  const intentos = [ {tope:60, espera:25}, {tope:30, espera:15}, {tope:15, espera:10} ];
+  let ultimo = "";
+
+  for (let n = 0; n < intentos.length; n++){
+    const { tope, espera } = intentos[n];
+    const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
+    const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
+    const ctrl = new AbortController();
+    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
+    try {
+      const r = await fetch(SERVIDORES[n % SERVIDORES.length] + "?data=" + encodeURIComponent(consulta),
+                            { signal: ctrl.signal });
+      clearTimeout(corte);
+      if (!r.ok){
+        ultimo = r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status);
+        continue;
+      }
+      const d = await r.json();
+      const sitios = (d.elements || []).map(e => {
+        const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
+        const merito = meritoDe(e);
+        if (la == null || !merito) return null;
+        const t = e.tags;
+        return {
+          nombre: t.name,
+          detalle: t["description:es"] || t.description ||
+                   (t.historic ? "Lugar histórico" : "") ||
+                   (t.tourism === "museum" ? "Museo" : ""),
+          wiki: t.wikipedia || "",
+          xy:[la, lo], km: distancia(pos, [la, lo]), merito
+        };
+      }).filter(Boolean);
+
+      // sin repetir nombres, lo más interesante primero y a igualdad, lo más cerca
+      const vistos = new Set();
+      const unicos = sitios.filter(x => {
+        const k = x.nombre.toLowerCase();
+        if (vistos.has(k)) return false;
+        vistos.add(k); return true;
+      }).sort((a,b) => (b.merito - a.merito) || (a.km - b.km));
+
+      if (unicos.length) return unicos.slice(0, 20);
+      if (n === 0) return [];
+    } catch (e){
+      clearTimeout(corte);
+      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+    }
+  }
+  throw new Error(ultimo || "sin respuesta");
+}
+
+/* Dónde estamos, se llame como se llame en cada app */
+function posActual(){
+  if (typeof MIPOS !== "undefined" && MIPOS) return MIPOS;
+  if (typeof miPos !== "undefined" && miPos) return miPos;
+  return null;
+}
+
+/* Repinta la vista que contiene el buscador, sea cual sea */
+function repintaBusqueda(){
+  if (typeof vistaGuia === "function") return vistaGuia();
+  if (typeof vistaCerca === "function") return vistaCerca();
+}
+
+/* ---- Qué ver por aquí ---- */
+let verCat = null, verKm = 10;
+
+function bloqueQueVer(){
+  if (!posActual()) return `<div class="card" id="c-quever">
+    <h3>Qué ver por aquí</h3>
+    <p class="note" style="margin-top:0">Monumentos, miradores, museos y sitios con interés alrededor de donde estéis.</p>
+    <div class="btns"><button class="btn solid" id="btn-quever">Usar mi ubicación</button></div>
+  </div>`;
+
+  return `<div class="card" id="c-quever">
+    <h3>Qué ver por aquí</h3>
+    <div class="cats">${QUE_VER.map(c =>
+      `<button class="cat${verCat === c.id ? " on" : ""}" data-ver="${c.id}">${c.n}</button>`).join("")}</div>
+    <div class="radios">${[2,5,10,25].map(k =>
+      `<button class="radio${verKm === k ? " on" : ""}" data-verkm="${k}">${k} km</button>`).join("")}</div>
+    <div id="res-quever"></div>
+  </div>`;
+}
+
+async function lanzarQueVer(){
+  const cont = document.getElementById("res-quever");
+  const cat = QUE_VER.find(c => c.id === verCat);
+  if (!cont || !cat) return;
+  cont.innerHTML = `<p class="note">Buscando ${cat.n.toLowerCase()} en ${verKm} km…</p>`;
+  try {
+    if (typeof ubicacionFresca === "function") await ubicacionFresca();
+    const r = await queVerCerca(cat, comoPar(posActual()), verKm);
+    if (!r.length){
+      cont.innerHTML = `<p class="note">Nada con nombre en ${verKm} km. Prueba a ampliar el radio o con otra categoría.</p>`;
+      return;
+    }
+    cont.innerHTML = `<ul class="plain">${r.map((x, i) => `
+      <li>
+        <div class="serv-fila">
+          <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
+          <span class="km" id="kv-${i}">${x.km < 1 ? Math.round(x.km*1000) + " m" : x.km.toFixed(1) + " km"}<i>recto</i></span>
+        </div>
+        <div class="btns" style="margin-top:6px">
+          <a class="btn" href="${navegarXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ir</a>
+          <a class="btn" href="${mapaXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ver</a>
+          ${x.wiki ? `<a class="btn" target="_blank" rel="noopener"
+            href="https://${x.wiki.includes(":") ? x.wiki.split(":")[0] : "es"}.wikipedia.org/wiki/${
+              encodeURIComponent(x.wiki.includes(":") ? x.wiki.split(":").slice(1).join(":") : x.wiki)
+            }">Qué es</a>` : ""}
+        </div>
+      </li>`).join("")}</ul>
+      <p class="note" id="nota-quever">Calculando el tiempo por carretera…</p>`;
+
+    const t = await porCarretera(comoPar(posActual()), r.map(x => x.xy));
+    const nv = document.getElementById("nota-quever");
+    if (t){
+      t.forEach((x, i) => {
+        const el = document.getElementById("kv-" + i);
+        if (el && x) el.innerHTML = `${formatoTiempo(x.seg)}<i>${x.km != null ? Math.round(x.km) + " km" : "en coche"}</i>`;
+      });
+      if (nv) nv.textContent = "Lo más interesante primero. Datos de OpenStreetMap, mantenidos por voluntarios.";
+    } else if (nv){
+      nv.textContent = "Distancias en línea recta. Datos de OpenStreetMap.";
+    }
+  } catch (e) {
+    const motivo = String(e?.message || "");
+    cont.innerHTML = `<p class="note">${!navigator.onLine ? "Sin conexión. Esto necesita red."
+      : `No se pudo consultar. <span class="motivo">${esc(motivo).slice(0, 60)}</span>`}</p>`;
+  }
+}
+
+function activaQueVer(){
+  const b = document.getElementById("btn-quever");
+  if (b) b.addEventListener("click", async () => {
+    b.textContent = "Localizando…";
+    try { await pedirUbicacion(); repintaBusqueda(); }
+    catch { b.textContent = "No se pudo obtener la ubicación"; }
+  });
+  document.querySelectorAll("[data-ver]").forEach(x => x.addEventListener("click", () => {
+    verCat = x.dataset.ver; repintaBusqueda(); lanzarQueVer();
+  }));
+  document.querySelectorAll("[data-verkm]").forEach(x => x.addEventListener("click", () => {
+    verKm = +x.dataset.verkm; repintaBusqueda(); if (verCat) lanzarQueVer();
+  }));
+}
 /* ---- Servicios cerca, con OpenStreetMap ---- */
 /* La posición llega unas veces como "46.3,14.1" y otras como [46.3, 14.1]:
    cada app la guarda a su manera. Esta función admite ambas y devuelve
