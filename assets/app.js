@@ -288,10 +288,42 @@ function puntosDeRuta(i){
     if (p && !pts.some(q => q[0] === p[0] && q[1] === p[1])) pts.push(p);
   };
 
-  if (typeof MIPOS !== "undefined" && MIPOS) mete(MIPOS);
-  else if (typeof miPos !== "undefined" && miPos) mete(miPos);
-  (d.paradas || []).forEach(p => mete(typeof xyDeParada === "function" ? xyDeParada(p) : p.xy));
-  mete(d.xy);
+  const yo = comoPar((typeof MIPOS !== "undefined" && MIPOS) ||
+                     (typeof miPos !== "undefined" && miPos) || null);
+
+  // Todo el recorrido del día, en orden
+  const ruta = [];
+  (d.paradas || []).forEach(p => {
+    const q = comoPar(typeof xyDeParada === "function" ? xyDeParada(p) : p.xy);
+    if (q) ruta.push(q);
+  });
+  const cama = comoPar(d.xy);
+  if (cama) ruta.push(cama);
+
+  // Si sabemos dónde estamos, solo interesa lo que queda POR DELANTE:
+  // en un día de traslado largo, buscar en toda la jornada devuelve sitios
+  // a 180 km que no sirven de nada.
+  if (yo && ruta.length){
+    let masCerca = 0, mejor = Infinity;
+    ruta.forEach((q, k) => {
+      const dd = distancia(yo, q);
+      if (dd < mejor){ mejor = dd; masCerca = k; }
+    });
+    // Desde donde estás hacia delante, pero solo el tramo próximo: en un día
+    // de traslado largo no sirve de nada una gasolinera a 180 km.
+    const TRAMO = 60;                    // km de recorrido por delante
+    mete(yo);
+    for (const q of ruta.slice(masCerca)){
+      if (distancia(yo, q) > TRAMO) break;
+      mete(q);
+    }
+    // si el siguiente punto ya queda lejísimos, al menos se mira alrededor
+    if (pts.length === 1 && ruta[masCerca]) mete(ruta[masCerca]);
+    return pts;
+  }
+
+  if (yo) mete(yo);
+  ruta.slice(0, 4).forEach(mete);
   return pts;
 }
 
@@ -347,14 +379,18 @@ async function buscarEnRuta(cat, i, km){
       const sitios = (d.elements || []).map(e => {
         const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
         if (la == null) return null;
-        // lo que importa es cuánto te desvías del camino, no lo lejos que esté
+        // cuánto te desvías del camino que te queda
         const desvio = Math.min(...todos.map(p => distancia(p, [la, lo])));
+        const desdeAqui = distancia(todos[0], [la, lo]);
         return { nombre: e.tags?.name || cat.n,
                  detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
-                 xy:[la, lo], km: distancia(origen, [la, lo]), desvio };
+                 xy:[la, lo], km: distancia(origen, [la, lo]), desvio, desdeAqui };
       }).filter(Boolean)
-        .filter(x => x.desvio <= Math.min(km, 12))   // fuera lo que queda lejos del camino
-        .sort((a,b) => a.desvio - b.desvio);
+        .filter(x => x.desvio <= Math.min(km, 12))
+        .filter(x => x.desdeAqui <= 80)      // nada a hora y media de distancia
+        // primero lo que pillas pronto: se ordena por lo lejos que está de ti,
+        // ya filtrado a lo que queda de paso
+        .sort((a,b) => a.desdeAqui - b.desdeAqui);
       if (sitios.length) return sitios.slice(0, 20);
       if (n === 0) return [];
     } catch (e){

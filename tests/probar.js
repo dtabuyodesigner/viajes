@@ -316,17 +316,18 @@ function posicionEnDosFormas(){
     ["valores no válidos", ["x","y"], null, 3]
   ];
   for (const [nombre, MIPOS, miPos, esperados] of casos){
+    const distancia = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1]) * 111;
     const VIAJE = { dias:[{ xy:"46.281,14.322", paradas:[
       { xy:"46.368,14.095" }, { g:"vintgar" }, { txt:"sin coords" } ]}]};
     const LUGARES = { vintgar:{ xy:"46.393,14.058" } };
     let n = -1, fallo = "";
     try {
-      const fn = new Function("VIAJE","LUGARES","MIPOS","miPos",
+      const fn = new Function("VIAJE","LUGARES","MIPOS","miPos","distancia",
         trozo(/function comoTexto[\s\S]*?\n\}/) + "\n" +
         trozo(/function comoPar[\s\S]*?\n\}/) + "\n" +
         trozo(/function xyDeParada[\s\S]*?\n\}/) + "\n" +
         trozo(/function puntosDeRuta[\s\S]*?\n\}/) + "\nreturn puntosDeRuta;");
-      n = fn(VIAJE, LUGARES, MIPOS, miPos)(0).length;
+      n = fn(VIAJE, LUGARES, MIPOS, miPos, distancia)(0).length;
     } catch (e){ fallo = e.message; }
     comprobar(`${nombre}: ${esperados} puntos`, n === esperados, fallo || `salieron ${n}`);
   }

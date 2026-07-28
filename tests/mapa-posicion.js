@@ -5,7 +5,8 @@ const base = ["comoTexto","comoPar","xyDeParada"]
   .map(n => trozo(new RegExp("function " + n + "[\\s\\S]*?\\n\\}"))).join("\n");
 
 function probar(nombre, MI_POS){
-  const VIAJE = { dias:[{ xy:"46.281,14.322", paradas:[
+  const distancia = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1]) * 111;
+    const VIAJE = { dias:[{ xy:"46.281,14.322", paradas:[
     { xy:"46.368,14.095" }, { xy:"46.363,14.096" } ]}]};
   const ctx = { VIAJE, LUGARES:{}, MI_POS, DIARIO_SYNC:undefined, VIAJE_ID:"x" };
   try {
