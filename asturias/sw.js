@@ -2,7 +2,7 @@
    Con red: trae siempre la versión más reciente y la guarda.
    Sin red: sirve lo último que se guardó en el móvil. */
 
-const CACHE = "asturias26-v7";
+const CACHE = "asturias26-v8";
 const ARCHIVOS = ["./", "./index.html", "../assets/app.js"];
 
 self.addEventListener("install", e => {
