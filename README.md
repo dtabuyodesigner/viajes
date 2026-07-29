@@ -15,41 +15,44 @@ conduce por sitios donde no hay línea.
 /asturias/            Asturias occidental, 5 días             (a medida)
 /crear/               editor: crear, pedir a una IA e importar viajes
 /viaje/?id=xxx        visor de los viajes creados
-/sync.js              nube, diario y fotos: compartido por todas
-/assets/app.js        motor común: cámara, mapas, tiempo, «estoy aquí»
-/img/  /fotos/        dibujos, mapas y fotos
+/assets/app.js        motor común: lo que comparten las tres apps de viaje
+/sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/probar.js      68 comprobaciones automáticas
+/tests/               72 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app independiente de **un solo archivo HTML** con su CSS y su
-JavaScript dentro. Sin compilar, sin dependencias, sin `node_modules` en
-producción. Se abre el archivo y funciona.
+JavaScript dentro. Sin compilar, sin dependencias en producción.
 
 | | líneas | peso |
 |---|--:|--:|
-| portada | 375 | 16 KB |
-| editor | 1.294 | 57 KB |
-| visor | 1.177 | 56 KB |
-| Eslovenia | 2.453 | 139 KB |
-| Asturias | 2.042 | 110 KB |
-| sync.js | 722 | 26 KB |
-| assets/app.js | 431 | 15 KB |
+| portada | 424 | 18 KB |
+| editor | 1.356 | 60 KB |
+| visor | 1.072 | 54 KB |
+| Eslovenia | 2.281 | 134 KB |
+| Asturias | 1.831 | 103 KB |
+| **assets/app.js** | **1.096** | **46 KB** |
+| sync.js | 828 | 30 KB |
 
 ---
 
-## Los tres principios
+## Los cuatro principios
 
 **1. Manda el móvil, la nube es un espejo.**
-Todo se guarda primero en el propio teléfono. La app va igual sin cobertura y sin
-sesión. Supabase iguala cuando hay red. Si la nube falla, no se entera nadie.
+Todo se guarda primero en el teléfono. La app va igual sin cobertura y sin
+sesión. Supabase iguala cuando hay red.
 
 **2. Ninguna espera es infinita.**
-Toda llamada de red lleva tope de tiempo (`conTope()` en `sync.js`). Si algo no
-responde, se avisa. Nunca se deja un botón en «Cargando…» para siempre.
+Toda llamada de red lleva tope de tiempo. Si algo no responde, se avisa **con el
+motivo**, no con una frase amable. Un mensaje que no dice qué pasó cuesta horas
+de diagnóstico: se aprendió por las malas.
 
-**3. Se prueba antes de publicar, y se publica en `dev`.**
-`node tests/probar.js` antes de cada subida. A `main` solo lo pedido y probado.
+**3. Se prueba antes de publicar, y se lee el resultado.**
+`node tests/probar.js` y, si se movió código, `node tests/foto.js comparar`.
+Los dos en verde **antes** de lanzar la subida, no en el mismo comando.
+
+**4. Nunca se toca `main` directamente.**
+Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ---
 
@@ -57,11 +60,9 @@ responde, se avisa. Nunca se deja un botón en «Cargando…» para siempre.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # deben salir las 68 comprobaciones en verde
+node tests/probar.js   # las 72 en verde
+node tests/foto.js comparar
 ```
-
-Los cambios van a `dev`. A `main` solo lo probado: `main` es lo publicado y puede
-estar usándose en carretera ahora mismo.
 
 ---
 
@@ -70,26 +71,47 @@ estar usándose en carretera ahora mismo.
 |  | Portada | Eslovenia | Asturias | Visor | Editor |
 |---|:--:|:--:|:--:|:--:|:--:|
 | Día a día con paradas | | ● | ● | ● | |
-| Navegación Waze + ver en mapa | | ● | ● | ● | |
+| El primer vistazo del día | | ● | ● | ● | |
 | Mapa del día y del viaje | | ● | ● | ● | |
+| Navegación Waze + ver en mapa | | ● | ● | ● | |
 | Marcar paradas y notas | | ● | ● | ● | |
 | Fotos: cámara, galería y portada | | ● | ● | ● | |
 | «Estoy aquí» y añadir sitios | | ● | ● | ● | |
 | Dónde dormimos, con valoración | | ● | ● | ● | |
 | Recorrido real en el mapa | | ● | ● | | |
+| Alojamiento con sus enlaces | | ● | ● | ● | |
+| Tarjetas de embarque | | ● | | | |
 | Guía de lugares | | 39 fichas | 27 fichas | | |
 | Reservas y localizadores | | ● | | ● | ● |
-| Qué tengo cerca | | ● | ● | ● | |
-| Servicios (OpenStreetMap) | | ● | ● | ● | |
 | Qué ver por aquí | | ● | ● | ● | |
+| Servicios: cerca o de camino | | ● | ● | ● | |
 | Tiempo real por carretera | | ● | ● | ● | |
 | El tiempo | | ● | ● | ● | |
 | Aviso de cercanía | | ● | ● | ● | |
-| El primer vistazo del día | | ● | ● | ● | |
-| park4night | | | ● | | |
 | Crear, pedir a una IA, importar | | | | | ● |
 | Sincronización | ● | ● | ● | ● | ● |
 | Modo claro / automático / oscuro | ● | ● | ● | ● | ● |
+
+---
+
+## El motor común
+
+`assets/app.js` tiene lo que era idéntico en las tres apps de viaje:
+
+- **Ubicación**: `comoTexto` / `comoPar` (admite `"lat,lon"` y `[lat, lon]`),
+  `ubicacionRapida` (pinta ya, afina después), `ubicacionFresca` (antes de cada
+  búsqueda), `posActual`
+- **Mapas**: `mapaDia`, `mapaCabecera`, `puntosDeRuta`, `xyDeParada`
+- **Buscar**: `buscarServicios`, `buscarEnRuta`, `queVerCerca`, `porCarretera`
+- **Guardar**: cámara y galería, portada del día, «Estoy aquí», pernoctas,
+  documentos
+- **Mostrar**: `bloqueHotel`, `frasesDelDia` (el primer vistazo)
+
+Las apps aportan sus datos y sus piezas propias. Eslovenia tiene vuelos, seguros
+y guía; Asturias, park4night; el visor, el editor detrás.
+
+**Señal de que te estás pasando al unificar:** si hace falta un `if` con el
+nombre del viaje dentro del motor, ese trozo no era común.
 
 ---
 
@@ -97,89 +119,58 @@ estar usándose en carretera ahora mismo.
 
 ### En el móvil
 
-**`localStorage`** para lo pequeño:
+**`localStorage`** para lo pequeño: viajes propios, pendientes de subir, diario
+por viaje, tema, preferencias de cada app.
 
-| Clave | Qué guarda |
-|---|---|
-| `viajes_propios` | los viajes creados |
-| `viajes_pendientes` | ids que faltan por subir |
-| `diario_<viaje>` | marcas, notas, posiciones, visitas y portadas |
-| `fotos_pendientes` | fotos que faltan por subir |
-| `tema_viajes` | `auto`, `claro` u `oscuro`, compartido por todas |
-| `nav_*` / `ast_*` / `gen_*` | preferencias de cada app |
+**IndexedDB** (`viajes_fotos`) para lo que pesa:
 
-**IndexedDB** (`viajes_fotos`) para las fotos: en `localStorage` solo caben unos
-5 MB y tres fotos ya lo llenarían.
-
-**Ojo con iOS:** cada app añadida a la pantalla de inicio tiene **su propio
-almacén**, aunque el dominio sea el mismo. Por eso hay que iniciar sesión en cada
-una por separado.
-
-### En Supabase (proyecto `cmkzcvfjgrgxwqjimtxa`)
-
-| Tabla | Qué guarda | Cómo resuelve conflictos |
+| Registro | Se distingue por | Para qué |
 |---|---|---|
-| `viajes` | un viaje por fila, los días en `jsonb` | gana el más reciente |
-| `viaje_diario` | marcas, notas, posiciones, visitas, portadas | **por entrada**, con marca de tiempo propia |
-| `viaje_fotos` | una foto por fila, en base64 | por id, con borrado lógico |
+| Foto del día | `dia >= 0` | galería y portada |
+| Documento | `dia = -1` y campo `doc` | tarjetas de embarque |
 
-Lo del diario es lo más cuidado: si los dos anotáis cosas distintas sin cobertura,
-al juntarse no se pierde nada. Para cada parada gana el gesto más reciente; si
-uno marca y el otro desmarca después, queda desmarcada.
+Los identificadores llevan hora **y algo aleatorio**: dos archivos subidos
+seguidos caen en el mismo milisegundo y el segundo pisaba al primero.
 
-El SQL está en `/sql/`. Las políticas son abiertas para quien haya iniciado
-sesión: son dos personas que comparten todo.
+**Ojo con iOS:** cada app de la pantalla de inicio tiene su propio almacén. Hay
+que iniciar sesión en cada una.
+
+### En Supabase (`cmkzcvfjgrgxwqjimtxa`)
+
+| Tabla | Qué guarda | Conflictos |
+|---|---|---|
+| `viajes` | un viaje por fila, días en `jsonb` | gana el más reciente |
+| `viaje_diario` | marcas, notas, posiciones, visitas, pernoctas, portadas | **por entrada**, con marca de tiempo propia |
+| `viaje_fotos` | fotos compartidas | por id, borrado lógico |
+
+Las tarjetas de embarque **no** van a la nube: llevan nombre y código de barras.
 
 ### Forma de un viaje
 
 ```js
 {
-  id: "v1a2b3c",
-  nombre: "Croacia en círculo",
-  desde: "2026-09-05",        // vacío = días numerados en vez de fechas
-  hasta: "2026-09-12",
-  salida: "San Miguel de las Dueñas",
+  id, nombre, desde, hasta, salida,
   normas: ["Andando sin acera se camina por la izquierda", …],
-  actualizado: "2026-07-26T18:00:00Z",
   dias: [{
-    t: "Llegada a Zagreb",     // título de la jornada
-    dest: "Zagreb",            // dónde se duerme: destino de navegación
-    xy: "46.05,14.50",         // para el tiempo y el mapa del día
-    km: "135 km · 2 h",
-    lluvia: "Museo de …",      // plan B si llueve
-    foto: "data:image/jpeg…",
-    paradas: [{
-      h: "Mañana",
-      txt: "Lagos de Plitvice",
-      c: "Plitvice",           // nombre corto para los botones
-      n: "Entra por la puerta 2, reserva online",
-      mapa: "Plitvicka Jezera ulaz 2",   // lo que se le pasa al navegador
-      w: "Plitvicka jezera",   // nombre local, mejor para Waze
-      xy: "44.88,15.61",       // para avisos de cercanía y el mapa
-      g: "plitvice",           // id de su ficha en la guía
-      key: true,               // imprescindible del día
-      park: { n, w, p, gratis }
-    }]
+    t, dest, xy, km, lluvia, foto,
+    hotel: "Hotel Jägerhorn",              // nombre exacto, para buscarlo
+    hotelWeb: "https://…",                 // solo si la IA la sabe de verdad
+    paradas: [{ h, txt, c, n, mapa, w, xy, g, key, park }]
   }],
-  reservas: {
-    vuelos: [{ ruta, fecha, hora, cia, loc, n }],
-    coche: { empresa, reserva, recogida, devolucion, telefono },
-    telefonos: [{ q, n }]
-  }
+  reservas: { vuelos: [{ ruta, fecha, hora, cia, loc, vuelo, asientos, secuencia }],
+              coche, telefonos }
 }
 ```
 
-### El diario, aparte del viaje
+### El diario, aparte
 
 ```js
 {
-  hechas:      { "5:0": 1784… },              // parada marcada, con la hora
-  desmarcadas: { "5:1": 1784… },
-  notas:       { "5": { t:"…", ts:1784… } },
-  posiciones:  { "5:0": { xy:"46.3,14.1", ts } },  // dónde estabas al marcar
-  visitas:     [{ id, xy, ts, dia, txt, auto, manual, precision }],
-  pernoctas:   [{ id, xy, ts, dia, txt, tipo, nota, valorada }],
-  portadas:    { "5": { id:"eslovenia:5:178…", ts } }
+  hechas, desmarcadas, notas,
+  posiciones: { "5:0": {xy, ts} },                     // dónde estabas al marcar
+  visitas:    [{ id, xy, ts, dia, txt, auto, manual }], // «estoy aquí»
+  pernoctas:  [{ id, xy, ts, dia, txt, tipo, nota, valorada }],
+  portadas:   { "5": {id, ts} }
 }
 ```
 
@@ -187,87 +178,72 @@ sesión: son dos personas que comparten todo.
 
 ## Reglas que no se saltan
 
-**El caché puede dejarte la app vieja.** `sync.js` y `assets/app.js` van con
-`?v=NN` en la URL y están excluidos del service worker. Si los tocas, **sube el
-número** en las páginas que los cargan.
+**Si añades un archivo del que depende la app, dilo en los cinco `sw.js`.** Al
+crear `assets/app.js` no se hizo, y desde el icono de inicio la app se quedaba a
+medias: el service worker devolvía el HTML de la página donde iba un script.
 
-**La versión se ve en pantalla.** `const VERSION`. Súbela en cada publicación.
+**El código común se pide sin `?v=`.** La versión la lleva el service worker. Con
+`?v=` la copia guardada nunca coincidía con la pedida.
 
-**Nada de claves de API en el repositorio.** Es público. La clave anónima de
-Supabase sí puede estar: está pensada para ser pública y la protege el RLS.
+**Recargar no aplica una versión nueva.** El service worker viejo manda hasta
+cerrar todas las pestañas: hay que pedirle al nuevo que tome el mando
+(`skipWaiting`) y recargar en `controllerchange`.
 
-**Los enlaces se verifican antes de publicarlos.** Ya pasó: se subieron 34
-enlaces de Wikiloc con un formato que daba 404.
-
-**Nunca `localStorage` sin `try/catch`.** En modo privado de iOS lanza excepción
-y tumbaría la app entera.
-
-**Nada de colores fijos en lo estructural.** Barra, cabecera, tarjetas y textos
-usan variables, o el modo claro se rompe. Hay una prueba que lo vigila.
+**`getRegistrations()` solo ve el sw de su carpeta.** Para limpiar todos hay que
+recorrerlas con `getRegistration(ruta)`.
 
 **Cada vista, sus propios identificadores.** Un día se dibuja dos veces —en Hoy y
-en el detalle— y con ids repetidos las fotos acaban donde no toca. De ahí el
-parámetro `ctx` con valores `hoy` y `det`.
+en el detalle—; de ahí el parámetro `ctx` con valores `hoy` y `det`.
+
+**No inventes URLs de terceros.** Si no se puede verificar el formato, usa una
+búsqueda. Ya se publicaron 34 enlaces de Wikiloc que daban 404.
+
+**Cambiar la lógica obliga a revisar los textos.** «Buscando en 5 km» en un modo
+sin radio es peor que no decir nada.
+
+**Nada de colores fijos en lo estructural**, o el modo claro se rompe. Hay una
+prueba que lo vigila.
 
 ---
 
 ## Servicios externos
 
-Ninguno necesita clave. Todos son gratuitos para uso personal.
+Ninguno necesita clave.
 
-| Para qué | Cómo | Notas |
-|---|---|---|
-| Navegar | `waze://?q=` y `?ll=` | y `maps/search` para ver dónde está |
-| Rutas a pie | `wikiloc://` y `map.do?q=` | el esquema ignora parámetros |
-| Dormir en furgo | `p4n://` y `park4night.com` | solo en Asturias |
-| Qué es un sitio | Wikipedia, `origin=*` | |
-| Qué hacer allí | Wikivoyage, `origin=*` | |
-| Qué hay cerca | Overpass (OpenStreetMap) | tres servidores, con reintentos |
-| Tiempo por carretera | OSRM `table/v1/driving` | demo: máx. 1 petición/s |
-| Cómo se llama este sitio | Nominatim `reverse` | máx. 1 petición/s |
-| Buscar un sitio | Nominatim `search` | |
-| El tiempo | Open-Meteo | sin clave, CC BY 4.0 |
-| Free tours | Civitatis | enlace a la ciudad |
-| Sincronizar | Supabase | clave anónima, pública |
-
-Los esquemas `waze://`, `p4n://` y `wikiloc://` están **comprobados en un iPhone
-real**. No están documentados por sus fabricantes: si dejan de funcionar, hay que
-volver a probarlos a mano.
+| Para qué | Cómo |
+|---|---|
+| Navegar | `waze://?q=` y `?ll=`, con `maps/search` para ver |
+| Rutas a pie | `wikiloc://` y `map.do?q=` |
+| Dormir en furgo | `p4n://` y `park4night.com` |
+| Qué es un sitio | Wikipedia y Wikivoyage, `origin=*` |
+| Qué hay cerca | Overpass · **tres servidores con reintentos** |
+| Tiempo por carretera | OSRM `table/v1/driving` |
+| Cómo se llama esto | Nominatim `reverse` |
+| Buscar un sitio | Nominatim `search` |
+| El tiempo | Open-Meteo |
+| Sincronizar | Supabase |
 
 ---
 
 ## Las pruebas
 
-Dos herramientas, para dos cosas distintas.
+**`node tests/probar.js`** — 72 comprobaciones: que cada app carga y pinta, que
+no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
+tiene sus ids, que la ubicación vale en sus dos formatos.
 
-**`node tests/probar.js`** comprueba que las apps funcionan. 68 comprobaciones, sin tocar la red ni GitHub:
+**`node tests/foto.js`** — guarda el HTML de 34 vistas y lo compara después de
+mover código. Es lo que hace seguro refactorizar.
 
-1. Cada app carga sin errores y todas las pestañas pintan contenido
-2. No hay enlaces con esquemas desconocidos
-3. El editor guarda, importa Markdown y JSON, y exporta
-4. Lo que exporta lo vuelve a leer igual
-5. La sincronización aguanta sin sesión y sin conexión
-6. La portada nunca se queda en «comprobando…», ni al cambiar de tema
-7. No se usa ninguna función sin definir
-8. Barra, cabecera y tarjetas siguen el tema claro
-9. Cada vista tiene sus propios identificadores
-
-**`node tests/foto.js`** comprueba que siguen haciendo *exactamente lo mismo*.
-Guarda el HTML de las 34 vistas y lo compara después de mover código. Es lo que
-hace seguro refactorizar:
-
-```bash
-node tests/foto.js guardar     # antes de tocar
-node tests/foto.js comparar    # después
-```
+Y pruebas sueltas para lo que costó acertar: `posicion.js`, `ruta-delante.js`,
+`ubicacion-fresca.js`, `ubicacion-rapida.js`, `documentos.js`, `quever.js`,
+`hotel.js`.
 
 **Una prueba que nunca has visto fallar no sirve.** Después de escribirla,
-reintroduce el fallo a propósito y comprueba que salta. Ha pasado dos veces que
-una prueba diera verde con el error puesto.
+reintroduce el fallo y comprueba que salta.
 
 ---
 
 ## Lo que falta
 
-Ver `PENDIENTE.md`. Y `AGENTS.md` si quien va a tocar esto es una IA.
-Para usarla sin saber programar, `USO.md`.
+Ver `PENDIENTE.md`. `AGENTS.md` si quien toca esto es una IA. `USO.md` para
+usarla sin saber programar.
