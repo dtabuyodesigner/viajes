@@ -5,6 +5,21 @@ Antigravity o lo que venga. Léelo entero antes de escribir nada.
 
 ---
 
+## Lo que más se ha roto, en una línea cada uno
+
+Antes de tocar nada, leer esto. Son fallos ya cometidos:
+
+1. **Si añades un archivo del que depende la app, dilo en los cinco `sw.js`.**
+2. **El código común se pide sin `?v=`**: la versión la lleva el service worker.
+3. **Recargar no aplica una versión nueva**: hay que pedir `skipWaiting`.
+4. **`getRegistrations()` solo ve su carpeta**: recorrer las cinco a mano.
+5. **Al unificar, comprobar el formato real de cada variable**, no suponerlo.
+6. **Cambiar la lógica obliga a revisar los textos** que la describen.
+7. **Enseña el motivo técnico del error**, no una frase amable.
+8. **Ejecutar las pruebas en un comando aparte y leerlas** antes de subir.
+
+---
+
 ## Las dos reglas que no se negocian
 
 **1. Nunca se toca `main` directamente.** Todo va a `dev`. A `main` solo llega lo
