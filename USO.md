@@ -137,7 +137,12 @@ no tiene.
 
 ## Si algo va raro
 
+**Sale un botón «Versión nueva · tocar para usarla»** → tócalo. Es la forma
+rápida y segura de actualizar.
+
 **La app parece antigua o algo no aparece** → portada → Buscar actualización.
+Eso limpia las cinco apps, no solo la portada. Si aun así sigue igual, cierra la
+app deslizándola fuera del selector y vuelve a abrirla.
 
 **Un botón no hace nada** → prueba el de al lado. Waze tiene *map*, park4night
 tiene *web*. Si tampoco, será que no hay cobertura.
