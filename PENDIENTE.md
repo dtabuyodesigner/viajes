@@ -4,9 +4,21 @@ Ordenado por lo que más cambia las cosas, no por lo que más cuesta.
 
 ---
 
-## 1 · Unificar el motor  ·  fase 1 hecha, en `dev`
+## 1 · Unificar el motor  ·  fase 1 hecha y publicada
 
-**Hecho ya (v72, rama `dev`).** `assets/app.js` con la cámara y las fotos,
+**Hecho (v72–v96).** `assets/app.js` son ya **1.096 líneas** compartidas por las
+tres apps de viaje: ubicación, mapas, búsquedas, cámara, documentos, pernoctas,
+alojamiento y el vistazo del día. Todo lo añadido desde entonces nace ahí
+directamente, que era el objetivo.
+
+**Lo que se ganó, medido:** las correcciones de las últimas horas —posición en
+dos formatos, ubicación fresca, tramo por delante, ids únicos— se hicieron **una
+vez** en vez de tres.
+
+**Falta la fase 2**: separar los datos de cada viaje en su propio archivo, para
+que Eslovenia y Asturias sean editables como los viajes creados.
+
+**Antes decía (v72, rama `dev`):** `assets/app.js` con la cámara y las fotos,
 «Estoy aquí» y buscar sitios, el mapa del día, el mapa de cabecera, el tiempo de
 Open-Meteo y los tiempos por carretera de OSRM. **758 líneas fuera de la
 triplicación**, de 784 duplicadas quedan 96. Las 34 fotografías salen idénticas.
@@ -117,6 +129,30 @@ arranca sola en el día que toca.
 
 ---
 
+## Lo que costó más de lo que parecía
+
+Estas cuatro cosas parecían de cinco minutos y llevaron horas. Anotadas para que
+no vuelvan a sorprender:
+
+**Que una versión nueva llegue al móvil.** Tres fallos encadenados: el service
+worker no conocía `assets/app.js`, el `?v=` hacía que la copia guardada no
+coincidiera nunca, y `getRegistrations()` solo limpiaba una carpeta. Resuelto en
+v79, v83 y v89.
+
+**«De camino hoy».** Cuatro intentos: la consulta era demasiado pesada, luego la
+posición estaba en otro formato, luego buscaba en todo el día en vez de por
+delante, y al final la posición estaba caducada. v80 a v87.
+
+**Dar mensajes útiles.** Mientras el error decía «no se pudo consultar», cada
+diagnóstico eran varios intentos a ciegas. En cuanto mostró `x.split is not a
+function`, se arregló en minutos.
+
+**Los formatos que cada app usa por su cuenta.** Al unificar aparecieron tres:
+`MIPOS` como lista y `miPos` como texto, `distancia` y `distKm`, `pedirUbicacion`
+y `ubicacion`. Ninguno daba error de sintaxis; todos fallaban al usarlos.
+
+---
+
 ## Ideas sin decidir
 
 
@@ -167,6 +203,11 @@ Para no volver a proponerlo:
 | Buscar «de camino hoy» además de «cerca de aquí» | v80 |
 | Localizar de nuevo antes de cada búsqueda | v87 |
 | «Qué ver por aquí»: monumentos, museos y miradores alrededor | v90 |
+| Alojamiento con nombre, web propia y ficha de Google | v91, v95, v96 |
+| El mapa se sitúa al momento sin esperar al GPS | v91 |
+| Datos de las tarjetas de embarque en Reservas | v92 |
+| Guardar las tarjetas de embarque en el móvil, varias por vuelo | v93, v94 |
+| Los puntos de «por dónde hemos pasado», tocables | v96 |
 | Alojamiento con web propia, Booking y búsqueda | v91 |
 | Guardar las tarjetas de embarque en el móvil | v93 |
 | El mapa se sitúa al momento, sin esperar al GPS | v91 |
