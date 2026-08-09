@@ -81,6 +81,8 @@ function abrir(rutaHtml, opciones = {}){
         })
       })};
       w.alert = () => {}; w.confirm = () => true; w.prompt = () => null;
+      w.scrollTo = () => {};
+      w.Element.prototype.scrollIntoView = () => {};
       w.addEventListener("error", e => errores.push(e.error ? e.error.message : "?"));
     }
   });

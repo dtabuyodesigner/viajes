@@ -469,82 +469,20 @@ function engancha(){
 
   document.querySelectorAll("[data-add-par]").forEach(b => b.addEventListener("click", () => {
     viaje.dias[+b.dataset.addPar].paradas.push({h:"", txt:"", n:"", mapa:""});
-    async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-sucio();
+    pintaDias();
+    sucio();
   }));
   document.querySelectorAll("[data-borrar-par]").forEach(b => b.addEventListener("click", () => {
     const [i,k] = b.dataset.borrarPar.split(":").map(Number);
-    viaje.dias[i].paradas.splice(k,1); async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+    viaje.dias[i].paradas.splice(k,1);
+    pintaDias();
+    sucio();
   }));
   document.querySelectorAll("[data-borrar-dia]").forEach(b => b.addEventListener("click", () => {
     if (!confirm("¿Quitar este día entero?")) return;
-    viaje.dias.splice(+b.dataset.borrarDia,1); async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+    viaje.dias.splice(+b.dataset.borrarDia,1);
+    pintaDias();
+    sucio();
   }));
 }
 
@@ -585,30 +523,8 @@ function enganchaFotos(){
         if (kb > 600){ eti.textContent = "+ Añadir una foto";
           alert("Esa foto pesa demasiado incluso comprimida. Prueba con otra."); return; }
         viaje.dias[+inp.dataset.foto].foto = datos;
-        async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+        pintaDias();
+        sucio();
       } catch { eti.textContent = "+ Añadir una foto"; alert("No se pudo leer la imagen."); }
     });
   });
@@ -616,30 +532,8 @@ setTimeout(pintaAvisoNube, 300); sucio();
     if (b.dataset.l) return; b.dataset.l = 1;
     b.addEventListener("click", () => {
       delete viaje.dias[+b.dataset.quitarFoto].foto;
-      async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+      pintaDias();
+      sucio();
     });
   });
 }
@@ -738,30 +632,8 @@ function engancharResultados(){
       viaje.dias[i].paradas.push({
         h:"", txt:res.titulo, n:res.texto.slice(0, 240), mapa:res.titulo
       });
-      async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+      pintaDias();
+      sucio();
     });
   });
   document.querySelectorAll("[data-usar-img]").forEach(b => {
@@ -774,30 +646,8 @@ setTimeout(pintaAvisoNube, 300); sucio();
         const r = await fetch(res.imagen);
         const blob = await r.blob();
         viaje.dias[i].foto = await comprimir(blob);
-        async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+        pintaDias();
+        sucio();
       } catch { b.textContent = "No se pudo guardar"; }
     });
   });
@@ -1004,30 +854,8 @@ document.getElementById("abrir-pedir").addEventListener("click", abrirPedir);
 
 document.getElementById("add-dia").addEventListener("click", () => {
   viaje.dias.push({ t:"", dest:"", paradas:[{h:"", txt:"", n:"", mapa:""}] });
-  async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+  pintaDias();
+  sucio();
   const ds = document.querySelectorAll(".dia");
   ds[ds.length-1]?.scrollIntoView?.({behavior:"smooth", block:"center"});
 });

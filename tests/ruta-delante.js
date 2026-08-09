@@ -1,5 +1,6 @@
 const fs = require('fs');
-const M = fs.readFileSync('/home/claude/viaje/assets/app.js','utf8');
+const path = require('path');
+const M = fs.readFileSync(path.join(__dirname, '..', 'assets/app.js'),'utf8');
 const trozo = re => (M.match(re) || [""])[0];
 const distancia = (a,b) => {
   const R=6371, r=x=>x*Math.PI/180;
@@ -25,12 +26,14 @@ const fetch = async () => ({ ok:true, json: async () => ({
   elements: GASOLINERAS.map(g => ({ lat:g.lat, lon:g.lon, tags:{ name:g.name } })) })});
 
 const ctx = { VIAJE, LUGARES:{}, MIPOS:[46.25, 14.49], miPos:undefined, distancia, fetch,
-              AbortController, setTimeout, clearTimeout, Math, Error, encodeURIComponent };
+              navigator: { geolocation: { getCurrentPosition: (ok, mal) => mal() } },
+              Promise, AbortController, setTimeout, clearTimeout, Math, Error, encodeURIComponent };
 const fn = new Function(...Object.keys(ctx),
   trozo(/function comoTexto[\s\S]*?\n\}/) + "\n" +
   trozo(/function comoPar[\s\S]*?\n\}/) + "\n" +
   trozo(/function xyDeParada[\s\S]*?\n\}/) + "\n" +
   trozo(/function puntosDeRuta[\s\S]*?\n\}/) + "\n" +
+  trozo(/async function ubicacionFresca[\s\S]*?\n\}/) + "\n" +
   trozo(/async function buscarEnRuta[\s\S]*?\n\}\n/) + "\nreturn buscarEnRuta;");
 
 (async () => {

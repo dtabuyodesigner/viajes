@@ -1,7 +1,7 @@
 /* Visor de viajes propios — funcionamiento sin cobertura */
 
-const CACHE = "generico-v4";
-const ARCHIVOS = ["./", "./index.html", "../assets/app.js"];
+const CACHE = "generico-v6";
+const ARCHIVOS = ["./", "./index.html", "../sync.js", "../assets/app.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));

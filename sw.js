@@ -1,7 +1,7 @@
 /* Portada de viajes — funcionamiento sin cobertura */
 
-const CACHE = "portada-v8";
-const ARCHIVOS = ["./", "./index.html", "./img/eslovenia-portada.svg"];
+const CACHE = "portada-v10";
+const ARCHIVOS = ["./", "./index.html", "./sync.js", "./img/eslovenia-portada.svg"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));

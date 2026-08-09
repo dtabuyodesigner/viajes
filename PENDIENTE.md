@@ -6,7 +6,7 @@ Ordenado por lo que más cambia las cosas, no por lo que más cuesta.
 
 ## 1 · Unificar el motor  ·  fase 1 hecha y publicada
 
-**Hecho (v72–v96).** `assets/app.js` son ya **1.096 líneas** compartidas por las
+**Hecho (v72–v98).** `assets/app.js` son ya **1.096 líneas** compartidas por las
 tres apps de viaje: ubicación, mapas, búsquedas, cámara, documentos, pernoctas,
 alojamiento y el vistazo del día. Todo lo añadido desde entonces nace ahí
 directamente, que era el objetivo.

@@ -1,5 +1,6 @@
 const fs = require('fs');
-const M = fs.readFileSync('/home/claude/viaje/assets/app.js','utf8');
+const path = require('path');
+const M = fs.readFileSync(path.join(__dirname, '..', 'assets/app.js'),'utf8');
 const trozo = re => (M.match(re) || [""])[0];
 
 // El móvil: tiene una posición aproximada al momento, y el GPS tarda 6 s

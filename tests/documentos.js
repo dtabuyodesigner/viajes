@@ -1,12 +1,13 @@
-const { JSDOM } = require('/home/claude/viaje/node_modules/jsdom');
+const { JSDOM } = require('jsdom');
 const fs = require('fs');
-const SYNCJS = fs.readFileSync('/home/claude/viaje/sync.js','utf8');
-const MOTOR = fs.readFileSync('/home/claude/viaje/assets/app.js','utf8');
-const FDB = require('/home/claude/viaje/node_modules/fake-indexeddb');
+const path = require('path');
+const SYNCJS = fs.readFileSync(path.join(__dirname, '..', 'sync.js'),'utf8');
+const MOTOR = fs.readFileSync(path.join(__dirname, '..', 'assets/app.js'),'utf8');
+const FDB = require('fake-indexeddb');
 
 const alm = {};
 const idb = new FDB.IDBFactory();
-const html = fs.readFileSync('/home/claude/viaje/eslovenia/index.html','utf8')
+const html = fs.readFileSync(path.join(__dirname, '..', 'eslovenia/index.html'),'utf8')
   .replace(/<script src="[^"]*sync\.js[^"]*"><\/script>/, `<script>\n${SYNCJS}\n</script>`)
   .replace(/<script src="[^"]*assets\/app\.js[^"]*"><\/script>/, `<script>\n${MOTOR}\n</script>`);
 const dom = new JSDOM(html, { runScripts:"dangerously", url:"https://x/eslovenia/", pretendToBeVisual:true,

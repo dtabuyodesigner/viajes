@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="Viajes">
 <meta name="theme-color" content="#12181C">
 <title>Viajes</title>
+<link rel="manifest" href="manifest.json">
 <style>
 :root{
   --fondo:#12181C; --fondo-2:#1C252A; --tinta:#EDF1F3; --tinta-dim:#93A3AA;
@@ -170,7 +171,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v96 · 28/07 20:23";
+const VERSION = "v98 · 10/08 01:10";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();

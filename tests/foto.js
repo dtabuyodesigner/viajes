@@ -16,6 +16,8 @@
    de que sigue haciendo exactamente lo mismo.
    ═══════════════════════════════════════════════════════════ */
 
+process.env.TZ = "Europe/Madrid";
+
 const fs = require("fs");
 const path = require("path");
 const { JSDOM } = require("jsdom");
@@ -102,6 +104,8 @@ async function retratar(app){
       w.IDBKeyRange = FDB.IDBKeyRange;
       w.navigator.geolocation = { getCurrentPosition: () => {} };  // sin ubicación: reproducible
       w.alert = () => {}; w.confirm = () => true; w.prompt = () => null;
+      w.scrollTo = () => {};
+      w.Element.prototype.scrollIntoView = () => {};
       const F = app.fecha || "2026-07-23T10:00:00";
       w.Date = class extends Date {
         constructor(...a){ super(...(a.length ? a : [F])); }
