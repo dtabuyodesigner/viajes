@@ -799,8 +799,6 @@ async function portadaSinRepetidos(){
   await editorConservaTodo();
   await viajesAMedidaEditables();
   await portadaSinRepetidos();
-  await viajesAMedidaEditables();
-  await portadaSinRepetidos();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);
