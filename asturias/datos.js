@@ -1,6 +1,9 @@
 /* ═══════════════════════════════════════════════════════════
    Asturias occidental · los datos del viaje
 
+   Esto es el viaje tal y como se escribió. Si se edita desde
+   el editor, manda la copia guardada en el móvil (viajeEnUso).
+
    Aquí está el viaje entero y nada más: días, paradas, guía de
    lugares e información práctica. La app (index.html) pone la
    estructura y assets/app.js el motor.
@@ -11,7 +14,7 @@
    con los datos viejos.
    ═══════════════════════════════════════════════════════════ */
 
-const VIAJE = {
+const VIAJE_ORIGINAL = {
   nombre: "Asturias occidental",
   salida: "San Miguel de las Dueñas",
   dias: [

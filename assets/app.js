@@ -580,6 +580,74 @@ function activaQueVer(){
 /* La posición llega unas veces como "46.3,14.1" y otras como [46.3, 14.1]:
    cada app la guarda a su manera. Esta función admite ambas y devuelve
    siempre el mismo formato de texto, o null si no vale. */
+/* ---- Cuál es el viaje que manda ----
+   Eslovenia y Asturias traen sus datos escritos en su datos.js. En
+   cuanto se editan desde el editor, la versión buena pasa a ser la
+   guardada en el móvil, que además se sincroniza con el otro teléfono.
+   Aquí se decide cuál de las dos se usa. Borrar la copia guardada
+   devuelve el viaje tal y como venía en el archivo: se puede deshacer. */
+function viajeEnUso(id, delArchivo){
+  try {
+    const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
+    const guardado = propios.find(v => v && v.id === id && !v.borrado);
+    // Solo si tiene días: un viaje vacío por un guardado a medias no
+    // puede dejar la app sin itinerario en mitad de la carretera.
+    if (guardado && Array.isArray(guardado.dias) && guardado.dias.length) return guardado;
+  } catch {}
+  return delArchivo;
+}
+
+/* Copia el viaje del archivo a los viajes del móvil para poder editarlo.
+   Nunca pisa lo que ya hubiera: si ya está, no toca nada. */
+function haceEditable(id, delArchivo){
+  try {
+    const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
+    if (propios.some(v => v && v.id === id)) return true;
+    const copia = { ...delArchivo, id, actualizado: new Date().toISOString() };
+    propios.push(copia);
+    localStorage.setItem("viajes_propios", JSON.stringify(propios));
+    if (typeof SYNC !== "undefined") SYNC.subir(copia).catch(() => {});
+    return true;
+  } catch { return false; }
+}
+
+function bloqueEditarViaje(){
+  return `<div class="hotel-zona">
+    <span class="label">Cambiar el plan</span>
+    <div class="card" style="margin-top:8px">
+      <h3>Editar este viaje</h3>
+      <p>Días, paradas, horarios, notas y alojamiento. Lo que cambies se
+         guarda en el móvil y lo ve el otro. La guía y las reservas se
+         conservan aunque el editor todavía no las enseñe.</p>
+      <div class="btns"><a class="btn solid" href="#" id="btn-editar">Abrir en el editor</a></div>
+    </div>
+  </div>`;
+}
+
+function activaEditarViaje(){
+  const b = document.getElementById("btn-editar");
+  if (!b) return;
+  b.addEventListener("click", e => {
+    e.preventDefault();
+    if (!haceEditable(VIAJE_ID, VIAJE)){
+      b.textContent = "Este móvil no deja guardar";
+      return;
+    }
+    location.href = "../crear/?id=" + encodeURIComponent(VIAJE_ID);
+  });
+}
+
+/* ---- La guía, indexada por su id ----
+   Una parada apunta a su ficha con `g`, y esto es lo que convierte ese
+   nombre en la ficha. Los dos viajes lo hacían por su cuenta, uno desde
+   una lista suelta y otro desde dentro del viaje. */
+function indexaGuia(viaje){
+  const porId = {};
+  ((viaje && viaje.guia) || []).forEach(z =>
+    (z.lugares || []).forEach(l => { porId[l.id] = l; l.zona = z.zona; }));
+  return porId;
+}
+
 function comoTexto(v){
   if (!v) return null;
   const p = Array.isArray(v) ? v.map(Number) : String(v).split(",").map(Number);

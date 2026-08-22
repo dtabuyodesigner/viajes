@@ -479,6 +479,7 @@ const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","S�
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const VERSION = "v98 · 10/08 01:10";
 const VIAJE_ID = "asturias";
+const VIAJE = viajeEnUso(VIAJE_ID, VIAJE_ORIGINAL);
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapaXY = (la, lo) => `https://www.google.com/maps/search/?api=1&query=${la},${lo}`;
 const mapa = q => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
@@ -1097,8 +1098,7 @@ function vistaDias(){
 }
 
 /* ---- Vista GUÍA ---- */
-const LUGARES = {};
-VIAJE.guia.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }));
+const LUGARES = indexaGuia(VIAJE);
 let filtroGuia = "";
 
 function vistaGuia(){
@@ -1433,7 +1433,10 @@ const tarjetaGastos = () => `
   </div>`;
 
 function vistaInfo(){
-  const bloque = (label, titulo, filas) => `
+  // Cada bloque es opcional: un viaje editado no trae información propia
+  // y la pestaña tiene que abrirse igual.
+  const info = VIAJE.info || {};
+  const bloque = (label, titulo, filas) => !(filas && filas.length) ? "" : `
     <div class="sec"><span class="label">${label}</span><h2>${titulo}</h2></div>
     <ul class="plain">${filas.map(([a,b]) =>
       `<li><strong>${esc(a)}</strong> · <span>${esc(b)}</span></li>`).join("")}</ul>`;
@@ -1441,9 +1444,10 @@ function vistaInfo(){
   document.getElementById("v-info").innerHTML =
     `<div class="aviso"><span class="ic">!</span>
       <p>Somiedo es territorio de osos, lobos y mastines de rebaño. Bella y Lisboa atadas en todo el parque.</p></div>` +
-    tarjetaGastos() + panelNav() + 
-    bloque("Bella y Lisboa", "Con las perras", VIAJE.info.perras) +
-    bloque("Dormir y conducir", "La furgo", VIAJE.info.furgo) +
+    tarjetaGastos() + panelNav() +
+    bloqueEditarViaje() +
+    bloque("Bella y Lisboa", "Con las perras", info.perras) +
+    bloque("Dormir y conducir", "La furgo", info.furgo) +
     `<div class="card" style="margin-top:12px">
        <h3>park4night</h3>
        <p class="note" style="margin-top:0">El primer botón abre la app en vuestra ubicación. El segundo, el mapa web, por si no la tenéis a mano.</p>
@@ -1452,7 +1456,7 @@ function vistaInfo(){
          <a class="btn" href="https://park4night.com/es/search" target="_blank" rel="noopener">Mapa web</a>
        </div>
      </div>` +
-    bloque("Día a día", "Práctico", VIAJE.info.practico) +
+    bloque("Día a día", "Práctico", info.practico) +
     `<div class="sec"><span class="label">Mantenimiento</span><h2>Actualizar</h2></div>
      <div class="card">
        <div class="row"><span class="k">Versión instalada</span><span class="v mono">${VERSION}</span></div>
@@ -1483,6 +1487,7 @@ function vistaInfo(){
     b.addEventListener("click", () => { PREF.avisar = b.dataset.avisar === "si"; vistaInfo(); }));
   document.querySelectorAll("[data-via]").forEach(b =>
     b.addEventListener("click", () => { PREF.via = b.dataset.via; vistaInfo(); }));
+  activaEditarViaje();
 }
 
 /* ---- Navegación ---- */

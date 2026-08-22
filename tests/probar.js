@@ -15,7 +15,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { JSDOM } = require("jsdom");
+const { JSDOM, VirtualConsole } = require("jsdom");
 
 const RAIZ = path.join(__dirname, "..");
 let fallos = 0, pruebas = 0;
@@ -59,8 +59,19 @@ function abrir(rutaHtml, opciones = {}){
   const html = conScriptsDentro(fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8"), rutaHtml);
 
   const errores = [];
+  // jsdom no es un navegador: avisa de lo que no implementa (navegar,
+  // hacer scroll). Eso no son fallos de la app, y su ruido tapa los que
+  // sí lo son. Se filtran solo esos avisos; los errores de JavaScript de
+  // verdad siguen recogiéndose abajo, en el listener de "error".
+  const consola = new VirtualConsole();
+  consola.on("jsdomError", e => {
+    if (/Not implemented/.test(e && e.message)) return;
+    console.error(e && e.message);
+  });
+  ["log","info","warn","error"].forEach(n => consola.on(n, (...a) => console[n](...a)));
+
   const dom = new JSDOM(html, {
-    runScripts: "dangerously", url, pretendToBeVisual: true,
+    runScripts: "dangerously", url, pretendToBeVisual: true, virtualConsole: consola,
     beforeParse(w){
       Object.defineProperty(w, "localStorage", { value: {
         getItem: k => (k in almacen ? almacen[k] : null),
@@ -618,6 +629,88 @@ async function editorConservaTodo(){
   }
 }
 
+/* ---- 12. Los viajes escritos a mano se pueden editar ----
+   Eslovenia y Asturias traen sus datos en datos.js. Al editarlos, manda
+   la copia guardada en el móvil; si no hay copia, manda el archivo.
+   Se mira lo que se pinta, no las variables: `const` en un script normal
+   no se cuelga de window, y compararlas daría verde siempre. */
+function datosOriginales(carpeta){
+  const codigo = fs.readFileSync(path.join(RAIZ, carpeta, "datos.js"), "utf8");
+  return new Function(codigo + "\nreturn VIAJE_ORIGINAL;")();
+}
+
+const A_MEDIDA = [
+  { nombre:"Asturias",  carpeta:"asturias",  url:"https://x/asturias/",  opciones:{} },
+  { nombre:"Eslovenia", carpeta:"eslovenia", url:"https://x/eslovenia/",
+    opciones:{ fecha:"2026-07-25T12:00:00" } }
+];
+
+/* Abre la app, va a Info y devuelve el nombre que enseña la cabecera */
+async function nombreQuePinta(app, almacen){
+  const dom = abrir(`${app.carpeta}/index.html`, { url:app.url, almacen, conexion:false, ...app.opciones });
+  await esperar(400);
+  const d = dom.window.document;
+  [...d.querySelectorAll("nav button")].find(b => b.dataset.v === "info")?.click();
+  await esperar(150);
+  return { dom, d, nombre: d.getElementById("eyebrow")?.textContent || "" };
+}
+
+async function viajesAMedidaEditables(){
+  console.log(`\n${gris("──")} Eslovenia y Asturias se pueden editar`);
+
+  for (const app of A_MEDIDA){
+    const original = datosOriginales(app.carpeta);
+    comprobar(`${app.nombre}: datos.js se sostiene solo`,
+              !!original && Array.isArray(original.dias) && original.dias.length > 0,
+              "no define un viaje con días");
+
+    // Sin copia guardada manda el archivo, y la pestaña Info ofrece editar
+    {
+      const almacen = {};
+      const { dom, d, nombre } = await nombreQuePinta(app, almacen);
+      comprobar(`${app.nombre}: sin copia guardada pinta el viaje del archivo`,
+                nombre === original.nombre, `pintó «${nombre}»`);
+
+      const boton = d.getElementById("btn-editar");
+      comprobar(`${app.nombre}: la pestaña Info ofrece editar el viaje`, !!boton, "no está el botón");
+
+      if (boton){
+        boton.click();
+        await esperar(150);
+        const copia = (JSON.parse(almacen.viajes_propios || "[]")).find(v => v.id === app.carpeta);
+        comprobar(`${app.nombre}: al editar, el viaje pasa al móvil con su id de siempre`,
+                  !!copia, "no se guardó, o se guardó con otro id");
+        if (copia){
+          const perdido = loQueFalta({ ...original, id:app.carpeta, actualizado:copia.actualizado }, copia);
+          comprobar(`${app.nombre}: la copia lleva el viaje entero`, perdido === null, `se perdió «${perdido}»`);
+          comprobar(`${app.nombre}: la copia lleva la guía de lugares`,
+                    Array.isArray(copia.guia) && copia.guia.length > 0, "la guía no viajó");
+        }
+      }
+      comprobar(`${app.nombre}: sin errores al ofrecer la edición`, dom.errores.length === 0, dom.errores[0]);
+    }
+
+    // Con copia guardada manda la copia
+    {
+      const editado = { id:app.carpeta, nombre:"Cambiado a mano", desde:"2026-07-18", hasta:"", salida:"",
+                        dias:[{ t:"Un solo día", dest:"Donde sea", paradas:[{ h:"10:00", txt:"Parada única" }] }],
+                        actualizado:"2030-01-01T00:00:00.000Z" };
+      const { dom, nombre } = await nombreQuePinta(app, { viajes_propios: JSON.stringify([editado]) });
+      comprobar(`${app.nombre}: con copia guardada, manda la copia`,
+                nombre === "Cambiado a mano", `pintó «${nombre}»`);
+      comprobar(`${app.nombre}: editado, sigue pintando sin errores`, dom.errores.length === 0, dom.errores[0]);
+    }
+
+    // Una copia a medio guardar no puede dejar la app sin itinerario
+    {
+      const roto = JSON.stringify([{ id:app.carpeta, nombre:"A medio guardar", dias:[] }]);
+      const { nombre } = await nombreQuePinta(app, { viajes_propios: roto });
+      comprobar(`${app.nombre}: una copia sin días no deja la app sin viaje`,
+                nombre === original.nombre, `pintó «${nombre}»`);
+    }
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -649,6 +742,8 @@ async function editorConservaTodo(){
   await nadaSePierdeEnLaNube();
   dependenciasEnServiceWorker();
   await editorConservaTodo();
+  await viajesAMedidaEditables();
+  await viajesAMedidaEditables();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);

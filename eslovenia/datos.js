@@ -1,6 +1,9 @@
 /* ═══════════════════════════════════════════════════════════
    Eslovenia y Venecia · los datos del viaje
 
+   Esto es el viaje tal y como se escribió. Si se edita desde
+   el editor, manda la copia guardada en el móvil (viajeEnUso).
+
    Aquí está el viaje entero y nada más: vuelos, coche, seguros,
    teléfonos, alojamientos, los doce días con sus paradas, la guía
    de lugares y la información práctica. La app (index.html) pone
@@ -12,7 +15,7 @@
    con los datos viejos.
    ═══════════════════════════════════════════════════════════ */
 
-const VIAJE = {
+const VIAJE_ORIGINAL = {
   nombre: "Eslovenia · Venecia",
   anio: 2026,
 
@@ -213,8 +216,9 @@ const VIAJE = {
 
 /* =========================================================
    GUÍA DE LUGARES — información recopilada del viaje
+   Va dentro del viaje para que viaje con él al editarlo.
    ========================================================= */
-const GUIA = [
+VIAJE_ORIGINAL.guia = [
   { zona:"Alpes Julianos", wl:["Bled","Bohinj","Vintgar","Triglav"], arte:"bled", nota:"La postal eslovena: picos, lagos glaciares y el parque nacional más salvaje del país.", lugares:[
     { id:"bled", xy:"46.368,14.114", n:"Lago Bled", d:"2026-07-23",
       t:"El más conocido y el más turístico, y aun así merece la pena. Una isla en mitad del agua con una iglesia encima, y montañas de fondo. La foto clásica sale del mirador de Ojstrica; a la isla se va en pletna, la barca de remo tradicional, y hay 99 escalones hasta arriba.",
@@ -376,6 +380,3 @@ const GUIA = [
       k:[["Menú del día","10–12 €"],["Entradas","15–30 € por persona"]] }
   ]}
 ];
-
-const LUGARES = {};
-GUIA.forEach(z => z.lugares.forEach(l => { LUGARES[l.id] = l; l.zona = z.zona; }));

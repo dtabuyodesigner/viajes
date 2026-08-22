@@ -538,6 +538,8 @@ const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","S�
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const VERSION = "v98 · 10/08 01:10";
 const VIAJE_ID = "eslovenia";
+const VIAJE = viajeEnUso(VIAJE_ID, VIAJE_ORIGINAL);
+const LUGARES = indexaGuia(VIAJE);
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const mapsDe = q => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=driving`;
 const wazeXY = (la, lo) => `waze://?ll=${la},${lo}&navigate=yes`;
@@ -1298,7 +1300,7 @@ function pintaPassword(){
 
 /* ---- Copiar al portapapeles ---- */
 function activaCopiar(){
-  VIAJE.vuelos.forEach((v, i) => pintaDoc("emb-" + i, "Tarjetas de embarque",
+  (VIAJE.vuelos || []).forEach((v, i) => pintaDoc("emb-" + i, "Tarjetas de embarque",
     "Guárdalas aquí y las tendrás sin cobertura, sin buscar en el correo."));
 
   document.querySelectorAll("[data-copy]").forEach(b => {
@@ -1324,9 +1326,12 @@ function activaCopiar(){
 
 /* ---- Vista RESERVAS ---- */
 function vistaReservas(){
+  // Cada bloque es opcional: un viaje editado o creado en el editor no
+  // trae vuelos, ni seguros, ni alojamientos, y la pestaña tiene que
+  // seguir abriéndose igual en vez de quedarse en blanco.
   const a = VIAJE.acceso, c = VIAJE.coche;
 
-  const vuelos = VIAJE.vuelos.map((v, i) => `
+  const vuelos = (VIAJE.vuelos || []).map((v, i) => `
     <div class="card">
       <span class="label">${esc(v.fecha)}</span>
       <h3>${esc(v.ruta)}</h3>
@@ -1354,7 +1359,7 @@ function vistaReservas(){
     <div class="card">
       <span class="label">${esc(a.cia)}</span>
       <h3>Entrar en la web de la aerolínea</h3>
-      <div class="row"><span class="k">Referencia</span><span class="v mono">${esc(VIAJE.vuelos[0].loc)}</span></div>
+      <div class="row"><span class="k">Referencia</span><span class="v mono">${esc(VIAJE.vuelos?.[0]?.loc || "")}</span></div>
       <div class="row"><span class="k">E-mail</span><span class="v mono" style="word-break:break-all">${esc(a.email)}</span></div>
       <div class="row"><span class="k">Contraseña</span><span class="v mono" id="pw"></span></div>
       <div id="pw-set"></div>
@@ -1365,7 +1370,7 @@ function vistaReservas(){
       <p class="note">La contraseña se guarda solo en este iPhone, nunca sale del dispositivo.</p>
     </div>`;
 
-  const seguros = VIAJE.seguros.map(s => `
+  const seguros = (VIAJE.seguros || []).map(s => `
     <div class="card">
       <span class="label">Póliza ${esc(s.poliza)}</span>
       <h3>${esc(s.nombre)} · hasta ${esc(s.limite)}</h3>
@@ -1375,7 +1380,7 @@ function vistaReservas(){
     </div>`).join("");
 
   const limpio = n => n.replace(/[^\d+]/g, "");
-  const tels = VIAJE.telefonos.map(t => `
+  const tels = (VIAJE.telefonos || []).map(t => `
     <div class="tel${t.urgente ? " sos" : ""}">
       <h4>${esc(t.q)}</h4>
       <p class="sub">${esc(t.sub)}</p>
@@ -1387,7 +1392,7 @@ function vistaReservas(){
       </div>
     </div>`).join("");
 
-  const camas = VIAJE.alojamientos.map(x => `
+  const camas = (VIAJE.alojamientos || []).map(x => `
     <div class="card">
       <span class="label">${esc(x.fechas)}</span>
       <h3>${esc(x.nombre)}</h3>
@@ -1480,17 +1485,19 @@ const tarjetaGastos = () => `
   </div>`;
 
 function vistaInfo(){
-  const bloque = (label, titulo, filas, tel) => `
+  const info = VIAJE.info || {};
+  const bloque = (label, titulo, filas, tel) => !(filas && filas.length) ? "" : `
     <div class="sec"><span class="label">${label}</span><h2>${titulo}</h2></div>
     <ul class="plain">${filas.map(([a,b]) => `<li>${tel
       ? `<a href="tel:${esc(b.replace(/\s/g,""))}"><strong>${esc(b)}</strong></a> · <span>${esc(a)}</span>`
       : `<strong>${esc(a)}</strong> · <span>${esc(b)}</span>`}</li>`).join("")}</ul>`;
 
-  document.getElementById("v-info").innerHTML = tarjetaGastos() + panelNav() + 
-    bloque("Marca sin prefijo", "Emergencias", VIAJE.info.emergencias, true) +
-    bloque("Al volante", "Carretera", VIAJE.info.conducir) +
-    bloque("Slovenščina", "Cuatro palabras", VIAJE.info.frases) +
-    bloque("Día a día", "Práctico", VIAJE.info.practico) +
+  document.getElementById("v-info").innerHTML = tarjetaGastos() + panelNav() +
+    bloqueEditarViaje() +
+    bloque("Marca sin prefijo", "Emergencias", info.emergencias, true) +
+    bloque("Al volante", "Carretera", info.conducir) +
+    bloque("Slovenščina", "Cuatro palabras", info.frases) +
+    bloque("Día a día", "Práctico", info.practico) +
     `<div class="sec"><span class="label">Mantenimiento</span><h2>Actualizar</h2></div>
      <div class="card">
        <div class="row"><span class="k">Versión instalada</span><span class="v mono">${VERSION}</span></div>
@@ -1523,6 +1530,7 @@ function vistaInfo(){
   document.querySelectorAll("[data-via]").forEach(b => b.addEventListener("click", () => {
     PREF.via = b.dataset.via; vistaInfo();
   }));
+  activaEditarViaje();
 }
 
 
@@ -1536,7 +1544,7 @@ function vistaGuia(){
   let html = `<input class="buscador" id="q" type="search" placeholder="Buscar un sitio…" value="${esc(filtroGuia)}">` + bloqueCerca() + bloqueQueVer() + bloqueServicios();
   let total = 0;
 
-  GUIA.forEach(z => {
+  VIAJE.guia.forEach(z => {
     const ls = z.lugares.filter(coincide);
     if (!ls.length) return;
     total += ls.length;
@@ -1845,7 +1853,7 @@ function vePestana(v){
     document.getElementById("title").textContent = TITULOS[v];
     document.getElementById("subtitle").textContent = v === "guia"
       ? `${Object.keys(LUGARES).length} sitios recopilados`
-      : `Julio ${VIAJE.anio}`;
+      : (VIAJE.anio ? `Julio ${VIAJE.anio}` : (VIAJE.desde || ""));
   }
   window.scrollTo({top:0});
 }
