@@ -335,6 +335,125 @@ function posicionEnDosFormas(){
   }
 }
 
+/* ---- 9. Nada se pierde al sincronizar ----
+   El móvil manda: lo que la nube no sepa llevar no puede borrarlo. */
+function montarNube(opciones = {}){
+  const { columnasViejas = false } = opciones;
+  const codigo = fs.readFileSync(path.join(RAIZ, "sync.js"), "utf8");
+
+  const almacen = {};
+  const localStorage = {
+    getItem: k => (k in almacen ? almacen[k] : null),
+    setItem: (k, v) => { almacen[k] = String(v); },
+    removeItem: k => { delete almacen[k]; }
+  };
+
+  // Un servidor que solo acepta las columnas que existen de verdad
+  const COLUMNAS = ["id","nombre","desde","hasta","salida","dias","autor","actualizado","borrado"];
+  if (!columnasViejas) COLUMNAS.push("extra");
+  const TABLA = new Map();
+  const cliente = { from(){ return {
+    async upsert(fila){
+      const sobran = Object.keys(fila).filter(k => !COLUMNAS.includes(k));
+      if (sobran.length) return { error:{ message:`no existe la columna «${sobran[0]}»` } };
+      TABLA.set(fila.id, { ...fila });
+      return { error:null };
+    },
+    async select(){ return { data:[...TABLA.values()], error:null }; },
+    update(){ return { eq: async () => ({ error:null }) }; }
+  }; } };
+
+  const ctx = {
+    localStorage,
+    window: { addEventListener(){}, supabase:null },
+    document: { head:{ appendChild(){} }, createElement:() => ({}) },
+    navigator: { onLine:true },
+    setTimeout, clearTimeout, console,
+    Promise, JSON, Date, Set, Map, Object, Array, String, Number, Math,
+    fetch: async () => ({ ok:false })
+  };
+  const fn = new Function(...Object.keys(ctx), codigo + "\nreturn { SYNC };");
+  const { SYNC } = fn(...Object.values(ctx));
+  SYNC.conectar = async () => cliente;      // sin red: se prueba la fusión, no Supabase
+  SYNC.sesion = { user:{ email:"prueba@ejemplo" } };
+  return { SYNC, TABLA };
+}
+
+function viajeDePrueba(){
+  return {
+    id:"p9", nombre:"Prueba", desde:"2026-07-18", hasta:"2026-07-20", salida:"León",
+    normas:["Andando sin acera se camina por la izquierda"],
+    dias:[{ t:"Día uno", dest:"Zagreb", paradas:[{ h:"10:00", txt:"Llegada" }] }],
+    reservas:{ vuelos:[{ ruta:"MAD → ZAG", loc:"ABC123" }], coche:{ reserva:"R1" }, telefonos:[] },
+    actualizado:"2026-01-01T10:00:00.000Z"
+  };
+}
+
+async function nadaSePierdeEnLaNube(){
+  console.log("\n" + gris("──") + " Nada se pierde al sincronizar");
+
+  // Guardar, subir y volver a bajar no puede vaciar el viaje
+  {
+    const { SYNC } = montarNube();
+    const v = viajeDePrueba();
+    SYNC.guardarLocales([v]);
+    await SYNC.subir(v);
+    await SYNC.sincronizar();
+    const d = SYNC.locales()[0] || {};
+    comprobar("las reservas siguen ahí",
+      d.reservas?.vuelos?.[0]?.loc === "ABC123", "el viaje volvió sin reservas");
+    comprobar("las normas siguen ahí",
+      Array.isArray(d.normas) && d.normas.length === 1, "el viaje volvió sin normas");
+  }
+
+  // Un bloque que el modelo todavía no conoce tampoco puede perderse
+  {
+    const { SYNC } = montarNube();
+    const v = viajeDePrueba();
+    v.guia = [{ zona:"Somiedo", lugares:[{ id:"teitos", n:"Cabañas de teito" }] }];
+    v.inventadoElAnioQueViene = { algo:"que hoy no existe" };
+    SYNC.guardarLocales([v]);
+    await SYNC.subir(v);
+    await SYNC.sincronizar();
+    const d = SYNC.locales()[0] || {};
+    comprobar("la guía sigue ahí",
+      d.guia?.[0]?.lugares?.[0]?.id === "teitos", "el viaje volvió sin guía");
+    comprobar("un campo futuro desconocido sigue ahí",
+      d.inventadoElAnioQueViene?.algo === "que hoy no existe", "se descartó lo que no se reconoce");
+  }
+
+  // Con una base de datos antigua, sin la columna nueva, tampoco se pierde nada
+  {
+    const { SYNC } = montarNube({ columnasViejas:true });
+    const v = viajeDePrueba();
+    SYNC.guardarLocales([v]);
+    const subido = await SYNC.subir(v);
+    await SYNC.sincronizar();
+    const d = SYNC.locales()[0] || {};
+    comprobar("con la base de datos antigua, el viaje se sube igual",
+      subido === true, "se quedó pendiente de subir");
+    comprobar("con la base de datos antigua, las reservas siguen ahí",
+      d.reservas?.vuelos?.[0]?.loc === "ABC123", "el viaje volvió sin reservas");
+  }
+
+  // Y lo que la nube sí sabe llevar sigue mandando si es más reciente
+  {
+    const { SYNC, TABLA } = montarNube();
+    const v = viajeDePrueba();
+    SYNC.guardarLocales([v]);
+    await SYNC.subir(v);
+    const fila = TABLA.get("p9");
+    fila.nombre = "Cambiado en el otro móvil";
+    fila.actualizado = "2027-01-01T10:00:00.000Z";
+    await SYNC.sincronizar();
+    const d = SYNC.locales()[0] || {};
+    comprobar("gana el más reciente en lo que la nube sí lleva",
+      d.nombre === "Cambiado en el otro móvil", `quedó «${d.nombre}»`);
+    comprobar("y aun así no se lleva por delante las reservas",
+      d.reservas?.vuelos?.[0]?.loc === "ABC123", "el viaje volvió sin reservas");
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -363,6 +482,7 @@ function posicionEnDosFormas(){
   temaClaroCompleto();
   idsUnicos();
   posicionEnDosFormas();
+  await nadaSePierdeEnLaNube();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);

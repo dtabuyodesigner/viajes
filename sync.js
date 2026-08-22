@@ -21,9 +21,21 @@ function conTope(promesa, ms, fallo){
   ]);
 }
 
+/* Todo lo que no tiene columna propia en la tabla viaja junto, en `extra` */
+const COLUMNAS_PROPIAS = ["id","nombre","desde","hasta","salida","dias",
+                          "autor","actualizado","borrado","extra"];
+
+function loDemas(viaje){
+  const resto = {};
+  for (const k of Object.keys(viaje || {}))
+    if (!COLUMNAS_PROPIAS.includes(k)) resto[k] = viaje[k];
+  return resto;
+}
+
 const SYNC = {
   cliente: null,
   sesion: null,
+  hayExtra: true,        // hasta que el servidor diga lo contrario
 
   /* ---- Local ---- */
   locales(){
@@ -109,17 +121,32 @@ const SYNC = {
     this.sesion = null;
   },
 
-  /* ---- Subir un viaje ---- */
+  /* ---- Subir un viaje ----
+     La tabla tiene una columna por lo que se consulta (nombre, fechas,
+     días) y una columna `extra` para todo lo demás: reservas, guía,
+     normas, seguros… y lo que se invente más adelante. Así un bloque
+     nuevo llega al otro móvil sin volver a tocar el SQL.
+     Si la base de datos todavía no tiene `extra`, se sube sin ella: el
+     viaje viaja igual y en el móvil no se pierde nada (ver _sincronizar). */
   async subir(viaje){
     const c = await this.conectar();
     if (!c || !this.sesion){ this.marcarPendiente(viaje.id); return false; }
+
+    const fila = {
+      id: viaje.id, nombre: viaje.nombre, desde: viaje.desde || "",
+      hasta: viaje.hasta || "", salida: viaje.salida || "",
+      dias: viaje.dias || [], autor: this.sesion.user?.email || "",
+      actualizado: new Date().toISOString(), borrado: false
+    };
+
     try {
-      const { error } = await c.from("viajes").upsert({
-        id: viaje.id, nombre: viaje.nombre, desde: viaje.desde || "",
-        hasta: viaje.hasta || "", salida: viaje.salida || "",
-        dias: viaje.dias || [], autor: this.sesion.user?.email || "",
-        actualizado: new Date().toISOString(), borrado: false
-      });
+      if (this.hayExtra){
+        const { error } = await c.from("viajes").upsert({ ...fila, extra: loDemas(viaje) });
+        if (!error){ this.limpiarPendiente(viaje.id); return true; }
+        // Puede ser que la columna no exista todavía: se reintenta sin ella
+        this.hayExtra = false;
+      }
+      const { error } = await c.from("viajes").upsert(fila);
       if (error) throw error;
       this.limpiarPendiente(viaje.id);
       return true;
@@ -171,8 +198,13 @@ const SYNC = {
         if (l){ porId.delete(r.id); cambios++; }
         continue;
       }
-      const nube = { id:r.id, nombre:r.nombre, desde:r.desde||"", hasta:r.hasta||"",
-                     salida:r.salida||"", dias:r.dias||[], actualizado:r.actualizado };
+      // El móvil manda: se parte de lo que ya hay aquí y la nube encima.
+      // Lo que la nube no sepa llevar (una base de datos sin `extra`, un
+      // viaje subido por una versión antigua) no puede borrarlo.
+      const nube = { ...(l || {}),
+                     id:r.id, nombre:r.nombre, desde:r.desde||"", hasta:r.hasta||"",
+                     salida:r.salida||"", dias:r.dias||[], actualizado:r.actualizado,
+                     ...(r.extra || {}) };
       if (!l){ porId.set(r.id, nube); cambios++; continue; }
       // gana el más reciente
       const tl = Date.parse(l.actualizado || 0) || 0;
