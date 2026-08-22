@@ -82,15 +82,21 @@ function normaliza(html){
     .trim();
 }
 
+/* ---- Mete en línea los scripts propios, como haría el navegador ----
+   Por la etiqueta y no por una lista escrita a mano: así un archivo
+   nuevo del que dependa una app (datos.js) entra solo. */
+function conScriptsDentro(html, rutaHtml){
+  const carpeta = path.posix.dirname(rutaHtml.split(path.sep).join("/"));
+  return html.replace(/<script\s+src="([^"]+)"><\/script>/g, (etiqueta, src) => {
+    if (/^https?:/.test(src)) return etiqueta;
+    const real = path.join(RAIZ, path.posix.normalize(path.posix.join(carpeta, src)));
+    if (!fs.existsSync(real)) return etiqueta;
+    return `<script>\n${fs.readFileSync(real, "utf8")}\n</script>`;
+  });
+}
+
 async function retratar(app){
-  let html = fs.readFileSync(path.join(RAIZ, app.ruta), "utf8");
-  const sync = fs.readFileSync(path.join(RAIZ, "sync.js"), "utf8");
-  html = html.replace(/<script src="[^"]*sync\.js[^"]*"><\/script>/,
-                      `<script>\n${sync}\n</script>`);
-  const motor = fs.existsSync(path.join(RAIZ, "assets/app.js"))
-    ? fs.readFileSync(path.join(RAIZ, "assets/app.js"), "utf8") : "";
-  html = html.replace(/<script src="[^"]*assets\/app\.js[^"]*"><\/script>/,
-                      motor ? `<script>\n${motor}\n</script>` : "");
+  const html = conScriptsDentro(fs.readFileSync(path.join(RAIZ, app.ruta), "utf8"), app.ruta);
 
   const almacen = { tema_viajes: "oscuro", ...(app.almacen || {}) };
   const dom = new JSDOM(html, {

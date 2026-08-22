@@ -30,6 +30,20 @@ function comprobar(desc, condicion, detalle){
   else { fallos++; console.log(`  ${rojo("✗")} ${desc}${detalle ? gris("  → " + detalle) : ""}`); }
 }
 
+/* ---- Mete en línea los scripts propios, como haría el navegador ----
+   jsdom no baja scripts por red, así que hay que darle el contenido. Al
+   hacerlo por la etiqueta y no por una lista escrita a mano, un archivo
+   nuevo del que dependa una app (datos.js) entra solo en las pruebas. */
+function conScriptsDentro(html, rutaHtml){
+  const carpeta = path.posix.dirname(rutaHtml.split(path.sep).join("/"));
+  return html.replace(/<script\s+src="([^"]+)"><\/script>/g, (etiqueta, src) => {
+    if (/^https?:/.test(src)) return etiqueta;
+    const real = path.join(RAIZ, path.posix.normalize(path.posix.join(carpeta, src)));
+    if (!fs.existsSync(real)) return etiqueta;
+    return `<script>\n${fs.readFileSync(real, "utf8")}\n</script>`;
+  });
+}
+
 /* ---- Monta una app en un navegador simulado ---- */
 function abrir(rutaHtml, opciones = {}){
   const {
@@ -42,15 +56,7 @@ function abrir(rutaHtml, opciones = {}){
     respuestaFetch = null
   } = opciones;
 
-  let html = fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8");
-  // sync.js se inyecta en línea, como haría el navegador
-  const sync = fs.readFileSync(path.join(RAIZ, "sync.js"), "utf8");
-  html = html.replace(/<script src="[^"]*sync\.js[^"]*"><\/script>/,
-                      `<script>\n${sync}\n</script>`);
-  const motor = fs.existsSync(path.join(RAIZ, "assets/app.js"))
-    ? fs.readFileSync(path.join(RAIZ, "assets/app.js"), "utf8") : "";
-  html = html.replace(/<script src="[^"]*assets\/app\.js[^"]*"><\/script>/,
-                      motor ? `<script>\n${motor}\n</script>` : "");
+  const html = conScriptsDentro(fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8"), rutaHtml);
 
   const errores = [];
   const dom = new JSDOM(html, {
@@ -454,6 +460,164 @@ async function nadaSePierdeEnLaNube(){
   }
 }
 
+/* ---- 10. Lo que la app carga, su service worker lo guarda ----
+   El fallo más repetido del repositorio: se añade un archivo, se olvida
+   decirlo en el sw.js, y desde el icono de inicio la app se queda a
+   medias porque sin cobertura ese archivo no está. */
+const APPS_CON_SW = [
+  { carpeta: ".",         nombre: "portada"   },
+  { carpeta: "crear",     nombre: "editor"    },
+  { carpeta: "viaje",     nombre: "visor"     },
+  { carpeta: "eslovenia", nombre: "Eslovenia" },
+  { carpeta: "asturias",  nombre: "Asturias"  }
+];
+
+/* Deja una ruta en su forma canónica desde la raíz del repositorio */
+function desdeLaRaiz(carpeta, ruta){
+  const base = carpeta === "." ? "" : carpeta;
+  return path.posix.normalize(path.posix.join(base, ruta)).replace(/^\.\//, "");
+}
+
+function scriptsDe(html){
+  return [...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m => m[1]);
+}
+
+function archivosDelSw(codigo){
+  const m = codigo.match(/const ARCHIVOS\s*=\s*(\[[\s\S]*?\]);/);
+  if (!m) return null;
+  try { return new Function("return " + m[1])(); } catch { return null; }
+}
+
+function dependenciasEnServiceWorker(){
+  console.log("\n" + gris("──") + " Lo que la app carga, su service worker lo guarda");
+
+  for (const app of APPS_CON_SW){
+    const rutaHtml = path.posix.join(app.carpeta === "." ? "." : app.carpeta, "index.html");
+    const rutaSw   = path.posix.join(app.carpeta === "." ? "." : app.carpeta, "sw.js");
+    const html = fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8");
+    const sw   = fs.readFileSync(path.join(RAIZ, rutaSw), "utf8");
+
+    const archivos = archivosDelSw(sw);
+    if (!archivos){
+      comprobar(`${app.nombre}: su sw.js declara qué guardar`, false, "no se pudo leer ARCHIVOS");
+      continue;
+    }
+    const guardados = new Set(archivos.map(a => desdeLaRaiz(app.carpeta, a)));
+
+    for (const src of scriptsDe(html)){
+      if (/^https?:/.test(src)) continue;          // lo de fuera no se guarda
+      const quiere = desdeLaRaiz(app.carpeta, src);
+      comprobar(`${app.nombre}: ${src} está en su sw.js`,
+                guardados.has(quiere),
+                `ARCHIVOS no incluye «${quiere}»`);
+    }
+
+    // Y el archivo debe existir de verdad, no ser una ruta muerta
+    for (const a of archivos){
+      if (a === "./" || /^https?:/.test(a)) continue;
+      const real = path.join(RAIZ, desdeLaRaiz(app.carpeta, a));
+      comprobar(`${app.nombre}: ${a} existe`, fs.existsSync(real), "el sw.js guarda un archivo que no está");
+    }
+  }
+}
+
+/* ---- 11. El editor no pierde lo que todavía no sabe editar ----
+   Abrir un viaje y guardarlo sin tocar nada tiene que devolverlo entero,
+   aunque traiga bloques que el editor no enseña en ningún formulario. */
+function viajeConTodo(){
+  return {
+    id:"asturias", nombre:"Asturias occidental", desde:"2026-08-05", hasta:"2026-08-09",
+    salida:"San Miguel de las Dueñas",
+    actualizado:"2026-01-01T10:00:00.000Z",
+    dias:[{
+      d:1, t:"Subida a Somiedo", dest:"Pola de Somiedo", km:"150 km · 2 h 30",
+      xy:"43.090,-6.250", arte:"puerto", base:"Zona alta de Somiedo",
+      paradas:[{ h:"Mañana", txt:"Puerto de Somiedo", c:"Pola de Somiedo",
+                 n:"Carretera de puerto", mapa:"Pola de Somiedo", key:true,
+                 g:"centro", w:"Somiedo", wl:"lagos de saliencia", xy:"43.090,-6.250",
+                 park:{ n:"La Farrapona", w:"Farrapona aparcamiento", p:"Se llena antes de las 9", gratis:true } }]
+    }],
+    guia:[{ zona:"Somiedo", arte:"lagos", nota:"Parque natural",
+            lugares:[{ id:"teitos", xy:"43.058,-6.094", n:"Cabañas de teito", t:"Techo de escoba" }] }],
+    vuelos:[{ ruta:"MAD → OVD", loc:"ABC123", asientos:[["Dani","22D"]] }],
+    coche:{ proveedor:"Last Minute Rent", franquicia:"1.200 €" },
+    seguros:[{ nombre:"Sanitas", poliza:"P1" }],
+    telefonos:[{ q:"Emergencias", n:"112", urgente:true }],
+    alojamientos:[{ fechas:"5–6 ago", nombre:"Camping Lagos", zona:"Somiedo" }],
+    info:[{ id:"furgo", titulo:"En la furgo", filas:[["Agua","Fuentes en los pueblos"]] }],
+    normas:["Se conduce por la derecha"]
+  };
+}
+
+/* Recorre dos objetos y devuelve la primera ruta que se ha perdido */
+function loQueFalta(antes, despues, ruta = ""){
+  if (antes === null || typeof antes !== "object"){
+    return JSON.stringify(antes) === JSON.stringify(despues) ? null : (ruta || "(raíz)");
+  }
+  if (Array.isArray(antes)){
+    if (!Array.isArray(despues) || despues.length !== antes.length) return ruta + "[]";
+    for (let i = 0; i < antes.length; i++){
+      const f = loQueFalta(antes[i], despues[i], `${ruta}[${i}]`);
+      if (f) return f;
+    }
+    return null;
+  }
+  if (despues === null || typeof despues !== "object") return ruta || "(raíz)";
+  for (const k of Object.keys(antes)){
+    const f = loQueFalta(antes[k], despues[k], ruta ? `${ruta}.${k}` : k);
+    if (f) return f;
+  }
+  return null;
+}
+
+async function editorConservaTodo(){
+  console.log(`\n${gris("──")} El editor no pierde lo que no sabe editar`);
+
+  // Abrir un viaje con todos los bloques y guardarlo sin tocar nada
+  {
+    const original = viajeConTodo();
+    const almacen = { viajes_propios: JSON.stringify([original]) };
+    const dom = abrir("crear/index.html", { url:"https://x/crear/?id=asturias", almacen, conexion:false });
+    await esperar(400);
+    const d = dom.window.document;
+
+    d.getElementById("guardar").click();
+    await esperar(200);
+
+    const guardado = (JSON.parse(almacen.viajes_propios || "[]"))[0] || {};
+    const perdido = loQueFalta({ ...original, actualizado: guardado.actualizado }, guardado);
+    comprobar("abrir y guardar sin tocar nada conserva el viaje entero",
+              perdido === null, `se perdió «${perdido}»`);
+    comprobar("el editor no dio errores al abrirlo", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // Importar tampoco puede tirar lo que no reconoce
+  {
+    const dom = abrir("crear/index.html", { url:"https://x/crear/", almacen:{}, conexion:false });
+    await esperar(400);
+    const w = dom.window;
+    if (!w.normalizar){
+      comprobar("importar conserva los bloques propios", false, "normalizar no es accesible");
+    } else {
+      const v = w.normalizar(viajeConTodo());
+      comprobar("importar conserva la guía de lugares",
+                v.guia?.[0]?.lugares?.[0]?.id === "teitos", "la guía se descartó");
+      comprobar("importar conserva los datos propios de la parada",
+                v.dias[0].paradas[0].g === "centro" && v.dias[0].paradas[0].park?.gratis === true
+                && v.dias[0].paradas[0].xy === "43.090,-6.250", "se descartaron g/park/xy");
+      comprobar("importar conserva lo propio del día",
+                v.dias[0].arte === "puerto" && v.dias[0].base === "Zona alta de Somiedo",
+                "se descartaron arte/base");
+      comprobar("importar conserva vuelos, coche y seguros",
+                !!v.vuelos && !!v.coche && !!v.seguros, "se descartaron los bloques de reserva");
+      comprobar("importar sigue dando un id nuevo",
+                typeof v.id === "string" && v.id !== "asturias", `quedó «${v.id}»`);
+      comprobar("importar sigue normalizando lo que sí conoce",
+                v.dias[0].paradas[0].txt === "Puerto de Somiedo" && v.nombre === "Asturias occidental");
+    }
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -483,6 +647,8 @@ async function nadaSePierdeEnLaNube(){
   idsUnicos();
   posicionEnDosFormas();
   await nadaSePierdeEnLaNube();
+  dependenciasEnServiceWorker();
+  await editorConservaTodo();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);
