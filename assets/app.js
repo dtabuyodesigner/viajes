@@ -594,23 +594,16 @@ function viajeEnUso(id, delArchivo){
     const guardado = propios.find(v => v && v.id === id && !v.borrado);
     // Solo si tiene días: un viaje vacío por un guardado a medias no
     // puede dejar la app sin itinerario en mitad de la carretera.
-    if (guardado && Array.isArray(guardado.dias) && guardado.dias.length) return guardado;
+    if (guardado && Array.isArray(guardado.dias) && guardado.dias.length){
+      // El archivo debajo, la copia encima. La copia puede venir de una
+      // nube que todavía no sabe guardar todos los bloques —una base sin
+      // la columna `extra`— y entonces trae los días pero no la guía, ni
+      // los vuelos, ni los seguros. Lo que la copia no traiga se queda
+      // como está en el archivo, en vez de desaparecer.
+      return { ...delArchivo, ...guardado };
+    }
   } catch {}
   return delArchivo;
-}
-
-/* Copia el viaje del archivo a los viajes del móvil para poder editarlo.
-   Nunca pisa lo que ya hubiera: si ya está, no toca nada. */
-function haceEditable(id, delArchivo){
-  try {
-    const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
-    if (propios.some(v => v && v.id === id)) return true;
-    const copia = { ...delArchivo, id, actualizado: new Date().toISOString() };
-    propios.push(copia);
-    localStorage.setItem("viajes_propios", JSON.stringify(propios));
-    if (typeof SYNC !== "undefined") SYNC.subir(copia).catch(() => {});
-    return true;
-  } catch { return false; }
 }
 
 /* ¿Este viaje ya tiene una copia editada guardada en el móvil? */
@@ -622,33 +615,92 @@ function hayCopiaPropia(id){
 }
 
 /* Quita la copia editada: el viaje vuelve a ser el del archivo.
-   No toca el diario ni las fotos, que van por su cuenta. */
+   No toca el diario ni las fotos, que van por su cuenta. SYNC.borrar()
+   deja apuntado el borrado si no hay cobertura, para que no resucite. */
 function borraCopiaPropia(id){
   try {
     const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
     localStorage.setItem("viajes_propios", JSON.stringify(propios.filter(v => v && v.id !== id)));
-    // Y que no vuelva desde la nube en la siguiente sincronización
     if (typeof SYNC !== "undefined") SYNC.borrar(id).catch(() => {});
     return true;
   } catch { return false; }
 }
 
+/* ---- Llevar el viaje al editor ----
+   El editor es otra app, en otra carpeta. Aquí se deja el viaje en el
+   almacén del móvil y se abre el editor, que lo recoge.
+
+   El problema: en iOS, una app añadida a la pantalla de inicio tiene su
+   propio almacén, separado del de Safari. WebKit lo confirma como
+   intencional (bug 181849). Si al abrir el editor se sale del contenedor
+   de la app, el almacén ya no es el mismo y el viaje no llega.
+
+   No se puede saber de antemano si pasará: depende de si iOS mantiene la
+   navegación dentro de la app instalada, y eso cambia entre versiones y no
+   está documentado. Así que en vez de suponerlo, se comprueba en el propio
+   móvil: el editor deja un acuse de recibo cuando el viaje le llega. Hasta
+   que ese acuse aparece, no se da por bueno el camino. */
+const TRASPASO = "traspaso_viaje";
+const TRASPASO_OK = "traspaso_ok";
+
+function dejaTraspaso(id, viaje){
+  const vale = "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  try {
+    localStorage.setItem(TRASPASO, JSON.stringify({ vale, id, viaje }));
+    return vale;
+  } catch { return null; }   // sin sitio o en modo privado
+}
+
+/* ¿Quedó un traspaso sin recoger? Entonces el editor no llegó a verlo. */
+function traspasoSinRecoger(id){
+  try {
+    const t = JSON.parse(localStorage.getItem(TRASPASO) || "null");
+    return !!(t && t.id === id);
+  } catch { return false; }
+}
+
+/* ¿Se ha comprobado ya en este móvil que el editor sí recibe el viaje? */
+function traspasoFunciona(){
+  try { return localStorage.getItem(TRASPASO_OK) === "1"; } catch { return false; }
+}
+
 function bloqueEditarViaje(){
   const editado = hayCopiaPropia(VIAJE_ID);
+  // Solo se da por fallido si nunca ha funcionado en este móvil: si ya
+  // llegó alguna vez, un traspaso sin recoger es que el usuario volvió
+  // atrás antes de que el editor cargara, no que el camino esté roto.
+  const falloElCamino = !editado && traspasoSinRecoger(VIAJE_ID) && !traspasoFunciona();
+
+  const cuerpo = editado ? `
+      <p>Estás viendo tu versión. Puedes seguir cambiándola, o volver al viaje
+         tal y como venía: las marcas, las notas y las fotos no se tocan.</p>
+      <div class="btns">
+        <a class="btn solid" href="#" id="btn-editar">Seguir editando</a>
+        <button class="btn" id="btn-original">Volver al viaje original</button>
+      </div>`
+    : falloElCamino ? `
+      <p>El editor no ha recibido el viaje. Este iPhone guarda cada app de la
+         pantalla de inicio por separado, así que lo que guarda esta app no lo
+         ve el editor.</p>
+      <p>Copia el viaje y pégalo en el editor, en «Importar». Lo que cambies
+         allí se queda allí: para que vuelva aquí hace falta entrar con la
+         cuenta y tener cobertura.</p>
+      <div class="btns">
+        <button class="btn solid" id="btn-copiar">Copiar el viaje</button>
+        <a class="btn" href="#" id="btn-editar">Probar otra vez</a>
+      </div>`
+    : `
+      <p>Días, paradas, horarios, notas y alojamiento. Lo que cambies se guarda
+         en el móvil y lo ve el otro. La guía y las reservas se conservan aunque
+         el editor todavía no las enseñe.</p>
+      <div class="btns"><a class="btn solid" href="#" id="btn-editar">Abrir en el editor</a></div>`;
+
   return `<div class="hotel-zona">
     <span class="label">Cambiar el plan</span>
     <div class="card" style="margin-top:8px">
       <h3>Editar este viaje</h3>
-      <p>Días, paradas, horarios, notas y alojamiento. Lo que cambies se
-         guarda en el móvil y lo ve el otro. La guía y las reservas se
-         conservan aunque el editor todavía no las enseñe.</p>
-      <div class="btns">
-        <a class="btn solid" href="#" id="btn-editar">${editado ? "Seguir editando" : "Abrir en el editor"}</a>
-      </div>
-      ${editado ? `
-      <p class="note">Estás viendo tu versión. Puedes volver al viaje tal y como
-         venía: las marcas, las notas y las fotos no se tocan.</p>
-      <div class="btns"><button class="btn" id="btn-original">Volver al viaje original</button></div>` : ""}
+      ${cuerpo}
+      <p class="note" id="aviso-copia"></p>
     </div>
   </div>`;
 }
@@ -657,11 +709,23 @@ function activaEditarViaje(){
   const b = document.getElementById("btn-editar");
   if (b) b.addEventListener("click", e => {
     e.preventDefault();
-    if (!haceEditable(VIAJE_ID, VIAJE)){
-      b.textContent = "Este móvil no deja guardar";
-      return;
+    const vale = dejaTraspaso(VIAJE_ID, VIAJE);
+    if (!vale){ b.textContent = "Este móvil no deja guardar"; return; }
+    location.href = "../crear/?id=" + encodeURIComponent(VIAJE_ID) + "&traspaso=" + vale;
+  });
+
+  const c = document.getElementById("btn-copiar");
+  if (c) c.addEventListener("click", async () => {
+    const aviso = document.getElementById("aviso-copia");
+    const texto = JSON.stringify(VIAJE);
+    try {
+      await navigator.clipboard.writeText(texto);
+      if (aviso) aviso.textContent = "Copiado. Abre el editor y pulsa «Importar».";
+    } catch {
+      if (aviso) aviso.innerHTML =
+        `<textarea readonly rows="4" style="width:100%">${esc(texto)}</textarea>
+         <br>Mantén pulsado dentro, «Seleccionar todo», y copia.`;
     }
-    location.href = "../crear/?id=" + encodeURIComponent(VIAJE_ID);
   });
 
   const o = document.getElementById("btn-original");

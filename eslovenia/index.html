@@ -536,7 +536,7 @@ if (window.matchMedia)
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v99 · 23/08 00:52";
+const VERSION = "v100 · 23/08 01:34";
 const VIAJE_ID = "eslovenia";
 const VIAJE = viajeEnUso(VIAJE_ID, VIAJE_ORIGINAL);
 const LUGARES = indexaGuia(VIAJE);
@@ -1354,7 +1354,7 @@ function vistaReservas(){
         "Guárdalas aquí y las tendrás sin cobertura, sin buscar en el correo.")}
     </div>`).join("");
 
-  const acceso = `
+  const acceso = !a ? "" : `
     <div class="sec"><span class="label">Gestionar el vuelo</span><h2>Acceso a la reserva</h2></div>
     <div class="card">
       <span class="label">${esc(a.cia)}</span>
@@ -1544,7 +1544,7 @@ function vistaGuia(){
   let html = `<input class="buscador" id="q" type="search" placeholder="Buscar un sitio…" value="${esc(filtroGuia)}">` + bloqueCerca() + bloqueQueVer() + bloqueServicios();
   let total = 0;
 
-  VIAJE.guia.forEach(z => {
+  (VIAJE.guia || []).forEach(z => {
     const ls = z.lugares.filter(coincide);
     if (!ls.length) return;
     total += ls.length;

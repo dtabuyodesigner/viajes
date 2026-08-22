@@ -277,14 +277,52 @@ function guardarTodos(v){
   try { localStorage.setItem(CLAVE, JSON.stringify(v)); return true; } catch { return false; }
 }
 
+/* ---- Recoger un viaje que manda otra app ----
+   Eslovenia y Asturias traen su viaje en un archivo, no en el almacén del
+   móvil, así que para editarlo lo dejan aquí antes de abrir el editor.
+
+   En iOS esto puede no llegar: una app añadida a la pantalla de inicio
+   tiene su propio almacén, separado del de Safari (WebKit lo confirma como
+   intencional), así que si al abrir el editor se sale del contenedor de la
+   app, este almacén ya no es el mismo. Por eso el traspaso lleva acuse de
+   recibo: en vez de suponer que ha llegado, se comprueba. */
+const TRASPASO = "traspaso_viaje";
+const TRASPASO_OK = "traspaso_ok";
+
+function recogeTraspaso(vale){
+  try {
+    const crudo = localStorage.getItem(TRASPASO);
+    if (!crudo) return null;
+    const t = JSON.parse(crudo);
+    if (!t || t.vale !== vale || !t.viaje) return null;
+    localStorage.removeItem(TRASPASO);
+    localStorage.setItem(TRASPASO_OK, "1");   // el acuse: aquí sí se comparte
+    return t.viaje;
+  } catch { return null; }
+}
+
 /* ---- Viaje en edición ---- */
 const params = new URLSearchParams(location.search);
 let viaje = null;
 const idExistente = params.get("id");
-if (idExistente) viaje = leerTodos().find(v => v.id === idExistente) || null;
+const vale = params.get("traspaso");
+
+if (vale) viaje = recogeTraspaso(vale);
+if (!viaje && idExistente) viaje = leerTodos().find(v => v.id === idExistente) || null;
+
+// Nos han pedido editar un viaje concreto y no ha llegado. No se finge:
+// abrir un viaje en blanco haría creer que se está editando el de verdad.
+const noLlego = !viaje && !!(idExistente || vale);
 if (!viaje) viaje = { id:nuevoId(), nombre:"", desde:"", hasta:"", salida:"", dias:[] };
 
-if (idExistente && viaje.nombre){
+if (noLlego){
+  document.getElementById("titulo").textContent = "No he podido traer el viaje";
+  document.getElementById("sub").innerHTML =
+    `Este iPhone guarda cada app de la pantalla de inicio por separado, así que el
+     editor no ve lo que guardó la app del viaje. <strong>Esto de abajo está en blanco:
+     no es tu viaje.</strong><br>
+     Vuelve al viaje, usa <em>Copiar el viaje</em> y luego <em>Importar</em> aquí.`;
+} else if ((idExistente || vale) && viaje.nombre){
   document.getElementById("titulo").textContent = viaje.nombre;
   document.getElementById("sub").textContent = "Editando un viaje que ya tenías.";
 }

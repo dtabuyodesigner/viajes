@@ -12,6 +12,7 @@ const SB_URL  = "https://cmkzcvfjgrgxwqjimtxa.supabase.co";
 const SB_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNta3pjdmZqZ3JneHdxamltdHhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3NzU5NzAsImV4cCI6MjEwMDM1MTk3MH0.epSiwj0MO9WWfqETVoEt2E_ijNSzi4x0d-TmgDhAWhQ";
 const SB_CLAVE_VIAJES = "viajes_propios";
 const SB_PENDIENTES   = "viajes_pendientes";
+const SB_BORRADOS     = "viajes_borrados";
 
 /* Ninguna espera es infinita: si no responde, se avisa */
 function conTope(promesa, ms, fallo){
@@ -19,6 +20,21 @@ function conTope(promesa, ms, fallo){
     promesa,
     new Promise(r => setTimeout(() => r(fallo), ms))
   ]);
+}
+
+/* ¿Este error dice de verdad que la columna `extra` no existe?
+
+   Importa acertar: si se toma por «no existe la columna» un fallo de red,
+   un permiso denegado o una validación, se deja de mandar `extra` durante
+   toda la sesión y los bloques del viaje no llegan al otro móvil. Y si se
+   hila tan fino que no se reconoce nunca, contra una base antigua el viaje
+   no se sube jamás. Por eso vale cualquiera de las dos señales. */
+function esColumnaExtraAusente(error){
+  if (!error || typeof error !== "object") return false;
+  // PGRST204 es el código de PostgREST para «esa columna no está en el esquema»
+  if (error.code === "PGRST204") return true;
+  const txt = String(error.message || "").toLowerCase();
+  return txt.includes("extra") && (txt.includes("schema cache") || txt.includes("column"));
 }
 
 /* Todo lo que no tiene columna propia en la tabla viaja junto, en `extra` */
@@ -51,6 +67,21 @@ const SYNC = {
     const p = new Set(this.pendientes()); p.add(id);
     try { localStorage.setItem(SB_PENDIENTES, JSON.stringify([...p])); } catch {}
   },
+  /* ---- Borrados que todavía no se han podido aplicar en la nube ----
+     Sin esto, borrar un viaje sin cobertura no sirve de nada: al volver la
+     conexión, la fila remota sigue viva y el viaje resucita. */
+  borrados(){
+    try { return JSON.parse(localStorage.getItem(SB_BORRADOS)) || []; } catch { return []; }
+  },
+  marcarBorrado(id){
+    const b = new Set(this.borrados()); b.add(id);
+    try { localStorage.setItem(SB_BORRADOS, JSON.stringify([...b])); } catch {}
+  },
+  limpiarBorrado(id){
+    try { localStorage.setItem(SB_BORRADOS,
+      JSON.stringify(this.borrados().filter(x => x !== id))); } catch {}
+  },
+
   limpiarPendiente(id){
     try { localStorage.setItem(SB_PENDIENTES,
       JSON.stringify(this.pendientes().filter(x => x !== id))); } catch {}
@@ -143,7 +174,10 @@ const SYNC = {
       if (this.hayExtra){
         const { error } = await c.from("viajes").upsert({ ...fila, extra: loDemas(viaje) });
         if (!error){ this.limpiarPendiente(viaje.id); return true; }
-        // Puede ser que la columna no exista todavía: se reintenta sin ella
+        // Solo si el error dice que la columna no está se reintenta sin ella.
+        // Cualquier otro fallo se trata como fallo: queda pendiente y se
+        // vuelve a intentar entero más tarde, con `extra` incluida.
+        if (!esColumnaExtraAusente(error)) throw error;
         this.hayExtra = false;
       }
       const { error } = await c.from("viajes").upsert(fila);
@@ -156,12 +190,22 @@ const SYNC = {
     }
   },
 
-  /* ---- Marcar como borrado (para que desaparezca del otro móvil) ---- */
+  /* ---- Marcar como borrado (para que desaparezca del otro móvil) ----
+     La lápida se apunta ANTES de intentarlo, y solo se quita cuando el
+     servidor confirma. Así, si no hay cobertura o el servidor falla, el
+     borrado se reintenta en la siguiente sincronización en vez de perderse
+     y dejar que el viaje vuelva. */
   async borrar(id){
+    this.marcarBorrado(id);
+    this.limpiarPendiente(id);        // borrar manda sobre un cambio sin subir
+
     const c = await this.conectar();
     if (!c || !this.sesion) return false;
     try {
-      await c.from("viajes").update({ borrado:true, actualizado:new Date().toISOString() }).eq("id", id);
+      const { error } = await c.from("viajes")
+        .update({ borrado:true, actualizado:new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+      this.limpiarBorrado(id);
       return true;
     } catch { return false; }
   },
@@ -175,9 +219,15 @@ const SYNC = {
     const c = await this.conectar();
     if (!c || !this.sesion) return { cambios:0, ok:false };
 
-    // primero, lo que quedó pendiente de subir
+    // Primero los borrados que quedaron a medias. Antes que nada: si un
+    // viaje está borrado, subirlo primero lo resucitaría en el servidor.
+    const borrados = new Set(this.borrados());
+    for (const id of borrados) await this.borrar(id);
+
+    // después, lo que quedó pendiente de subir
     const locales = this.locales();
     for (const id of this.pendientes()){
+      if (borrados.has(id)){ this.limpiarPendiente(id); continue; }
       const v = locales.find(x => x.id === id);
       if (v) await this.subir(v); else this.limpiarPendiente(id);
     }
@@ -196,8 +246,12 @@ const SYNC = {
       const l = porId.get(r.id);
       if (r.borrado){
         if (l){ porId.delete(r.id); cambios++; }
+        this.limpiarBorrado(r.id);      // ya está aplicado: la lápida sobra
         continue;
       }
+      // Borrado aquí y todavía no aplicado en la nube: no vuelve al móvil
+      // ni se sube. Se reintentará arriba en la siguiente vuelta.
+      if (borrados.has(r.id)){ porId.delete(r.id); continue; }
       // El móvil manda: se parte de lo que ya hay aquí y la nube encima.
       // Lo que la nube no sepa llevar (una base de datos sin `extra`, un
       // viaje subido por una versión antigua) no puede borrarlo.
@@ -215,6 +269,7 @@ const SYNC = {
 
     // lo que existe solo en el móvil, sube
     for (const l of locales){
+      if (borrados.has(l.id)) continue;
       if (!remotos.some(r => r.id === l.id)) await this.subir(l);
     }
 
