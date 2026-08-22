@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               146 comprobaciones + fotografías de comportamiento
+/tests/               211 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 146 en verde
+node tests/probar.js   # las 211 en verde
 node tests/foto.js comparar
 ```
 
@@ -113,9 +113,11 @@ node tests/foto.js comparar
 - **Guardar**: cámara y galería, portada del día, «Estoy aquí», pernoctas,
   documentos
 - **Mostrar**: `bloqueHotel`, `frasesDelDia` (el primer vistazo), `indexaGuia`
-- **Qué viaje manda**: `viajeEnUso(id, delArchivo)` devuelve la copia guardada en
-  el móvil si la hay y si no la de `datos.js`; `haceEditable` la copia a los
-  viajes del móvil sin pisar nada; `bloqueEditarViaje` pone el botón
+- **Qué viaje manda**: `viajeEnUso(id, delArchivo)` pone la copia guardada en el
+  móvil encima de la del archivo, **fusionando**: lo que la copia no traiga se
+  queda como está en el archivo
+- **Llevar el viaje al editor**: `dejaTraspaso` lo deja para la otra app y el
+  editor deja acuse de recibo; `traspasoSinRecoger` detecta que no llegó
 
 Las apps aportan sus datos y sus piezas propias. Eslovenia tiene vuelos, seguros
 y tarjetas de embarque; Asturias, park4night; el visor, el editor detrás.
@@ -150,6 +152,7 @@ que iniciar sesión en cada una.
 | Tabla | Qué guarda | Conflictos |
 |---|---|---|
 | `viajes` | un viaje por fila, días en `jsonb`, el resto en `extra` | gana el más reciente, **fundiendo**: lo que la nube no lleve no se borra |
+| — | borrados pendientes en `viajes_borrados` | se reintentan hasta que el servidor confirma: un viaje borrado sin cobertura no resucita |
 | `viaje_diario` | marcas, notas, posiciones, visitas, pernoctas, portadas | **por entrada**, con marca de tiempo propia |
 | `viaje_fotos` | fotos compartidas | por id, borrado lógico |
 
@@ -239,6 +242,17 @@ búsqueda. Ya se publicaron 34 enlaces de Wikiloc que daban 404.
 **Cambiar la lógica obliga a revisar los textos.** «Buscando en 5 km» en un modo
 sin radio es peor que no decir nada.
 
+**El almacén de una app instalada en iOS no es el de Safari.** WebKit lo tiene
+documentado como intencional (bug 181849). Por eso llevar un viaje de
+`/eslovenia/` a `/crear/` no se da por hecho: se deja un traspaso, el editor deja
+acuse de recibo, y si no llega se dice en vez de abrir un viaje en blanco. **No
+hay ningún almacén del navegador que escape a ese aislamiento**: IndexedDB, Cache
+y `sessionStorage` se parten igual.
+
+**Un error del servidor no es una columna que falta.** Solo se deja de mandar
+`extra` cuando el error lo identifica (`PGRST204`, o el mensaje de la columna).
+Con cualquier otro fallo el viaje queda pendiente y se reintenta entero.
+
 **Nada de colores fijos en lo estructural**, o el modo claro se rompe. Hay una
 prueba que lo vigila.
 
@@ -265,7 +279,7 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 146 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 211 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que

@@ -1,6 +1,6 @@
 /* Editor de viajes — funcionamiento sin cobertura */
 
-const CACHE = "editor-v7";
+const CACHE = "editor-v8";
 const ARCHIVOS = ["./", "./index.html", "../sync.js"];
 
 self.addEventListener("install", e => {

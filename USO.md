@@ -94,32 +94,40 @@ claro es para cuando da el sol en la pantalla.
 
 ## Cambiar Eslovenia o Asturias
 
-Hasta ahora, mover una parada de sitio en estos dos viajes había que pedirlo.
-Ya no.
-
 En el viaje, pestaña **Información** → **Editar este viaje** → *Abrir en el
 editor*. Desde ahí puedes cambiar el nombre y las fechas, añadir o quitar días,
 reordenar las paradas, ponerles hora, escribir notas, apuntar dónde dormís, y
 marcar lo imprescindible y el plan B si llueve.
-
-Tres cosas que conviene saber:
 
 **La guía y las reservas no se pierden.** Aunque el editor todavía no enseñe las
 fichas de lugares, los vuelos ni los seguros, siguen ahí. Puedes abrir el viaje,
 guardarlo sin tocar nada, y sale exactamente igual que estaba.
 
 **Lo que cambies manda desde ese momento.** La dirección `…/eslovenia/` sigue
-siendo la misma, pero a partir de la primera edición enseña tu versión en vez de
-la original.
+siendo la misma, pero a partir de la primera edición enseña tu versión.
 
-**Se puede deshacer.** En la misma pestaña Información, debajo, aparece **Volver
-al viaje original** en cuanto hayas editado algo. Devuelve el viaje tal y como
-venía de fábrica. No se pierde nada más: las marcas, las notas, las fotos y los
-sitios donde habéis dormido van aparte y no se tocan.
+**Se puede deshacer.** En la misma pestaña aparece **Volver al viaje original**
+en cuanto hayas editado algo. Devuelve el viaje tal y como venía de fábrica. Las
+marcas, las notas, las fotos y los sitios donde habéis dormido van aparte y no se
+tocan. Si lo haces sin cobertura, el borrado queda apuntado y se aplica cuando
+vuelva la línea: el viaje no reaparece luego por su cuenta.
 
-Lo que edites se sincroniza con el otro móvil como cualquier otro viaje. Ten en
-cuenta que los cambios del otro teléfono llegan al abrir la **portada**, que es
-donde se sincronizan los viajes.
+### Si sale «El editor no ha recibido el viaje»
+
+Puede pasar **desde el icono de la pantalla de inicio**, no desde Safari.
+
+iPhone guarda cada app de la pantalla de inicio en su propio cajón. Si al abrir
+el editor iOS se sale de la app de Eslovenia, el editor mira en otro cajón y no
+encuentra nada. La app se da cuenta y te lo dice en vez de abrirte un viaje en
+blanco haciéndolo pasar por el tuyo.
+
+Cuando pase, la pestaña Información te ofrece **Copiar el viaje**. Cópialo, abre
+el editor y pulsa **Importar**. Pero ten en cuenta una cosa importante: lo que
+edites allí **se queda allí**. Para que vuelva al viaje hace falta haber entrado
+con la cuenta y tener cobertura, porque el único camino de vuelta es la nube.
+
+Si te pasa, lo más cómodo es **editar desde Safari**, no desde el icono: en
+Safari las dos páginas comparten cajón y funciona sin más.
 
 ---
 

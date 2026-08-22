@@ -126,6 +126,47 @@ Es media hora de SQL. **Hacerlo antes de dar el enlace a nadie más.**
 
 ---
 
+## 2b · Lo que hay que comprobar en un iPhone
+
+**Esto es lo único del hito que no se puede dar por bueno sin probarlo.**
+
+Editar Eslovenia o Asturias pasa el viaje al editor por el almacén del móvil.
+En iOS, una app añadida a la pantalla de inicio tiene su propio almacén,
+separado del de Safari: WebKit lo confirma como intencional en el bug 181849, y
+**ningún** almacén del navegador escapa a esa partición (ni IndexedDB, ni Cache,
+ni `sessionStorage`).
+
+Lo que no se ha podido verificar con ninguna fuente: si `location.href` hacia
+otra carpeta, **desde una app instalada sin manifest**, se queda dentro del
+contenedor o sale a Safari. De eso depende todo, y solo se sabe probando.
+
+Por eso el traspaso **no lo supone**: lleva acuse de recibo. Si el editor no
+recibe el viaje, lo dice y ofrece copiar y pegar, en vez de abrir un viaje en
+blanco haciéndolo pasar por el bueno.
+
+**Cómo comprobarlo, Dani:**
+
+1. Borra el icono de Eslovenia de la pantalla de inicio, si lo tienes.
+2. Abre la web en Safari y añádela otra vez a la pantalla de inicio.
+3. Cierra Safari del todo, desde el selector de apps.
+4. Abre el icono de Eslovenia, ve a Información y pulsa «Abrir en el editor».
+5. Mira si aparece la barra de Safari arriba, y si el editor enseña el viaje o
+   dice «No he podido traer el viaje».
+6. Cuéntalo. Según lo que salga:
+   - **Enseña el viaje** → el camino funciona desde el icono, no hay nada que hacer.
+   - **Dice que no lo ha recibido** → funciona desde Safari pero no desde el
+     icono. Hay que decidir si se añade un manifest con `scope` (ver abajo) o si
+     se deja el copiar y pegar como única vía desde el icono.
+
+**Relacionado:** `index.html` enlaza `<link rel="manifest" href="manifest.json">`
+y **ese archivo no existe**. Ninguna de las cinco apps tiene manifest de verdad;
+todas van con el `<meta apple-mobile-web-app-capable>` de siempre. Un manifest
+con `scope` podría hacer que la navegación se quede dentro de la app instalada,
+pero cambia cómo se instalan y no se puede probar sin un iPhone. **Decidirlo
+después del punto anterior, no antes.**
+
+---
+
 ## 6b · Cosas pequeñas encontradas y no arregladas
 
 Ninguna bloquea. Anotadas para no volver a descubrirlas:
@@ -141,6 +182,10 @@ Ninguna bloquea. Anotadas para no volver a descubrirlas:
   Mismo nombre, mismo algoritmo, resultado distinto. Sigue así: unificarlo
   cambiaría las distancias que ve una de las dos familias, y hay que decidir cuál
   gana antes de tocarlo.
+- **El acuse del traspaso (`traspaso_ok`) es por móvil, no por app.** Si un móvil
+  usa a la vez Safari y el icono de inicio, el acuse que deja Safari no dice nada
+  sobre lo que pasa desde el icono. Es conservador en la dirección buena (como
+  mucho, avisa de un fallo que en Safari no ocurre), pero conviene saberlo.
 - **Los cambios de un viaje editado llegan al abrir la portada**, que es donde se
   llama a `SYNC.sincronizar()`. Las apps de viaje solo sincronizan el diario.
 
