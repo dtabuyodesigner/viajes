@@ -701,6 +701,33 @@ async function viajesAMedidaEditables(){
       comprobar(`${app.nombre}: editado, sigue pintando sin errores`, dom.errores.length === 0, dom.errores[0]);
     }
 
+    // Y se puede volver atrás: quitar la copia devuelve el viaje del archivo
+    {
+      const editado = { id:app.carpeta, nombre:"Cambiado a mano", desde:"", hasta:"", salida:"",
+                        dias:[{ t:"Un solo día", dest:"Donde sea", paradas:[{ h:"10:00", txt:"Parada única" }] }],
+                        actualizado:"2030-01-01T00:00:00.000Z" };
+      const almacen = { viajes_propios: JSON.stringify([editado, { id:"otro", nombre:"Otro viaje", dias:[] }]) };
+      const { dom, d } = await nombreQuePinta(app, almacen);
+      const volver = d.getElementById("btn-original");
+      comprobar(`${app.nombre}: editado, ofrece volver al viaje original`, !!volver, "no está el botón");
+      if (volver){
+        dom.window.confirm = () => true;
+        volver.click();
+        await esperar(150);
+        const quedan = JSON.parse(almacen.viajes_propios || "[]");
+        comprobar(`${app.nombre}: volver al original quita solo su copia`,
+                  quedan.length === 1 && quedan[0].id === "otro",
+                  `quedaron: ${quedan.map(v => v.id).join(", ")}`);
+      }
+    }
+
+    // Sin copia guardada no se ofrece volver a ningún sitio
+    {
+      const { d } = await nombreQuePinta(app, {});
+      comprobar(`${app.nombre}: sin editar, no se ofrece volver al original`,
+                !d.getElementById("btn-original"), "el botón sobra");
+    }
+
     // Una copia a medio guardar no puede dejar la app sin itinerario
     {
       const roto = JSON.stringify([{ id:app.carpeta, nombre:"A medio guardar", dias:[] }]);
@@ -709,6 +736,34 @@ async function viajesAMedidaEditables(){
                 nombre === original.nombre, `pintó «${nombre}»`);
     }
   }
+}
+
+/* ---- 13. La portada no repite un viaje que ya tiene su app ----
+   Al hacer editable Eslovenia o Asturias, su viaje entra en los viajes
+   del móvil. Sin cuidado, la portada lo listaría dos veces: una a su app
+   y otra al visor genérico. */
+async function portadaSinRepetidos(){
+  console.log(`\n${gris("──")} La portada no repite viajes`);
+
+  const almacen = { viajes_propios: JSON.stringify([
+    { id:"eslovenia", nombre:"Eslovenia · Venecia", desde:"2026-07-18", hasta:"2026-07-29",
+      dias:[{ t:"Un día", paradas:[{ txt:"Una parada" }] }] },
+    { id:"v1propio", nombre:"Un viaje mío", desde:"", hasta:"",
+      dias:[{ t:"Un día", paradas:[{ txt:"Una parada" }] }] }
+  ])};
+  const dom = abrir("index.html", { url:"https://x/", almacen, conexion:false });
+  await esperar(500);
+  const d = dom.window.document;
+  const enlaces = [...d.querySelectorAll("#lista a")].map(a => a.getAttribute("href"));
+
+  comprobar("Eslovenia aparece una sola vez",
+            enlaces.filter(h => /eslovenia/.test(h)).length === 1,
+            `enlaces: ${enlaces.join(" · ")}`);
+  comprobar("y sigue llevando a su propia app",
+            enlaces.includes("eslovenia/"), `enlaces: ${enlaces.join(" · ")}`);
+  comprobar("los viajes creados siguen apareciendo",
+            enlaces.includes("viaje/?id=v1propio"), `enlaces: ${enlaces.join(" · ")}`);
+  comprobar("la portada no dio errores", dom.errores.length === 0, dom.errores[0]);
 }
 
 /* ═══ Ejecutar ═══ */
@@ -743,7 +798,9 @@ async function viajesAMedidaEditables(){
   dependenciasEnServiceWorker();
   await editorConservaTodo();
   await viajesAMedidaEditables();
+  await portadaSinRepetidos();
   await viajesAMedidaEditables();
+  await portadaSinRepetidos();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);

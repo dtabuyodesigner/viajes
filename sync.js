@@ -591,9 +591,13 @@ const DIARIO_SYNC = {
    5 MB en total y tres fotos ya lo llenarían. Aquí caben
    cientos.
 
-   Se guardan en el móvil. No se sincronizan todavía: una foto
-   comprimida son 100 KB y meterlas en la fila del viaje sería
-   pesado. Para compartirlas, de momento, el compartir del móvil.
+   Se guardan primero en el móvil y se suben aparte, a su propia
+   tabla (viaje_fotos): meterlas en la fila del viaje sería pesado,
+   porque una foto comprimida son unos 100 KB. subir() y
+   pendientes() llevan esa cola.
+
+   Las tarjetas de embarque NO suben: llevan nombre y código de
+   barras. Se quedan en este móvil.
    ═══════════════════════════════════════════════════════════ */
 
 const FOTOS = {

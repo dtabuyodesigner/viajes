@@ -92,6 +92,37 @@ claro es para cuando da el sol en la pantalla.
 
 ---
 
+## Cambiar Eslovenia o Asturias
+
+Hasta ahora, mover una parada de sitio en estos dos viajes había que pedirlo.
+Ya no.
+
+En el viaje, pestaña **Información** → **Editar este viaje** → *Abrir en el
+editor*. Desde ahí puedes cambiar el nombre y las fechas, añadir o quitar días,
+reordenar las paradas, ponerles hora, escribir notas, apuntar dónde dormís, y
+marcar lo imprescindible y el plan B si llueve.
+
+Tres cosas que conviene saber:
+
+**La guía y las reservas no se pierden.** Aunque el editor todavía no enseñe las
+fichas de lugares, los vuelos ni los seguros, siguen ahí. Puedes abrir el viaje,
+guardarlo sin tocar nada, y sale exactamente igual que estaba.
+
+**Lo que cambies manda desde ese momento.** La dirección `…/eslovenia/` sigue
+siendo la misma, pero a partir de la primera edición enseña tu versión en vez de
+la original.
+
+**Se puede deshacer.** En la misma pestaña Información, debajo, aparece **Volver
+al viaje original** en cuanto hayas editado algo. Devuelve el viaje tal y como
+venía de fábrica. No se pierde nada más: las marcas, las notas, las fotos y los
+sitios donde habéis dormido van aparte y no se tocan.
+
+Lo que edites se sincroniza con el otro móvil como cualquier otro viaje. Ten en
+cuenta que los cambios del otro teléfono llegan al abrir la **portada**, que es
+donde se sincronizan los viajes.
+
+---
+
 ## Crear un viaje
 
 Portada → **Crear un viaje**.

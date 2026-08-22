@@ -5,12 +5,14 @@
    visor de viajes creados. Cada app aporta sus datos y sus
    piezas propias; esto es lo compartido.
 
-   Depende de que la app defina antes: VIAJE, VIAJE_ID, PREF,
-   esc(), navegarXY(). Como solo se usan al llamar a las
-   funciones, no importa el orden de carga.
+   Depende de que la app defina antes: VIAJE, VIAJE_ID, esc() y
+   navegarXY(). Como solo se usan al llamar a las funciones, no
+   importa el orden de carga.
 
-   Al tocar este archivo hay que subir el ?v=NN en las páginas
-   que lo cargan, o el móvil seguirá con la versión antigua.
+   Este archivo se pide SIN ?v=: la versión la lleva el service
+   worker. Al tocarlo hay que subir el CACHE de los sw.js que lo
+   guardan (viaje, eslovenia, asturias) o el móvil seguirá con la
+   versión antigua.
    ═══════════════════════════════════════════════════════════ */
 
 /* ---- Tiempo real por carretera (OSRM, datos de OpenStreetMap) ---- */
@@ -611,7 +613,28 @@ function haceEditable(id, delArchivo){
   } catch { return false; }
 }
 
+/* ¿Este viaje ya tiene una copia editada guardada en el móvil? */
+function hayCopiaPropia(id){
+  try {
+    const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
+    return propios.some(v => v && v.id === id);
+  } catch { return false; }
+}
+
+/* Quita la copia editada: el viaje vuelve a ser el del archivo.
+   No toca el diario ni las fotos, que van por su cuenta. */
+function borraCopiaPropia(id){
+  try {
+    const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
+    localStorage.setItem("viajes_propios", JSON.stringify(propios.filter(v => v && v.id !== id)));
+    // Y que no vuelva desde la nube en la siguiente sincronización
+    if (typeof SYNC !== "undefined") SYNC.borrar(id).catch(() => {});
+    return true;
+  } catch { return false; }
+}
+
 function bloqueEditarViaje(){
+  const editado = hayCopiaPropia(VIAJE_ID);
   return `<div class="hotel-zona">
     <span class="label">Cambiar el plan</span>
     <div class="card" style="margin-top:8px">
@@ -619,21 +642,33 @@ function bloqueEditarViaje(){
       <p>Días, paradas, horarios, notas y alojamiento. Lo que cambies se
          guarda en el móvil y lo ve el otro. La guía y las reservas se
          conservan aunque el editor todavía no las enseñe.</p>
-      <div class="btns"><a class="btn solid" href="#" id="btn-editar">Abrir en el editor</a></div>
+      <div class="btns">
+        <a class="btn solid" href="#" id="btn-editar">${editado ? "Seguir editando" : "Abrir en el editor"}</a>
+      </div>
+      ${editado ? `
+      <p class="note">Estás viendo tu versión. Puedes volver al viaje tal y como
+         venía: las marcas, las notas y las fotos no se tocan.</p>
+      <div class="btns"><button class="btn" id="btn-original">Volver al viaje original</button></div>` : ""}
     </div>
   </div>`;
 }
 
 function activaEditarViaje(){
   const b = document.getElementById("btn-editar");
-  if (!b) return;
-  b.addEventListener("click", e => {
+  if (b) b.addEventListener("click", e => {
     e.preventDefault();
     if (!haceEditable(VIAJE_ID, VIAJE)){
       b.textContent = "Este móvil no deja guardar";
       return;
     }
     location.href = "../crear/?id=" + encodeURIComponent(VIAJE_ID);
+  });
+
+  const o = document.getElementById("btn-original");
+  if (o) o.addEventListener("click", () => {
+    if (!confirm("¿Volver al viaje original? Se pierden los cambios que hayas hecho al itinerario. Las marcas, las notas y las fotos se quedan.")) return;
+    borraCopiaPropia(VIAJE_ID);
+    location.reload();
   });
 }
 
