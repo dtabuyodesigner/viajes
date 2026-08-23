@@ -90,6 +90,11 @@ async function fetchConTope(url, ms = 12000, opciones = {}){
      confirmada por el servidor. Enseñarla sería inventar.
    · Si el diario está subido. Cada gesto hace subir().catch(),
      y un fallo no deja rastro. No hay cola de pendientes.
+
+   De ahí que nada diga «a salvo» ni «todo sincronizado» a secas:
+   una frase así incluiría el diario, y del diario no se sabe. Se
+   nombra siempre qué está cubierto — viajes y fotos — y el diario
+   tiene su propia fila diciendo lo que hay.
    ═══════════════════════════════════════════════════════════ */
 
 /* La raíz del sitio, mire desde donde mire. sync.js está en la raíz,
@@ -206,7 +211,7 @@ function resumenDeEstado(e){
 
   if (e.nube.clase === "sin-cobertura")
     return { nivel:"aviso", glifo:"!",
-             txt: e.total ? `Sin cobertura · ${lista} por subir` : "Sin cobertura · nada pendiente",
+             txt: e.total ? `Sin cobertura · ${lista} por subir` : "Sin cobertura · viajes y fotos al día",
              accion:null };
 
   if (e.nube.clase === "sin-respuesta")
@@ -217,9 +222,11 @@ function resumenDeEstado(e){
   if (e.nube.clase === "sin-nube")
     return { nivel:"aviso", glifo:"!", txt:"Solo en este móvil", accion:null };
 
+  // Nunca «a salvo» a secas ni «lo ve el otro móvil»: eso incluiría el
+  // diario, y del diario no se sabe. Se nombra lo que sí se comprueba.
   return e.total
     ? { nivel:"aviso", glifo:"!", txt:`${lista} por subir`, accion:"reintentar" }
-    : { nivel:"bien",  glifo:"✓", txt:"A salvo · lo ve el otro móvil", accion:null };
+    : { nivel:"bien",  glifo:"✓", txt:"Viajes y fotos al día", accion:null };
 }
 
 /* Escapar aquí dentro. No se puede llamar `esc`: cada app declara el
@@ -258,15 +265,19 @@ function detalleEstado(e){
     : "No se puede guardar. Si vas en modo privado, ciérralo."]);
 
   const p = e.porSubir;
-  filas.push(["Por subir", e.total === 0 ? "Nada pendiente"
+  filas.push(["Viajes y fotos", e.total === 0 ? "Nada por subir"
     : [p.viajes && `${p.viajes} viaje${p.viajes === 1 ? "" : "s"}`,
        p.fotos && `${p.fotos} foto${p.fotos === 1 ? "" : "s"}`,
-       p.borrados && "un borrado"].filter(Boolean).join(" · ")]);
+       p.borrados && "un borrado"].filter(Boolean).join(" · ") + " por subir"]);
+
+  // El diario va aparte, y se dice lo que hay: se guarda aquí siempre,
+  // pero de si llegó al otro móvil no queda constancia en ningún sitio.
+  filas.push(["Diario", "Guardado en este móvil. No se puede confirmar si llegó al otro."]);
 
   filas.push(["La nube", e.nube.clase === "conectada"
-    ? "Conectada. Lo que subas lo ve el otro móvil."
+    ? "Conectada. Los viajes y las fotos que subas los ve el otro móvil."
     : e.nube.clase === "sin-sesion" ? "Sin entrar. Por ahora solo se guarda aquí."
-    : e.nube.clase === "sin-cobertura" ? "Sin cobertura. Subirá solo cuando vuelva."
+    : e.nube.clase === "sin-cobertura" ? "Sin cobertura. Subirán solos cuando vuelva."
     : "No responde. Se reintenta al sincronizar."]);
 
   filas.push(["Sin cobertura", !e.offline
@@ -282,7 +293,9 @@ function detalleEstado(e){
   return `<div class="est-detalle">
     ${filas.map(([a, b]) => `<div class="row"><span class="k">${escapaTexto(a)}</span><span class="v">${escapaTexto(b)}</span></div>`).join("")}
     ${accion}
-    <p class="note">Lo guardado sin cobertura sube solo en cuanto vuelva la línea. No hace falta esperar aquí.</p>
+    <p class="note">Los viajes y las fotos que queden pendientes suben solos en cuanto vuelva
+       la línea, sin esperar aquí. Del diario no queda constancia: se guarda siempre en este
+       móvil, pero no hay forma de saber si llegó al otro.</p>
   </div>`;
 }
 

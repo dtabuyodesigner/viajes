@@ -1459,8 +1459,12 @@ async function elEstadoSeSabeDeVerdad(){
     const base = { guarda:true, porSubir:{viajes:0,borrados:0,fotos:0}, total:0, offline:null };
 
     let r = caso({ ...base, nube:{ clase:"conectada", txt:"Sincronizado" } });
-    comprobar("todo subido: dice que está a salvo",
-              r.nivel === "bien" && /a salvo/i.test(r.txt), `dijo «${r.txt}»`);
+    comprobar("con las colas vacías, el resumen es verde",
+              r.nivel === "bien", `nivel «${r.nivel}»`);
+    comprobar("y nombra SOLO lo que se puede comprobar",
+              r.txt === "Viajes y fotos al día", `dijo «${r.txt}»`);
+    comprobar("no da una garantía que incluya el diario",
+              !/a salvo|todo (subido|sincronizado)|lo ve el otro/i.test(r.txt), `dijo «${r.txt}»`);
     comprobar("y no ofrece ninguna acción, porque no hay nada que hacer",
               r.accion === null, `ofrecía «${r.accion}»`);
 
@@ -1468,7 +1472,7 @@ async function elEstadoSeSabeDeVerdad(){
                nube:{ clase:"conectada", txt:"2 viajes por subir" } });
     comprobar("con viajes pendientes, lo cuenta",
               /2 viajes por subir/.test(r.txt), `dijo «${r.txt}»`);
-    comprobar("y NO dice que esté a salvo", !/a salvo/i.test(r.txt), `dijo «${r.txt}»`);
+    comprobar("y no se le llama al día", !/al día|a salvo/i.test(r.txt), `dijo «${r.txt}»`);
     comprobar("y ofrece reintentar", r.accion === "reintentar", `ofrecía «${r.accion}»`);
 
     r = caso({ ...base, porSubir:{viajes:1,borrados:0,fotos:3}, total:4,
@@ -1565,6 +1569,9 @@ async function elCentroDeEstado(){
               /sin cobertura/i.test(el.textContent), `dijo «${el.textContent.trim()}»`);
     comprobar("y NO dice que esté sincronizado",
               !/sincronizado|a salvo/i.test(el.textContent), `dijo «${el.textContent.trim()}»`);
+    comprobar("y sin cobertura acota lo que afirma",
+              /viajes y fotos/i.test(el.textContent) || /por subir/i.test(el.textContent),
+              `dijo «${el.textContent.trim()}»`);
     comprobar("avisa a un lector de pantalla cuando cambia",
               el.getAttribute("aria-live") === "polite", "sin aria-live");
     comprobar("el glifo no se lee en voz alta: el texto ya lo dice",
@@ -1593,7 +1600,7 @@ async function elCentroDeEstado(){
               el.getAttribute("aria-expanded") === "true", "sin aria-expanded");
 
     const texto = z.textContent;
-    for (const fila of ["En este móvil", "Por subir", "La nube", "Sin cobertura"])
+    for (const fila of ["En este móvil", "Viajes y fotos", "Diario", "La nube", "Sin cobertura"])
       comprobar(`el detalle dice «${fila}»`, texto.includes(fila), `no estaba en: ${texto.slice(0,120)}`);
 
     comprobar("sin sesión, ofrece entrar",
@@ -1665,8 +1672,8 @@ async function elCentroDeEstado(){
     await esperar(120);
     comprobar("y sin cobertura no ofrece reintentar en vano",
               !d.getElementById("est-accion"), "ofrecía una acción que no serviría");
-    comprobar("pero explica que subirá solo",
-              /sube solo|subirá solo/i.test(d.getElementById("estado-detalle").textContent),
+    comprobar("pero explica que suben solos",
+              /suben solos|sube solo|subirá solo/i.test(d.getElementById("estado-detalle").textContent),
               "no lo explicaba");
   }
 }
@@ -1781,6 +1788,122 @@ async function entrarYSalirVigilados(){
   }
 }
 
+/* ---- 21. Ninguna garantía que incluya lo que no se puede comprobar ----
+   El diario no tiene cola de pendientes: cada gesto hace subir().catch()
+   y un fallo no deja rastro. Así que una frase como «a salvo» o «lo ve el
+   otro móvil», dicha a secas, estaría prometiendo también por las notas,
+   las marcas, las visitas y las pernoctas. No se puede.
+
+   Estas son las frases que no pueden aparecer en ningún sitio visible. */
+const GARANTIAS_PROHIBIDAS = [
+  /a salvo/i,
+  /todo (subido|sincronizado|guardado en la nube)/i,
+  /lo ve el otro m[oó]vil(?!\s*(?:los|las))/i,
+  /nada pendiente/i,
+  /^sincronizado$/i
+];
+
+function garantiaDeMas(texto){
+  const limpio = String(texto).replace(/\s+/g, " ");
+  for (const re of GARANTIAS_PROHIBIDAS){
+    const m = limpio.match(re);
+    if (m) return m[0];
+  }
+  return null;
+}
+
+async function nadaPrometeDeMas(){
+  console.log(`\n${gris("──")} Nada promete por lo que no se puede comprobar`);
+
+  // El caso peligroso: nube conectada y colas vacías, que es cuando
+  // apetece decir que está todo bien.
+  const sesion = { user:{ email:"dani@ejemplo" } };
+
+  // ── El modelo, directamente ──
+  {
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, conexion:true, sesion });
+    await esperar(400);
+    const w = dom.window;
+    const e = { guarda:true, porSubir:{viajes:0,borrados:0,fotos:0}, total:0, offline:null,
+                nube:{ clase:"conectada", txt:"Sincronizado" } };
+
+    const r = w.resumenDeEstado(e);
+    comprobar("el resumen verde no promete de más",
+              garantiaDeMas(r.txt) === null, `dijo «${r.txt}»`);
+    comprobar("y dice exactamente qué cubre",
+              /viajes y fotos/i.test(r.txt), `dijo «${r.txt}»`);
+
+    const det = w.detalleEstado(e);
+    const sinEtiquetas = det.replace(/<[^>]+>/g, " ");
+    comprobar("el detalle tampoco promete de más",
+              garantiaDeMas(sinEtiquetas) === null, `apareció «${garantiaDeMas(sinEtiquetas)}»`);
+    comprobar("el detalle nombra el diario",
+              /Diario/.test(sinEtiquetas), "no aparece el diario");
+    comprobar("y explica que de él no se puede confirmar nada",
+              /no se puede confirmar si lleg/i.test(sinEtiquetas),
+              `decía: ${sinEtiquetas.replace(/\s+/g," ").slice(0,160)}`);
+  }
+
+  // ── Y en las cinco apps, con todo pintado ──
+  {
+    const conViaje = JSON.stringify([{ id:"p1", nombre:"Prueba", desde:"", hasta:"", salida:"",
+      dias:[{ t:"Día uno", dest:"Zagreb", paradas:[{ h:"Tarde", txt:"Una parada" }] }] }]);
+    const apps = [
+      { nombre:"portada",   ruta:"index.html",           url:"https://x/",           abre:"#nube" },
+      { nombre:"editor",    ruta:"crear/index.html",     url:"https://x/crear/",     abre:"#est-linea" },
+      { nombre:"visor",     ruta:"viaje/index.html",     url:"https://x/viaje/?id=p1",
+        info:"info", abre:"#est-linea", almacen:{ viajes_propios: conViaje } },
+      { nombre:"Eslovenia", ruta:"eslovenia/index.html", url:"https://x/eslovenia/", info:"info",
+        abre:"#est-linea", fecha:"2026-07-25T12:00:00" },
+      { nombre:"Asturias",  ruta:"asturias/index.html",  url:"https://x/asturias/",  info:"info",
+        abre:"#est-linea" }
+    ];
+
+    for (const app of apps){
+      const dom = abrir(app.ruta, { url:app.url, almacen:app.almacen || {}, conexion:true, sesion,
+                                    ...(app.fecha ? { fecha:app.fecha } : {}) });
+      await esperar(450);
+      const d = dom.window.document;
+      if (app.info){
+        [...d.querySelectorAll("nav button")].find(b => b.dataset.v === app.info)?.click();
+        await esperar(250);
+      }
+      d.querySelector(app.abre)?.click();      // abrir el detalle también
+      await esperar(150);
+
+      // Lo que se VE, no el código: body.textContent incluye el contenido
+      // de los <script>, que aquí van metidos en línea, y estaría leyendo
+      // los comentarios del propio sync.js en vez de la pantalla.
+      const copia = d.body.cloneNode(true);
+      copia.querySelectorAll("script, style, template").forEach(x => x.remove());
+      const visible = copia.textContent || "";
+      const mal = garantiaDeMas(visible);
+      comprobar(`${app.nombre}: nada en pantalla promete por el diario`,
+                mal === null, `apareció «${mal}»`);
+    }
+  }
+
+  // ── Lo que sí debe seguir avisando ──
+  {
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, conexion:true, sesion });
+    await esperar(400);
+    const w = dom.window;
+    const base = { guarda:true, offline:null, nube:{ clase:"conectada", txt:"" } };
+
+    let r = w.resumenDeEstado({ ...base, porSubir:{viajes:2,borrados:0,fotos:0}, total:2 });
+    comprobar("dos viajes pendientes siguen dando aviso",
+              r.nivel === "aviso" && /2 viajes por subir/.test(r.txt), `dijo «${r.txt}»`);
+
+    r = w.resumenDeEstado({ ...base, porSubir:{viajes:0,borrados:0,fotos:5}, total:5 });
+    comprobar("cinco fotos pendientes siguen dando aviso",
+              r.nivel === "aviso" && /5 fotos por subir/.test(r.txt), `dijo «${r.txt}»`);
+
+    r = w.resumenDeEstado({ ...base, porSubir:{viajes:0,borrados:1,fotos:0}, total:1 });
+    comprobar("un borrado pendiente sigue dando aviso",
+              r.nivel === "aviso" && /borrado/.test(r.txt), `dijo «${r.txt}»`);
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -1820,6 +1943,7 @@ async function entrarYSalirVigilados(){
   await elEstadoSeSabeDeVerdad();
   await elCentroDeEstado();
   await entrarYSalirVigilados();
+  await nadaPrometeDeMas();
   await traspasoComprobado();
   await elBorradoNoResucita();
 

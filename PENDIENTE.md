@@ -197,9 +197,18 @@ pulsación y recuperación de botones.
     cambio de esquema.
   - *Si el diario está subido*: cada gesto hace `subir().catch(()=>{})` y un
     fallo no deja rastro. **No hay cola de pendientes para el diario**, a
-    diferencia de viajes y fotos. Por eso el resumen de las apps de viaje no
-    promete nada sobre las notas. Darle cola al diario es trabajo aparte, y
-    conviene hacerlo antes de que el centro de estado hable de él.
+    diferencia de viajes y fotos.
+
+    La primera versión de A2 decía «A salvo · lo ve el otro móvil» cuando la nube
+    respondía y las colas conocidas estaban vacías. **Eso era una garantía
+    universal que incluía el diario**, del que no se sabe nada: una nota podía no
+    haber llegado y la pantalla afirmar que estaba todo bien. Corregido en la
+    revisión del PR #3: el resumen verde dice «Viajes y fotos al día», el diario
+    tiene su propia fila, y una prueba recorre el texto visible de las cinco apps
+    buscando frases que prometan de más.
+
+    Darle cola al diario sigue siendo trabajo aparte —cambia persistencia y
+    sincronización— y es lo que haría falta para poder decir algo sobre él.
   - *Qué fotos concretas están guardadas para usar sin cobertura*: se comprueba
     que exista la caché de cada app y que dentro esté su página. Ir más allá
     exigiría derivar de `datos.js` la lista de todo lo que cada viaje usa y
