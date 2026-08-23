@@ -167,6 +167,41 @@ después del punto anterior, no antes.**
 
 ---
 
+## 2c · Fiabilidad · A1 hecho, A2 a A4 por hacer
+
+**A1, hecho en `feature/fiabilidad-usabilidad-diseno`:** esperas finitas, doble
+pulsación y recuperación de botones.
+
+- `conTope()` en todas las llamadas a Supabase. Había ocho sin tope, incluidas
+  las de fotos. Una prueba vigila que no vuelva a colarse ninguna.
+- `fetchConTope()`: aborta de verdad y dice el motivo en castellano.
+- `trabajando()`: desactiva el botón, lo anuncia con `aria-busy` y lo devuelve a
+  su texto también al fallar. **Antes `.disabled` no aparecía ni una sola vez en
+  los siete archivos.**
+- «Buscar actualización» ya no puede colgarse. Era el peor caso: el botón de
+  auto-rescate quedándose él mismo en «Limpiando…».
+
+**Lo que queda del bloque de fiabilidad:**
+
+- **A2 · Centro de estado común.** Va en `sync.js`, que lo cargan las cinco apps
+  (`assets/app.js` solo lo cargan tres). Hoy solo hay pie de estado en la portada
+  y en el editor; las tres apps de viaje no tienen ninguno. Es añadir, no
+  reescribir. Debe cubrir: guardado aquí · pendiente de subir · sincronizado ·
+  sin sesión · sin cobertura · error del servidor · fotos pendientes · borrados
+  pendientes · versión nueva. Y llevar `aria-live`, que hoy **no se usa en
+  ninguna de las cinco**.
+- **A3 · La espera de las búsquedas.** `queVerCerca`, `buscarEnRuta` y
+  `buscarServicios` encadenan tres servidores con topes de 31+21+16 s: hasta
+  **68 segundos** antes de decir nada. Sin cobertura no pasa —`fetch` falla al
+  instante— pero **con cobertura débil de montaña sí**, que es el caso de esta
+  app. Necesita decidir cuánto se espera y si se ofrece cancelar: es decisión de
+  producto, no un arreglo mecánico.
+- **A4 · Doble pulsación en cámara y documentos.** `activaCamara` y
+  `enganchaDoc` admiten dos selecciones seguidas. Menos grave que las demás
+  porque exige dos interacciones deliberadas con el selector de archivos.
+
+---
+
 ## 6b · Cosas pequeñas encontradas y no arregladas
 
 Ninguna bloquea. Anotadas para no volver a descubrirlas:
@@ -182,6 +217,17 @@ Ninguna bloquea. Anotadas para no volver a descubrirlas:
   Mismo nombre, mismo algoritmo, resultado distinto. Sigue así: unificarlo
   cambiaría las distancias que ve una de las dos familias, y hay que decidir cuál
   gana antes de tocarlo.
+- **El gradiente `id="g"` se repite en cada ilustración.** `CIELO` lo define y
+  todas las ilustraciones lo llevan, así que en la pestaña Guía aparece muchas
+  veces. `url(#g)` resuelve al primero, y como todos son idénticos no cambia
+  nada: es marcado inválido, no un fallo. Arreglarlo mueve las fotografías sin
+  que nadie note la diferencia, así que se deja para el hito visual. La prueba
+  de ids repetidos deja fuera lo que va dentro de un `<svg>` por eso.
+- **Áreas táctiles por debajo de 44 px** en toda la app: `.tick` 22×22,
+  `.quitar` 23, `.estrella` 24, y el `.btn` normal ~34 de alto. Ningún botón
+  declara `min-height`. → hito visual.
+- **28 tamaños de letra y 15 radios de borde distintos** entre las cinco apps,
+  y cada una nombra los mismos roles de color de forma distinta. → hito visual.
 - **El acuse del traspaso (`traspaso_ok`) es por móvil, no por app.** Si un móvil
   usa a la vez Safari y el icono de inicio, el acuse que deja Safari no dice nada
   sobre lo que pasa desde el icono. Es conservador en la dirección buena (como
