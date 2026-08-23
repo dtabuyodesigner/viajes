@@ -190,6 +190,13 @@ pulsación y recuperación de botones.
   sin sesión · sin cobertura · error del servidor · fotos pendientes · borrados
   pendientes · versión nueva. Y llevar `aria-live`, que hoy **no se usa en
   ninguna de las cinco**.
+
+  **Revisar aquí el cierre de sesión.** A1 le puso un tope exterior de 8 s a
+  `SYNC.salir()`, pero después el botón sigue esperando a `pintaNube()`, que
+  vuelve a hablar con la nube. Con red débil, «saliendo…» puede quedarse puesto
+  bastante más de esos 8 segundos. No es un cuelgue —termina— pero la espera es
+  más larga de lo que el tope sugiere, y tiene sentido resolverlo cuando el
+  estado se pinte desde un sitio común en vez de repintarlo a mano ahí.
 - **A3 · La espera de las búsquedas.** `queVerCerca`, `buscarEnRuta` y
   `buscarServicios` encadenan tres servidores con topes de 31+21+16 s: hasta
   **68 segundos** antes de decir nada. Sin cobertura no pasa —`fetch` falla al
@@ -199,6 +206,13 @@ pulsación y recuperación de botones.
 - **A4 · Doble pulsación en cámara y documentos.** `activaCamara` y
   `enganchaDoc` admiten dos selecciones seguidas. Menos grave que las demás
   porque exige dos interacciones deliberadas con el selector de archivos.
+- **A5 · Entrar y salir, colgados y a dos toques.** La vigilancia estática que
+  dejó A1 mira las llamadas `c.from(...)`, es decir los datos, pero **no las de
+  autenticación**: `signOut()` y `signInWithPassword()` se le escapan. Al ampliar
+  las pruebas de fiabilidad hay que cubrir explícitamente los dos casos con el
+  servidor colgado y con doble pulsación. `entrar()` ya va con `conTope` de 15 s;
+  `salir()` recibió el suyo en A1. Lo que falta es la prueba que lo vigile, no el
+  tope.
 
 ---
 
