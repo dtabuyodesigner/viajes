@@ -75,6 +75,217 @@ async function fetchConTope(url, ms = 12000, opciones = {}){
   }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Cómo está el viaje: un solo sitio para las cinco apps.
+
+   La pregunta que responde no es técnica. Es «¿está a salvo lo
+   que he escrito, y lo verá el otro móvil?». Todo lo que no
+   ayude a contestar eso se queda fuera: nombres de tablas,
+   correos, reintentos, códigos de error.
+
+   Dos cosas que NO se dicen porque no se pueden saber:
+
+   · La hora de la última sincronización. La marca `actualizado`
+     la pone siempre este móvil antes de mandar; no hay ninguna
+     confirmada por el servidor. Enseñarla sería inventar.
+   · Si el diario está subido. Cada gesto hace subir().catch(),
+     y un fallo no deja rastro. No hay cola de pendientes.
+   ═══════════════════════════════════════════════════════════ */
+
+/* La raíz del sitio, mire desde donde mire. sync.js está en la raíz,
+   así que su propia URL la da; si no se puede leer (en las pruebas va
+   metido en línea), se deduce de la carpeta en la que estamos. */
+function raizDelSitio(){
+  try {
+    const s = [...document.querySelectorAll("script[src]")]
+      .find(x => /(^|\/)sync\.js(\?|$)/.test(x.getAttribute("src") || ""));
+    if (s) return new URL(".", s.src).href;
+  } catch {}
+  try {
+    const sub = ["eslovenia", "asturias", "viaje", "crear"];
+    const partes = location.pathname.split("/").filter(Boolean);
+    const ultima = partes[partes.length - 1];
+    return new URL(sub.includes(ultima) ? "../" : "./", location.href).href;
+  } catch { return "/"; }
+}
+
+/* Las cinco apps, con el prefijo de su caché. El prefijo, no el nombre
+   entero: los nombres llevan versión y cambian en cada publicación. */
+const APPS_GUARDABLES = [
+  { nombre:"la portada", prefijo:"portada-",     pagina:"index.html" },
+  { nombre:"Eslovenia",  prefijo:"eslovenia26-", pagina:"eslovenia/index.html" },
+  { nombre:"Asturias",   prefijo:"asturias26-",  pagina:"asturias/index.html" },
+  { nombre:"el visor",   prefijo:"generico-",    pagina:"viaje/index.html" },
+  { nombre:"el editor",  prefijo:"editor-",      pagina:"crear/index.html" }
+];
+
+/* ¿Este móvil deja guardar? En modo privado de iOS, localStorage
+   lanza excepción. Hay 26 sitios que escriben y solo uno avisa, así
+   que se comprueba aquí de una vez. */
+function puedeGuardar(){
+  try {
+    localStorage.setItem("_sitio_", "1");
+    localStorage.removeItem("_sitio_");
+    return true;
+  } catch { return false; }
+}
+
+function loQueFaltaPorSubir(){
+  const cuenta = f => { try { return f() || []; } catch { return []; } };
+  return {
+    viajes:   cuenta(() => SYNC.pendientes()).length,
+    borrados: cuenta(() => SYNC.borrados()).length,
+    fotos:    cuenta(() => typeof FOTOS !== "undefined" ? FOTOS.pendientes() : []).length
+  };
+}
+
+/* ¿Está guardado lo justo para abrir cada app sin cobertura?
+
+   Se afirma con lo que se puede comprobar de verdad: que existe la
+   caché de esa app y que dentro está su página. No promete que estén
+   todas las fotos ni todas las vistas: eso solo se guarda cuando se
+   visitan con red, y decir lo contrario sería mentir.
+
+   Devuelve null cuando no se puede saber, que no es lo mismo que «no». */
+async function listoSinCobertura(){
+  if (typeof caches === "undefined" || !navigator.serviceWorker) return null;
+  let nombres;
+  try { nombres = await conTope(caches.keys(), 4000, null); } catch { return null; }
+  if (!nombres) return null;
+
+  const raiz = raizDelSitio();
+  const faltan = [];
+  for (const app of APPS_GUARDABLES){
+    const clave = nombres.find(n => n.startsWith(app.prefijo));
+    if (!clave){ faltan.push(app.nombre); continue; }
+    try {
+      // Se abre solo una que ya existe: caches.open() crearía una vacía
+      // y daría por buena una app que no está guardada.
+      const c = await caches.open(clave);
+      const hay = await c.match(new URL(app.pagina, raiz).href);
+      if (!hay) faltan.push(app.nombre);
+    } catch { faltan.push(app.nombre); }
+  }
+  return { listo: faltan.length === 0, faltan };
+}
+
+/* Cómo está todo, en un objeto. Nunca lanza: si algo no se puede
+   saber, se dice que no se sabe, que no es lo mismo que decir que no. */
+async function comoEstaTodo(){
+  const guarda = puedeGuardar();
+  const porSubir = loQueFaltaPorSubir();
+
+  let nube = { clase:"sin-nube", txt:"solo en este móvil" };
+  if (typeof SYNC !== "undefined"){
+    try {
+      const e = await SYNC.estado();
+      if (e.login)      nube = { clase:"sin-sesion", txt:e.txt };
+      else if (!e.ok)   nube = { clase:navigator.onLine ? "sin-respuesta" : "sin-cobertura", txt:e.txt };
+      else              nube = { clase:"conectada", txt:e.txt, correo:e.correo || "" };
+    } catch { nube = { clase:"sin-respuesta", txt:"la nube no responde" }; }
+  }
+
+  const total = porSubir.viajes + porSubir.borrados + porSubir.fotos;
+  return { guarda, porSubir, total, nube, offline: await listoSinCobertura() };
+}
+
+/* El resumen de una línea. Glifo + texto: nunca solo el color, que con
+   sol en la pantalla es lo primero que se pierde. */
+function resumenDeEstado(e){
+  const cuantos = [];
+  if (e.porSubir.viajes)   cuantos.push(`${e.porSubir.viajes} viaje${e.porSubir.viajes === 1 ? "" : "s"}`);
+  if (e.porSubir.fotos)    cuantos.push(`${e.porSubir.fotos} foto${e.porSubir.fotos === 1 ? "" : "s"}`);
+  if (e.porSubir.borrados) cuantos.push("un borrado");
+  const lista = cuantos.join(" y ");
+
+  if (!e.guarda)
+    return { nivel:"problema", glifo:"!", txt:"Este móvil no deja guardar", accion:null };
+
+  if (e.nube.clase === "sin-sesion")
+    return { nivel:"aviso", glifo:"!", txt:"Solo en este móvil", accion:"entrar" };
+
+  if (e.nube.clase === "sin-cobertura")
+    return { nivel:"aviso", glifo:"!",
+             txt: e.total ? `Sin cobertura · ${lista} por subir` : "Sin cobertura · nada pendiente",
+             accion:null };
+
+  if (e.nube.clase === "sin-respuesta")
+    return { nivel:"aviso", glifo:"!",
+             txt: e.total ? `La nube no responde · ${lista} por subir` : "La nube no responde",
+             accion:"reintentar" };
+
+  if (e.nube.clase === "sin-nube")
+    return { nivel:"aviso", glifo:"!", txt:"Solo en este móvil", accion:null };
+
+  return e.total
+    ? { nivel:"aviso", glifo:"!", txt:`${lista} por subir`, accion:"reintentar" }
+    : { nivel:"bien",  glifo:"✓", txt:"A salvo · lo ve el otro móvil", accion:null };
+}
+
+/* Escapar aquí dentro. No se puede llamar `esc`: cada app declara el
+   suyo con `const`, y dos declaraciones del mismo nombre en el ámbito
+   global rompen la página entera antes de ejecutar nada. */
+function escapaTexto(t){
+  return String(t ?? "").replace(/[&<>"]/g,
+    c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+}
+
+/* El resumen de una línea, para el sitio que cada app decida.
+   El glifo va con aria-hidden porque el texto ya lo dice todo: si no,
+   un lector de pantalla leería «signo de admiración» antes de la frase. */
+function pintaResumenEn(nodo, r){
+  if (!nodo) return;
+  nodo.dataset.nivel = r.nivel;
+  nodo.innerHTML =
+    `<span class="est-glifo" aria-hidden="true">${r.glifo}</span> ` +
+    `<span class="est-txt">${escapaTexto(r.txt)}</span>`;
+}
+
+const ACCIONES = {
+  entrar:     "Entrar con tu cuenta",
+  reintentar: "Reintentar ahora"
+};
+
+/* El detalle. Lo que le importa a una persona que va de viaje:
+   si está a salvo, qué falta por subir, y si podrá abrirlo sin cobertura.
+   Nada de correos, tablas, códigos ni reintentos. */
+function detalleEstado(e){
+  const r = resumenDeEstado(e);
+  const filas = [];
+
+  filas.push(["En este móvil", e.guarda
+    ? "Guardado. Se abre sin cobertura."
+    : "No se puede guardar. Si vas en modo privado, ciérralo."]);
+
+  const p = e.porSubir;
+  filas.push(["Por subir", e.total === 0 ? "Nada pendiente"
+    : [p.viajes && `${p.viajes} viaje${p.viajes === 1 ? "" : "s"}`,
+       p.fotos && `${p.fotos} foto${p.fotos === 1 ? "" : "s"}`,
+       p.borrados && "un borrado"].filter(Boolean).join(" · ")]);
+
+  filas.push(["La nube", e.nube.clase === "conectada"
+    ? "Conectada. Lo que subas lo ve el otro móvil."
+    : e.nube.clase === "sin-sesion" ? "Sin entrar. Por ahora solo se guarda aquí."
+    : e.nube.clase === "sin-cobertura" ? "Sin cobertura. Subirá solo cuando vuelva."
+    : "No responde. Se reintenta al sincronizar."]);
+
+  filas.push(["Sin cobertura", !e.offline
+    ? "No se puede comprobar en este móvil."
+    : e.offline.listo
+      ? "Todo guardado para abrirlo sin red."
+      : `Abre con wifi antes de salir: ${e.offline.faltan.join(", ")}.`]);
+
+  const accion = r.accion
+    ? `<div class="btns"><button class="btn solid" id="est-accion" data-accion="${r.accion}">${ACCIONES[r.accion]}</button></div>`
+    : "";
+
+  return `<div class="est-detalle">
+    ${filas.map(([a, b]) => `<div class="row"><span class="k">${escapaTexto(a)}</span><span class="v">${escapaTexto(b)}</span></div>`).join("")}
+    ${accion}
+    <p class="note">Lo guardado sin cobertura sube solo en cuanto vuelva la línea. No hace falta esperar aquí.</p>
+  </div>`;
+}
+
 /* ---- Un botón que trabaja ----
    Tres cosas que hasta ahora no hacía ninguno:
 

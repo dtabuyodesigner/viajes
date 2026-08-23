@@ -167,7 +167,7 @@ después del punto anterior, no antes.**
 
 ---
 
-## 2c · Fiabilidad · A1 hecho, A2 a A4 por hacer
+## 2c · Fiabilidad · A1, A2 y A5 hechos; A3 y A4 por hacer
 
 **A1, hecho en `feature/fiabilidad-usabilidad-diseno`:** esperas finitas, doble
 pulsación y recuperación de botones.
@@ -183,20 +183,39 @@ pulsación y recuperación de botones.
 
 **Lo que queda del bloque de fiabilidad:**
 
-- **A2 · Centro de estado común.** Va en `sync.js`, que lo cargan las cinco apps
-  (`assets/app.js` solo lo cargan tres). Hoy solo hay pie de estado en la portada
-  y en el editor; las tres apps de viaje no tienen ninguno. Es añadir, no
-  reescribir. Debe cubrir: guardado aquí · pendiente de subir · sincronizado ·
-  sin sesión · sin cobertura · error del servidor · fotos pendientes · borrados
-  pendientes · versión nueva. Y llevar `aria-live`, que hoy **no se usa en
-  ninguna de las cinco**.
+- **A2 · Centro de estado común. HECHO.** `comoEstaTodo()` y
+  `resumenDeEstado()` en `sync.js`, que lo cargan las cinco. La portada enseña el
+  detalle completo; el editor y los tres viajes, una línea que se abre. Con
+  `aria-live`, glifo además del color, y `--ok-txt`/`--aviso-txt` por tema porque
+  el verde de «todo bien» tenía **1,87 de contraste** sobre fondo claro: era el
+  estado que más se mira y el que peor se leía al sol.
 
-  **Revisar aquí el cierre de sesión.** A1 le puso un tope exterior de 8 s a
-  `SYNC.salir()`, pero después el botón sigue esperando a `pintaNube()`, que
-  vuelve a hablar con la nube. Con red débil, «saliendo…» puede quedarse puesto
-  bastante más de esos 8 segundos. No es un cuelgue —termina— pero la espera es
-  más larga de lo que el tope sugiere, y tiene sentido resolverlo cuando el
-  estado se pinte desde un sitio común en vez de repintarlo a mano ahí.
+  **Lo que se decidió NO decir, y por qué:**
+  - *Hora de la última sincronización*: no existe ninguna confirmada por el
+    servidor. `actualizado` la pone siempre el propio móvil antes de mandar. Para
+    tenerla haría falta leer de vuelta una columna generada en Postgres, y eso es
+    cambio de esquema.
+  - *Si el diario está subido*: cada gesto hace `subir().catch(()=>{})` y un
+    fallo no deja rastro. **No hay cola de pendientes para el diario**, a
+    diferencia de viajes y fotos. Por eso el resumen de las apps de viaje no
+    promete nada sobre las notas. Darle cola al diario es trabajo aparte, y
+    conviene hacerlo antes de que el centro de estado hable de él.
+  - *Qué fotos concretas están guardadas para usar sin cobertura*: se comprueba
+    que exista la caché de cada app y que dentro esté su página. Ir más allá
+    exigiría derivar de `datos.js` la lista de todo lo que cada viaje usa y
+    comprobarla una a una. Se documenta la limitación en vez de prometer de más.
+
+  **El cierre de sesión, resuelto y con una corrección:** la nota anterior decía
+  que el botón seguía esperando a `pintaNube()`. Era una lectura equivocada: esa
+  llamada no llevaba `await`, así que el botón ya se soltaba a los ≤8 s. Lo que
+  sí se ha hecho es quitar la sincronización completa que disparaba al salir —
+  ahora repinta con lo que ya se sabe, sin volver a hablar con la nube.
+
+- **A5 · Entrar y salir. HECHO.** «Entrar» no estaba envuelto en `trabajando()`:
+  no se desactivaba y admitía doble pulsación durante hasta ~32 s en el peor caso
+  encadenado. Ahora los dos van envueltos, con pruebas de servidor colgado y
+  doble pulsación.
+
 - **A3 · La espera de las búsquedas.** `queVerCerca`, `buscarEnRuta` y
   `buscarServicios` encadenan tres servidores con topes de 31+21+16 s: hasta
   **68 segundos** antes de decir nada. Sin cobertura no pasa —`fetch` falla al
@@ -206,20 +225,15 @@ pulsación y recuperación de botones.
 - **A4 · Doble pulsación en cámara y documentos.** `activaCamara` y
   `enganchaDoc` admiten dos selecciones seguidas. Menos grave que las demás
   porque exige dos interacciones deliberadas con el selector de archivos.
-- **A5 · Entrar y salir, colgados y a dos toques.** La vigilancia estática que
-  dejó A1 mira las llamadas `c.from(...)`, es decir los datos, pero **no las de
-  autenticación**: `signOut()` y `signInWithPassword()` se le escapan. Al ampliar
-  las pruebas de fiabilidad hay que cubrir explícitamente los dos casos con el
-  servidor colgado y con doble pulsación. `entrar()` ya va con `conTope` de 15 s;
-  `salir()` recibió el suyo en A1. Lo que falta es la prueba que lo vigile, no el
-  tope.
-
 ---
 
 ## 6b · Cosas pequeñas encontradas y no arregladas
 
 Ninguna bloquea. Anotadas para no volver a descubrirlas:
 
+- **El diario no tiene cola de pendientes.** Viajes y fotos sí. Si una nota no
+  sube, no queda rastro y nadie se entera. Es la pieza que falta para que el
+  centro de estado pueda hablar del diario con honestidad.
 - **Ids sin parte aleatoria.** `nuevoId()` del editor y los ids de `visitas` y
   `pernoctas` en `sync.js` son `Date.now().toString(36)` a secas. Los de fotos y
   documentos sí llevan azar, precisamente porque ya hubo colisiones. Dos viajes

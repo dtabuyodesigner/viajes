@@ -174,6 +174,30 @@ no tiene.
 
 ---
 
+## Saber si está todo a salvo
+
+En la portada, debajo de la versión, hay una línea que lo dice: **«A salvo · lo
+ve el otro móvil»** cuando está todo subido, o qué falta cuando no. Tócala y se
+abre el detalle: qué hay guardado en este móvil, qué queda por subir, cómo está
+la nube y si podréis abrirlo todo sin cobertura.
+
+La misma línea está en el editor y en la pestaña **Información** de cada viaje.
+
+Tres cosas que conviene saber:
+
+**«Sin cobertura» no es un problema.** Es lo normal en la montaña. Lo que
+escribas se guarda en el móvil y sube solo en cuanto vuelva la línea. No hace
+falta esperar mirando la pantalla.
+
+**Si dice «Abre con wifi antes de salir»**, hazlo: te dirá qué viaje falta. Con
+abrirlo una vez con datos es suficiente.
+
+**No verás una hora de última sincronización.** No la ponemos porque no la
+sabemos de verdad: el reloj sería el de vuestro móvil, no el de la nube, y
+podría engañar.
+
+---
+
 ## Si algo va raro
 
 **Un botón se queda pensando** → ya no puede quedarse para siempre. Todo lo que

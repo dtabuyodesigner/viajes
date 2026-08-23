@@ -22,6 +22,7 @@
   --line:rgba(127,176,105,.18);
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --ok-txt:#5BC8B4; --aviso-txt:#E0B25A;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -222,11 +223,11 @@ ul.plain li span{color:var(--papel-dim)}
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--monte:#F4F6F1;--monte-2:#FFFFFF;--papel:#132218;--papel-dim:#4C6153;
   --line:rgba(19,34,24,.15);--prau:#2F6B31;--prau-dim:#3B8040;
-  --mar:#1E6C82;--teito:#84620F;--oso:#8F3821;}
+  --mar:#1E6C82;--teito:#84620F;--oso:#8F3821;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 @media (prefers-color-scheme: light){
   body.auto{--monte:#F4F6F1;--monte-2:#FFFFFF;--papel:#132218;--papel-dim:#4C6153;
   --line:rgba(19,34,24,.15);--prau:#2F6B31;--prau-dim:#3B8040;
-  --mar:#1E6C82;--teito:#84620F;--oso:#8F3821;}
+  --mar:#1E6C82;--teito:#84620F;--oso:#8F3821;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 }
 
 /* Selector de color, arriba a la derecha */
@@ -401,6 +402,17 @@ header{position:relative}
   font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;
   box-shadow:0 6px 24px rgba(0,0,0,.35)}
 .hotel-zona{margin:18px 0 8px}
+.estado-linea{display:block;width:100%;text-align:left;background:none;border:0;
+  padding:0;font:inherit;font-size:13px;color:var(--papel-dim);cursor:pointer}
+.estado-linea .est-glifo{font-weight:700;margin-right:3px}
+.estado-linea[data-nivel="bien"] .est-glifo{color:var(--ok-txt)}
+.estado-linea[data-nivel="aviso"] .est-glifo,
+.estado-linea[data-nivel="problema"] .est-glifo{color:var(--aviso-txt)}
+.est-detalle{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.est-detalle .row{display:flex;justify-content:space-between;gap:12px;
+  padding:4px 0;font-size:12.5px;align-items:baseline}
+.est-detalle .k{color:var(--papel-dim);flex:0 0 auto}
+.est-detalle .v{text-align:right}
 </style>
 </head>
 <body>
@@ -477,7 +489,7 @@ if (window.matchMedia)
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v101 · 23/08 12:06";
+const VERSION = "v102 · 23/08 15:10";
 const VIAJE_ID = "asturias";
 const VIAJE = viajeEnUso(VIAJE_ID, VIAJE_ORIGINAL);
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1441,7 +1453,7 @@ function vistaInfo(){
     `<div class="aviso"><span class="ic">!</span>
       <p>Somiedo es territorio de osos, lobos y mastines de rebaño. Bella y Lisboa atadas en todo el parque.</p></div>` +
     tarjetaGastos() + panelNav() +
-    bloqueEditarViaje() +
+    bloqueEstado() + bloqueEditarViaje() +
     bloque("Bella y Lisboa", "Con las perras", info.perras) +
     bloque("Dormir y conducir", "La furgo", info.furgo) +
     `<div class="card" style="margin-top:12px">
@@ -1490,6 +1502,7 @@ function vistaInfo(){
   document.querySelectorAll("[data-via]").forEach(b =>
     b.addEventListener("click", () => { PREF.via = b.dataset.via; vistaInfo(); }));
   activaEditarViaje();
+  activaEstado();
 }
 
 /* ---- Navegación ---- */

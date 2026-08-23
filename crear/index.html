@@ -12,6 +12,7 @@
   --fondo:#12181C; --fondo-2:#1C252A; --fondo-3:#232E34;
   --tinta:#EDF1F3; --tinta-dim:#93A3AA; --linea:rgba(237,241,243,.13);
   --acento:#5BC8B4; --acento-dim:#3E8C7E; --ambar:#D9A233; --rojo:#C0503F;
+  --ok-txt:#5BC8B4; --aviso-txt:#E0B25A;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
 }
@@ -75,6 +76,17 @@ input::placeholder,textarea::placeholder{color:var(--tinta-dim)}
   display:grid;place-items:center;margin-top:1px}
 .aviso p{margin:0;font-size:13px;line-height:1.5;color:var(--tinta)}
 .aviso p a{color:var(--ambar);text-decoration:underline}
+.estado-linea{display:block;width:100%;text-align:left;background:none;border:0;
+  padding:0 0 4px;font:inherit;font-size:13px;color:var(--tinta-dim);cursor:pointer}
+.estado-linea .est-glifo{font-weight:700;margin-right:3px}
+.estado-linea[data-nivel="bien"] .est-glifo{color:var(--ok-txt)}
+.estado-linea[data-nivel="aviso"] .est-glifo,
+.estado-linea[data-nivel="problema"] .est-glifo{color:var(--aviso-txt)}
+.est-detalle{margin-top:8px;border-top:1px solid var(--linea);padding-top:8px;margin-bottom:16px}
+.est-detalle .row{display:flex;justify-content:space-between;gap:12px;
+  padding:4px 0;font-size:12.5px;align-items:baseline}
+.est-detalle .k{color:var(--tinta-dim);flex:0 0 auto}
+.est-detalle .v{text-align:right}
 .aviso.ok{background:rgba(91,200,180,.1);border-color:rgba(91,200,180,.35)}
 .aviso.ok .ic{background:var(--acento)}
 .aviso.ok p{color:var(--tinta)}
@@ -130,11 +142,13 @@ input::placeholder,textarea::placeholder{color:var(--tinta-dim)}
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
-  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;}
+  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;
+  --ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 @media (prefers-color-scheme: light){
   body.auto{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
-  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;}
+  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;
+  --ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 }
 
 /* Selector de color, arriba a la derecha */
@@ -1173,7 +1187,32 @@ window.addEventListener("beforeunload", e => {
   if (pendiente){ e.preventDefault(); e.returnValue = ""; }
 });
 
+/* Resumen compacto: una línea del mismo modelo común que la portada, y
+   el detalle debajo si se toca. Antes había un párrafo fijo en mitad del
+   formulario que decía casi lo mismo que el «Guardado…» de abajo, dos
+   veces seguidas y con dos redacciones distintas. */
 async function pintaAvisoNube(){
+  const z = document.getElementById("aviso-nube");
+  if (!z) return;
+  if (typeof comoEstaTodo !== "function") return pintaAvisoNubeViejo();
+
+  const e = await comoEstaTodo();
+  z.innerHTML = `<button class="estado-linea" id="est-linea" aria-live="polite"
+                         aria-expanded="false" aria-controls="est-mas"></button>
+                 <div id="est-mas" hidden></div>`;
+  const linea = document.getElementById("est-linea");
+  pintaResumenEn(linea, resumenDeEstado(e));
+
+  linea.addEventListener("click", () => {
+    const mas = document.getElementById("est-mas");
+    const abierto = linea.getAttribute("aria-expanded") === "true";
+    linea.setAttribute("aria-expanded", String(!abierto));
+    mas.hidden = abierto;
+    if (!abierto) mas.innerHTML = detalleEstado(e);
+  });
+}
+
+async function pintaAvisoNubeViejo(){
   const z = document.getElementById("aviso-nube");
   if (!z) return;
   const pinta = (clase, icono, texto) =>

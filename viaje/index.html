@@ -13,6 +13,7 @@
   --line:rgba(91,200,180,.18); --ac:#5BC8B4; --acd:#3E8C7E; --am:#D9A233; --rj:#C0503F;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --ok-txt:#5BC8B4; --aviso-txt:#E0B25A;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--f);color:var(--t);font-family:var(--sans);font-size:16px;
@@ -148,10 +149,10 @@ ul.plain li:first-child{border-top:0}
 
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
-  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;}
+  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 @media (prefers-color-scheme: light){
   body.auto{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
-  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;}
+  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 }
 
 /* Selector de color, arriba a la derecha */
@@ -310,6 +311,17 @@ header{position:relative}
   font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;
   box-shadow:0 6px 24px rgba(0,0,0,.35)}
 .hotel-zona{margin:18px 0 8px}
+.estado-linea{display:block;width:100%;text-align:left;background:none;border:0;
+  padding:0;font:inherit;font-size:13px;color:var(--td);cursor:pointer}
+.estado-linea .est-glifo{font-weight:700;margin-right:3px}
+.estado-linea[data-nivel="bien"] .est-glifo{color:var(--ok-txt)}
+.estado-linea[data-nivel="aviso"] .est-glifo,
+.estado-linea[data-nivel="problema"] .est-glifo{color:var(--aviso-txt)}
+.est-detalle{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.est-detalle .row{display:flex;justify-content:space-between;gap:12px;
+  padding:4px 0;font-size:12.5px;align-items:baseline}
+.est-detalle .k{color:var(--td);flex:0 0 auto}
+.est-detalle .v{text-align:right}
 </style>
 </head>
 <body>
@@ -964,7 +976,7 @@ function vistaInfo(){
   const op = (g, val, act, t, sub) =>
     `<button class="op${val === act ? " on" : ""}" data-${g}="${val}"><b>${t}</b><small>${sub}</small></button>`;
   const f0 = fechaDe(0), fn = fechaDe(VIAJE.dias.length - 1);
-  document.getElementById("v-info").innerHTML = `
+  document.getElementById("v-info").innerHTML = bloqueEstado() + `
     <div class="sec"><span class="label">El viaje</span><h2>${esc(VIAJE.nombre)}</h2></div>
     <div class="card">
       ${VIAJE.salida ? `<div class="note" style="margin:0 0 8px">Salida desde ${esc(VIAJE.salida)}</div>` : ""}
@@ -996,6 +1008,7 @@ function vistaInfo(){
     b.addEventListener("click", () => { P.app = b.dataset.app; vistaInfo(); }));
   document.querySelectorAll("[data-avisar]").forEach(b =>
     b.addEventListener("click", () => { P.avisar = b.dataset.avisar === "si"; vistaInfo(); }));
+  activaEstado();
 }
 
 const vistas = { hoy:vistaHoy, dias:vistaDias, reservas:vistaReservas, cerca:vistaCerca, info:vistaInfo };

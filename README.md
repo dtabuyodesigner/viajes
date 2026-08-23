@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               249 comprobaciones + fotografías de comportamiento
+/tests/               329 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 249 en verde
+node tests/probar.js   # las 329 en verde
 node tests/foto.js comparar
 ```
 
@@ -242,6 +242,22 @@ búsqueda. Ya se publicaron 34 enlaces de Wikiloc que daban 404.
 **Cambiar la lógica obliga a revisar los textos.** «Buscando en 5 km» en un modo
 sin radio es peor que no decir nada.
 
+**Cómo está el viaje se decide en un solo sitio.** `comoEstaTodo()` y
+`resumenDeEstado()` en `sync.js` responden a una sola pregunta: ¿está a salvo lo
+que he escrito, y lo verá el otro móvil? Las cinco apps pintan ese mismo modelo:
+la portada con detalle completo, el editor y los tres viajes con una línea que
+se abre. Nada de correos, tablas ni códigos de error.
+
+**Dos cosas que no se dicen porque no se pueden saber.** No hay hora de última
+sincronización: la marca `actualizado` la pone siempre el propio móvil antes de
+mandar, y no existe ninguna confirmada por el servidor. Y no se informa de si el
+diario está subido: cada gesto hace `subir().catch()` y un fallo no deja rastro.
+
+**«Preparado sin cobertura» se afirma con evidencia.** Se comprueba que existe la
+caché de cada app y que dentro está su página, buscando por prefijo porque los
+nombres llevan versión. `caches` es por origen, así que la portada las ve las
+cinco. No promete que estén todas las fotos: eso solo se guarda al visitarlas.
+
 **Ningún botón puede quedarse esperando.** `conTope()` y `fetchConTope()` en
 `sync.js` ponen límite a todo lo que va por red, y `trabajando()` se encarga del
 botón: lo desactiva mientras trabaja, lo anuncia con `aria-busy`, y lo devuelve
@@ -284,7 +300,7 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 249 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 329 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que

@@ -55,7 +55,8 @@ function abrir(rutaHtml, opciones = {}){
     posicion = null,
     respuestaFetch = null,
     fetchPropio = null,          // para simular una petición que no responde
-    swPropio = null              // para simular un service worker que se cuelga
+    swPropio = null,             // para simular un service worker que se cuelga
+    supabasePropio = null        // para simular login/logout colgados
   } = opciones;
 
   const html = conScriptsDentro(fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8"), rutaHtml);
@@ -90,7 +91,7 @@ function abrir(rutaHtml, opciones = {}){
       if (respuestaFetch) w.fetch = async () => ({ ok:true, json: async () => respuestaFetch });
       if (fetchPropio) w.fetch = fetchPropio;
       if (swPropio) Object.defineProperty(w.navigator, "serviceWorker", { value: swPropio, configurable: true });
-      w.supabase = { createClient: () => ({
+      w.supabase = supabasePropio || { createClient: () => ({
         auth: { getSession: async () => ({ data:{ session: sesion } }),
                 signInWithPassword: async () => ({ data:{}, error:{ message:"Invalid login credentials" } }),
                 signOut: async () => {} },
@@ -1415,6 +1416,371 @@ async function nadaSeQuedaEsperando(){
   }
 }
 
+/* ---- 18. Cómo está el viaje: un solo modelo para las cinco apps ---- */
+
+/* Un almacén de cachés de mentira, para poder decir la verdad sobre
+   el uso sin cobertura sin depender de un navegador de verdad. */
+function cachesDeMentira(guardado = {}){
+  const abiertas = [];
+  return {
+    abiertas,
+    api: {
+      async keys(){ return Object.keys(guardado); },
+      async open(nombre){
+        abiertas.push(nombre);
+        const dentro = guardado[nombre] || [];
+        return { async match(url){ return dentro.includes(url) ? { ok:true } : undefined; } };
+      }
+    }
+  };
+}
+
+const TODAS_GUARDADAS = {
+  "portada-v13":     ["https://x/index.html"],
+  "eslovenia26-v15": ["https://x/eslovenia/index.html"],
+  "asturias26-v14":  ["https://x/asturias/index.html"],
+  "generico-v9":     ["https://x/viaje/index.html"],
+  "editor-v9":       ["https://x/crear/index.html"]
+};
+
+async function elEstadoSeSabeDeVerdad(){
+  console.log(`\n${gris("──")} Cómo está el viaje, en un solo sitio`);
+
+  const abrirPortada = (opciones = {}) =>
+    abrir("index.html", { url:"https://x/", almacen:{}, ...opciones });
+
+  // ── El resumen dice lo que toca en cada caso ──
+  {
+    const dom = abrirPortada();
+    await esperar(300);
+    const w = dom.window;
+
+    const caso = (e) => w.resumenDeEstado(e);
+    const base = { guarda:true, porSubir:{viajes:0,borrados:0,fotos:0}, total:0, offline:null };
+
+    let r = caso({ ...base, nube:{ clase:"conectada", txt:"Sincronizado" } });
+    comprobar("todo subido: dice que está a salvo",
+              r.nivel === "bien" && /a salvo/i.test(r.txt), `dijo «${r.txt}»`);
+    comprobar("y no ofrece ninguna acción, porque no hay nada que hacer",
+              r.accion === null, `ofrecía «${r.accion}»`);
+
+    r = caso({ ...base, porSubir:{viajes:2,borrados:0,fotos:0}, total:2,
+               nube:{ clase:"conectada", txt:"2 viajes por subir" } });
+    comprobar("con viajes pendientes, lo cuenta",
+              /2 viajes por subir/.test(r.txt), `dijo «${r.txt}»`);
+    comprobar("y NO dice que esté a salvo", !/a salvo/i.test(r.txt), `dijo «${r.txt}»`);
+    comprobar("y ofrece reintentar", r.accion === "reintentar", `ofrecía «${r.accion}»`);
+
+    r = caso({ ...base, porSubir:{viajes:1,borrados:0,fotos:3}, total:4,
+               nube:{ clase:"sin-cobertura", txt:"Sin conexión · solo en este móvil" } });
+    comprobar("sin cobertura, lo dice sin alarmar y cuenta lo que falta",
+              /sin cobertura/i.test(r.txt) && /1 viaje y 3 fotos/.test(r.txt), `dijo «${r.txt}»`);
+    comprobar("y no ofrece reintentar, porque no serviría de nada",
+              r.accion === null, `ofrecía «${r.accion}»`);
+
+    r = caso({ ...base, nube:{ clase:"sin-sesion", txt:"Sin sesión" } });
+    comprobar("sin sesión, invita a entrar",
+              r.accion === "entrar" && /solo en este móvil/i.test(r.txt), `dijo «${r.txt}»`);
+
+    r = caso({ ...base, guarda:false, nube:{ clase:"conectada", txt:"Sincronizado" } });
+    comprobar("si el móvil no deja guardar, eso manda sobre todo lo demás",
+              r.nivel === "problema" && /no deja guardar/i.test(r.txt), `dijo «${r.txt}»`);
+
+    r = caso({ ...base, nube:{ clase:"sin-respuesta", txt:"La nube no responde" } });
+    comprobar("si la nube no responde, se puede reintentar",
+              r.accion === "reintentar", `ofrecía «${r.accion}»`);
+
+    comprobar("el nivel nunca viene solo como color: siempre trae glifo",
+              ["✓","!"].includes(r.glifo), `glifo «${r.glifo}»`);
+  }
+
+  // ── Uso sin cobertura: solo se afirma con evidencia ──
+  {
+    const dom = abrirPortada();
+    await esperar(300);
+    const w = dom.window;
+
+    // Sin Cache API no se puede saber, y eso NO es lo mismo que «no»
+    comprobar("sin Cache API, no se inventa: se dice que no se sabe",
+              (await w.listoSinCobertura()) === null, "afirmó algo sin poder saberlo");
+
+    const falso = cachesDeMentira(TODAS_GUARDADAS);
+    w.caches = falso.api;
+    w.navigator.serviceWorker = { getRegistration: async () => ({}), addEventListener(){}, controller:{} };
+
+    let r = await w.listoSinCobertura();
+    comprobar("con las cinco guardadas, dice que está listo",
+              r && r.listo === true && r.faltan.length === 0, JSON.stringify(r));
+
+    // Y si falta una, la nombra
+    const aMedias = { ...TODAS_GUARDADAS };
+    delete aMedias["asturias26-v14"];
+    w.caches = cachesDeMentira(aMedias).api;
+    r = await w.listoSinCobertura();
+    comprobar("si falta una app, no dice que esté listo",
+              r && r.listo === false, JSON.stringify(r));
+    comprobar("y dice cuál falta, por su nombre",
+              r.faltan.includes("Asturias"), JSON.stringify(r.faltan));
+
+    // Caché presente pero vacía: no vale como evidencia
+    w.caches = cachesDeMentira({ ...TODAS_GUARDADAS, "asturias26-v14": [] }).api;
+    r = await w.listoSinCobertura();
+    comprobar("una caché vacía no cuenta como guardada",
+              r && r.faltan.includes("Asturias"), JSON.stringify(r));
+  }
+
+  // ── No se abre ninguna caché que no exista ──
+  {
+    const dom = abrirPortada();
+    await esperar(300);
+    const w = dom.window;
+    const falso = cachesDeMentira({ "portada-v13": ["https://x/index.html"] });
+    w.caches = falso.api;
+    w.navigator.serviceWorker = { getRegistration: async () => ({}), addEventListener(){}, controller:{} };
+    await w.listoSinCobertura();
+    comprobar("no se abre ninguna caché que no estuviera ya",
+              falso.abiertas.every(n => n === "portada-v13"),
+              `abrió: ${falso.abiertas.join(", ")}`);
+  }
+}
+
+/* ---- 19. El centro de estado, en la portada ---- */
+async function elCentroDeEstado(){
+  console.log(`\n${gris("──")} El centro de estado`);
+
+  const abre = async (opciones) => {
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, ...opciones });
+    await esperar(500);
+    return { dom, d:dom.window.document, w:dom.window };
+  };
+
+  // ── Sin cobertura ──
+  {
+    const { dom, d } = await abre({ conexion:false });
+    const el = d.getElementById("nube");
+    comprobar("el estado está en la portada", !!el, "no está");
+    comprobar("y nunca se queda en «comprobando…»",
+              el.textContent.trim() !== "comprobando…", `quedó «${el.textContent.trim()}»`);
+    comprobar("sin cobertura lo dice",
+              /sin cobertura/i.test(el.textContent), `dijo «${el.textContent.trim()}»`);
+    comprobar("y NO dice que esté sincronizado",
+              !/sincronizado|a salvo/i.test(el.textContent), `dijo «${el.textContent.trim()}»`);
+    comprobar("avisa a un lector de pantalla cuando cambia",
+              el.getAttribute("aria-live") === "polite", "sin aria-live");
+    comprobar("el glifo no se lee en voz alta: el texto ya lo dice",
+              d.querySelector("#nube .est-glifo")?.getAttribute("aria-hidden") === "true",
+              "el glifo se leería");
+    comprobar("no distingue solo por color: trae glifo y nivel",
+              !!d.querySelector("#nube .est-glifo") && !!el.dataset.nivel,
+              "faltaba glifo o nivel");
+    comprobar("la portada no dio errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // ── Se abre el detalle y trae acción ──
+  {
+    const { d } = await abre({ conexion:true, sesion:null });
+    const el = d.getElementById("nube");
+    comprobar("sin sesión, el resumen lo dice",
+              /solo en este móvil/i.test(el.textContent), `dijo «${el.textContent.trim()}»`);
+    comprobar("el detalle empieza cerrado",
+              d.getElementById("estado-detalle").hidden === true, "estaba abierto");
+
+    el.click();
+    await esperar(120);
+    const z = d.getElementById("estado-detalle");
+    comprobar("al tocarlo se abre el detalle", z.hidden === false, "siguió cerrado");
+    comprobar("y se anuncia que está abierto",
+              el.getAttribute("aria-expanded") === "true", "sin aria-expanded");
+
+    const texto = z.textContent;
+    for (const fila of ["En este móvil", "Por subir", "La nube", "Sin cobertura"])
+      comprobar(`el detalle dice «${fila}»`, texto.includes(fila), `no estaba en: ${texto.slice(0,120)}`);
+
+    comprobar("sin sesión, ofrece entrar",
+              d.getElementById("est-accion")?.dataset.accion === "entrar", "no ofrecía entrar");
+
+    // Y nada técnico
+    for (const feo of ["supabase", "PGRST", "viaje_diario", "localStorage", "undefined"])
+      comprobar(`el detalle no enseña «${feo}»`, !texto.includes(feo), `apareció en: ${texto.slice(0,140)}`);
+
+    el.click();
+    await esperar(80);
+    comprobar("y se vuelve a cerrar tocándolo otra vez",
+              z.hidden === true && el.getAttribute("aria-expanded") === "false", "siguió abierto");
+  }
+
+  // ── El resumen compacto en las otras cuatro apps ──
+  {
+    const conViaje = JSON.stringify([{ id:"p1", nombre:"Prueba", desde:"", hasta:"", salida:"",
+      dias:[{ t:"Día uno", dest:"Zagreb", paradas:[{ h:"Tarde", txt:"Una parada" }] }] }]);
+    const otras = [
+      { nombre:"editor",    ruta:"crear/index.html",     url:"https://x/crear/",     info:null },
+      { nombre:"visor",     ruta:"viaje/index.html",     url:"https://x/viaje/?id=p1",
+        info:"info", almacen:{ viajes_propios: conViaje } },
+      { nombre:"Eslovenia", ruta:"eslovenia/index.html", url:"https://x/eslovenia/", info:"info",
+        fecha:"2026-07-25T12:00:00" },
+      { nombre:"Asturias",  ruta:"asturias/index.html",  url:"https://x/asturias/",  info:"info" }
+    ];
+
+    for (const app of otras){
+      const dom = abrir(app.ruta, { url:app.url, almacen:app.almacen || {}, conexion:false,
+                                    ...(app.fecha ? { fecha:app.fecha } : {}) });
+      await esperar(400);
+      const d = dom.window.document;
+      if (app.info){
+        [...d.querySelectorAll("nav button")].find(b => b.dataset.v === app.info)?.click();
+        await esperar(250);
+      }
+      const linea = d.getElementById("est-linea");
+      comprobar(`${app.nombre}: enseña el resumen de estado`, !!linea, "no está");
+      if (linea){
+        comprobar(`${app.nombre}: y no se queda en «comprobando…»`,
+                  linea.textContent.trim() !== "comprobando…", `quedó «${linea.textContent.trim()}»`);
+        comprobar(`${app.nombre}: dice lo mismo que la portada, sin cobertura`,
+                  /sin cobertura|solo en este móvil/i.test(linea.textContent),
+                  `dijo «${linea.textContent.trim()}»`);
+        comprobar(`${app.nombre}: avisa al lector de pantalla`,
+                  linea.getAttribute("aria-live") === "polite", "sin aria-live");
+        linea.click();
+        await esperar(100);
+        comprobar(`${app.nombre}: se puede abrir el detalle`,
+                  d.getElementById("est-mas")?.hidden === false, "no se abrió");
+      }
+      comprobar(`${app.nombre}: sin errores con el estado`, dom.errores.length === 0, dom.errores[0]);
+    }
+  }
+
+  // ── Con un viaje pendiente de subir ──
+  {
+    const almacen = {
+      viajes_propios: JSON.stringify([{ id:"p1", nombre:"Prueba", desde:"", hasta:"", salida:"",
+                                        dias:[{ t:"Día uno", paradas:[{ txt:"Una parada" }] }] }]),
+      viajes_pendientes: JSON.stringify(["p1"])
+    };
+    const { d } = await abre({ conexion:false, almacen });
+    const el = d.getElementById("nube");
+    comprobar("con un viaje pendiente, lo cuenta",
+              /1 viaje por subir/.test(el.textContent), `dijo «${el.textContent.trim()}»`);
+    el.click();
+    await esperar(120);
+    comprobar("y sin cobertura no ofrece reintentar en vano",
+              !d.getElementById("est-accion"), "ofrecía una acción que no serviría");
+    comprobar("pero explica que subirá solo",
+              /sube solo|subirá solo/i.test(d.getElementById("estado-detalle").textContent),
+              "no lo explicaba");
+  }
+}
+
+/* ---- 20. Entrar y salir: colgados y a dos toques (A5) ----
+   Ninguna de las dos operaciones de sesión estaba vigilada: la
+   comprobación estática de A1 mira las llamadas a los datos, no las de
+   autenticación. */
+function supabaseColgado(opciones = {}){
+  const { entrar, salir, sesion = null } = opciones;
+  const nunca = () => new Promise(() => {});
+  const cuentas = { entrar:0, salir:0 };
+  return { cuentas, api: { createClient: () => ({
+    auth: {
+      getSession: async () => ({ data:{ session:sesion } }),
+      signInWithPassword: (...a) => { cuentas.entrar++; return entrar === "cuelga" ? nunca()
+        : Promise.resolve({ data:{ session:{ user:{ email:"dani@ejemplo" } } }, error:null }); },
+      signOut: () => { cuentas.salir++; return salir === "cuelga" ? nunca() : Promise.resolve({}); }
+    },
+    from: () => ({
+      select: Object.assign(async () => ({ data:[], error:null }),
+        { eq: () => ({ maybeSingle: async () => ({ data:null, error:null }) }) }),
+      upsert: async () => ({ error:null }),
+      update: () => ({ eq: async () => ({ error:null }) })
+    })
+  }) } };
+}
+
+async function entrarYSalirVigilados(){
+  console.log(`\n${gris("──")} Entrar y salir, colgados y a dos toques`);
+
+  // ── Entrar: el servidor no contesta nunca ──
+  {
+    const falso = supabaseColgado({ entrar:"cuelga" });
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, conexion:true,
+                                      supabasePropio: falso.api });
+    await esperar(400);
+    const d = dom.window.document;
+
+    d.getElementById("nube").click();          // abre el detalle
+    await esperar(120);
+    (d.getElementById("est-accion") || {}).click?.();   // «Entrar con tu cuenta»
+    await esperar(120);
+
+    const b = d.getElementById("hacer-login");
+    comprobar("se puede abrir el formulario de entrar", !!b, "no apareció");
+    if (b){
+      d.getElementById("correo").value = "dani@ejemplo";
+      d.getElementById("clave").value = "loquesea";
+      b.click();
+      comprobar("mientras entra, el botón se desactiva", b.disabled === true, "admite otro toque");
+      comprobar("y se anuncia que está trabajando",
+                b.getAttribute("aria-busy") === "true", "sin aria-busy");
+      b.click();                                // segundo toque, a propósito
+      await esperar(200);
+      comprobar("dos toques no lanzan dos intentos de entrar",
+                falso.cuentas.entrar === 1, `se intentó ${falso.cuentas.entrar} veces`);
+    }
+    comprobar("la portada no dio errores al entrar", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // ── Entrar: credenciales mal, el botón se recupera ──
+  {
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, conexion:true });
+    await esperar(400);
+    const d = dom.window.document;
+    d.getElementById("nube").click();
+    await esperar(120);
+    d.getElementById("est-accion")?.click();
+    await esperar(120);
+    const b = d.getElementById("hacer-login");
+    if (b){
+      d.getElementById("correo").value = "dani@ejemplo";
+      d.getElementById("clave").value = "mal";
+      b.click();
+      await esperar(300);
+      comprobar("si la contraseña está mal, se puede reintentar en el acto",
+                b.disabled === false, "quedó bloqueado");
+      comprobar("y se dice el motivo, no una frase amable",
+                /incorrect/i.test(d.getElementById("err-login").textContent),
+                `dijo «${d.getElementById("err-login").textContent}»`);
+    }
+  }
+
+  // ── Salir: el servidor no contesta nunca ──
+  {
+    const sesion = { user:{ email:"dani@ejemplo" } };
+    const falso = supabaseColgado({ salir:"cuelga", sesion });
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, conexion:true, sesion,
+                                      supabasePropio: falso.api });
+    await esperar(500);
+    const d = dom.window.document;
+
+    const s = d.getElementById("salir");
+    comprobar("con sesión, se ofrece salir", !!s, "no está el botón");
+    if (s){
+      s.click();
+      comprobar("mientras sale, el botón se desactiva", s.disabled === true, "admite otro toque");
+      s.click();                                // segundo toque
+      await esperar(200);
+      comprobar("dos toques no lanzan dos cierres de sesión",
+                falso.cuentas.salir <= 1, `se llamó ${falso.cuentas.salir} veces`);
+
+      // Y no se queda ahí: el tope lo saca
+      await esperar(8400);
+      comprobar("con el servidor colgado, salir termina igualmente",
+                s.disabled === false, "el botón siguió bloqueado");
+      comprobar("y no se queda en «saliendo…» para siempre",
+                s.textContent !== "saliendo…", `quedó en «${s.textContent}»`);
+    }
+    comprobar("la portada no dio errores al salir", dom.errores.length === 0, dom.errores[0]);
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -1451,6 +1817,9 @@ async function nadaSeQuedaEsperando(){
   await portadaSinRepetidos();
   await copiaIncompletaNoBorraBloques();
   await nadaSeQuedaEsperando();
+  await elEstadoSeSabeDeVerdad();
+  await elCentroDeEstado();
+  await entrarYSalirVigilados();
   await traspasoComprobado();
   await elBorradoNoResucita();
 
