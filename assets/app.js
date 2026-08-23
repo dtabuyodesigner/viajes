@@ -144,20 +144,15 @@ function activaAqui(i, ctx = "hoy"){
   const b = document.querySelector(`[data-aqui="${ctx}:${i}"]`);
   if (!b || b.dataset.listo) return;
   b.dataset.listo = "1";
-  b.addEventListener("click", async () => {
-    const antes = b.textContent;
-    b.textContent = "Localizando…";
-    try {
-      await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
-      b.textContent = "Guardado";
-      pintaAqui(i, ctx);
-      refrescaMapaCab(i, ctx);
-      // el nombre llega un momento después, de OpenStreetMap
-      setTimeout(() => pintaAqui(i, ctx), 1500);
-      setTimeout(() => pintaAqui(i, ctx), 4000);
-    } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
-    setTimeout(() => { b.textContent = antes; }, 2200);
-  });
+  b.addEventListener("click", () => trabajando(b, "Localizando…", async () => {
+    // Sin desactivar el botón, dos toques guardaban dos visitas distintas
+    await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
+    pintaAqui(i, ctx);
+    refrescaMapaCab(i, ctx);
+    // el nombre llega un momento después, de OpenStreetMap
+    setTimeout(() => pintaAqui(i, ctx), 1500);
+    setTimeout(() => pintaAqui(i, ctx), 4000);
+  }, { exito:"Guardado", vuelve:2200 }));
 }
 
 
@@ -212,15 +207,14 @@ function enganchaPernocta(i, ctx){
   const z = document.getElementById(`cama-lista-${ctx}-${i}`);
   if (!z) return;
 
-  z.querySelectorAll(`[data-dormir]`).forEach(b => b.addEventListener("click", async () => {
-    b.textContent = "Localizando…";
-    try {
+  z.querySelectorAll(`[data-dormir]`).forEach(b =>
+    b.addEventListener("click", () => trabajando(b, "Localizando…", async () => {
+      // Igual que «Estoy aquí»: dos toques guardaban dos pernoctas
       await DIARIO_SYNC.apuntarPernocta(VIAJE_ID, i);
       pintaPernocta(i, ctx);
       setTimeout(() => pintaPernocta(i, ctx), 1600);
       setTimeout(() => pintaPernocta(i, ctx), 4000);
-    } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
-  }));
+    })));
 
   const actual = () => DIARIO_SYNC.pernoctaDelDia(VIAJE_ID, i);
 
@@ -566,11 +560,10 @@ async function lanzarQueVer(){
 
 function activaQueVer(){
   const b = document.getElementById("btn-quever");
-  if (b) b.addEventListener("click", async () => {
-    b.textContent = "Localizando…";
-    try { await pedirUbicacion(); repintaBusqueda(); }
-    catch { b.textContent = "No se pudo obtener la ubicación"; }
-  });
+  if (b) b.addEventListener("click", () => trabajando(b, "Localizando…", async () => {
+    await pedirUbicacion();
+    repintaBusqueda();
+  }, { fallo:"No se pudo situarte" }));
   document.querySelectorAll("[data-ver]").forEach(x => x.addEventListener("click", () => {
     verCat = x.dataset.ver; repintaBusqueda(); lanzarQueVer();
   }));
@@ -1138,9 +1131,7 @@ function ubicacionRapida(){
 function activaMapaDia(i, ctx = "hoy"){
   document.querySelectorAll(`[data-mi-pos="${ctx}:${i}"]`).forEach(b => {
     if (b.dataset.listo) return; b.dataset.listo = "1";
-    b.addEventListener("click", async () => {
-      b.textContent = "localizando…";
-      try {
+    b.addEventListener("click", () => trabajando(b, "localizando…", async () => {
         const p = await ubicacionRapida();
         MI_POS = Array.isArray(p) ? p.join(",") : p;
         refrescaMapaDia(i, ctx);
@@ -1153,8 +1144,7 @@ function activaMapaDia(i, ctx = "hoy"){
             MI_POS = mejor.join(",");
             refrescaMapaDia(i, ctx);
           }).catch(()=>{});
-      } catch { b.textContent = "no se pudo"; }
-    });
+    }, { fallo:"no se pudo situarte" }));
   });
 }
 

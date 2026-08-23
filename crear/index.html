@@ -679,14 +679,12 @@ function engancharResultados(){
     b.addEventListener("click", async () => {
       const [i, k] = b.dataset.usarImg.split(":").map(Number);
       const res = JSON.parse(document.getElementById("rs-" + i).dataset.res)[k];
-      b.textContent = "Guardando…";
-      try {
-        const r = await fetch(res.imagen);
-        const blob = await r.blob();
-        viaje.dias[i].foto = await comprimir(blob);
+      await trabajando(b, "Guardando…", async () => {
+        const r = await fetchConTope(res.imagen, 12000);
+        viaje.dias[i].foto = await comprimir(await r.blob());
         pintaDias();
         sucio();
-      } catch { b.textContent = "No se pudo guardar"; }
+      }, { fallo: "No se pudo guardar" });
     });
   });
 }
@@ -1161,8 +1159,13 @@ document.getElementById("importar").addEventListener("click", () => {
 
 document.getElementById("eliminar").addEventListener("click", async () => {
   if (!confirm("¿Eliminar este viaje del móvil? No se puede deshacer.")) return;
+  // Se borra primero en el móvil: eso manda y es inmediato. Lo de la nube
+  // puede tardar, y si no hay cobertura queda apuntado para más tarde.
   guardarTodos(leerTodos().filter(v => v.id !== viaje.id));
-  if (typeof SYNC !== "undefined") { try { await SYNC.borrar(viaje.id); } catch {} }
+  pendiente = false;                       // ya no hay nada que avisar al salir
+  await trabajando(e.target, "Eliminando…", async () => {
+    if (typeof SYNC !== "undefined") await conTope(SYNC.borrar(viaje.id), 8000, null);
+  }, { fallo:"Borrado aquí, pendiente en la nube" });
   location.href = "../";
 });
 
