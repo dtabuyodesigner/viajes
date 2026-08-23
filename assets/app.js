@@ -729,6 +729,38 @@ function activaEditarViaje(){
   });
 }
 
+/* ---- Cómo va todo, en la pestaña Información ----
+   El mismo modelo que la portada y el editor, en una línea. Va aquí y no
+   en la cabecera a propósito: la cabecera es lo que se mira conduciendo
+   para saber dónde estás, no para saber si hay wifi. */
+function bloqueEstado(){
+  return `<div class="hotel-zona">
+    <span class="label">Cómo va</span>
+    <div class="card" style="margin-top:8px">
+      <button class="estado-linea" id="est-linea" aria-live="polite"
+              aria-expanded="false" aria-controls="est-mas">comprobando…</button>
+      <div id="est-mas" hidden></div>
+    </div>
+  </div>`;
+}
+
+async function activaEstado(){
+  const linea = document.getElementById("est-linea");
+  if (!linea || typeof comoEstaTodo !== "function") return;
+
+  const e = await comoEstaTodo();
+  pintaResumenEn(linea, resumenDeEstado(e));
+
+  linea.addEventListener("click", () => {
+    const mas = document.getElementById("est-mas");
+    if (!mas) return;
+    const abierto = linea.getAttribute("aria-expanded") === "true";
+    linea.setAttribute("aria-expanded", String(!abierto));
+    mas.hidden = abierto;
+    if (!abierto) mas.innerHTML = detalleEstado(e);
+  });
+}
+
 /* ---- La guía, indexada por su id ----
    Una parada apunta a su ficha con `g`, y esto es lo que convierte ese
    nombre en la ficha. Los dos viajes lo hacían por su cuenta, uno desde

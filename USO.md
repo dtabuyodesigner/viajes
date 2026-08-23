@@ -174,6 +174,37 @@ no tiene.
 
 ---
 
+## Saber cómo va todo
+
+En la portada, debajo de la versión, hay una línea que lo dice: **«Viajes y fotos
+al día»** cuando no queda nada por subir, o qué falta cuando sí. Tócala y se abre
+el detalle: qué hay guardado en este móvil, qué queda por subir, cómo está el
+diario, cómo está la nube y si podréis abrirlo todo sin cobertura.
+
+La misma línea está en el editor y en la pestaña **Información** de cada viaje.
+
+Cuatro cosas que conviene saber:
+
+**Del diario no se puede confirmar nada.** Las notas, las marcas, los sitios
+donde habéis parado y dónde habéis dormido se guardan siempre en vuestro móvil,
+y se intentan subir en el momento. Pero si esa subida falla, la app no se entera:
+no queda constancia. Por eso la línea nunca dice «todo a salvo» a secas — dice
+**viajes y fotos**, que es de lo único que puede responder. El diario tiene su
+propia fila en el detalle diciendo exactamente esto.
+
+**«Sin cobertura» no es un problema.** Es lo normal en la montaña. Lo que
+escribas se guarda en el móvil y sube solo en cuanto vuelva la línea. No hace
+falta esperar mirando la pantalla.
+
+**Si dice «Abre con wifi antes de salir»**, hazlo: te dirá qué viaje falta. Con
+abrirlo una vez con datos es suficiente.
+
+**No verás una hora de última sincronización.** No la ponemos porque no la
+sabemos de verdad: el reloj sería el de vuestro móvil, no el de la nube, y
+podría engañar.
+
+---
+
 ## Si algo va raro
 
 **Un botón se queda pensando** → ya no puede quedarse para siempre. Todo lo que

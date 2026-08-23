@@ -16,6 +16,10 @@
   /* El rojo de los mensajes de error cambia con el tema: el de fondo
      oscuro sobre fondo claro daba 2,4 de contraste y no se leía al sol. */
   --rojo-txt:#E08A72;
+  /* El verde de «todo bien» tenía 1,87 de contraste sobre fondo claro:
+     el estado que más se mira era el que peor se leía al sol. */
+  --ok-txt:#5BC8B4;
+  --aviso-txt:#E0B25A;
   --soca:#4FC3B8;   /* Eslovenia */
   --prau:#7FB069;   /* Asturias */
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
@@ -75,15 +79,27 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
   font-family:var(--sans);font-size:15px}
 .login input::placeholder{color:var(--tinta-dim)}
 #err-login{color:var(--rojo-txt)}
+.estado-linea{display:block;width:100%;text-align:left;background:none;border:0;
+  padding:8px 0 0;font:inherit;font-size:12.5px;color:var(--tinta-dim);cursor:pointer}
+.estado-linea .est-glifo{font-weight:700;margin-right:2px}
+.estado-linea[data-nivel="bien"] .est-glifo{color:var(--ok-txt)}
+.estado-linea[data-nivel="aviso"] .est-glifo,
+.estado-linea[data-nivel="problema"] .est-glifo{color:var(--aviso-txt)}
+.estado-linea[data-nivel="problema"] .est-txt{color:var(--rojo-txt)}
+.est-detalle{margin-top:10px;border-top:1px solid var(--linea);padding-top:10px}
+.est-detalle .row{display:flex;justify-content:space-between;gap:12px;
+  padding:5px 0;font-size:12.5px;align-items:baseline}
+.est-detalle .k{color:var(--tinta-dim);flex:0 0 auto}
+.est-detalle .v{text-align:right}
 
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
-  --rojo-txt:#A93226;}
+  --rojo-txt:#A93226;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 @media (prefers-color-scheme: light){
   body.auto{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
-  --rojo-txt:#A93226;}
+  --rojo-txt:#A93226;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 }
 
 /* Selector de color, arriba a la derecha */
@@ -176,7 +192,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v101 · 23/08 12:06";
+const VERSION = "v103 · 23/08 16:11";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -245,7 +261,10 @@ function pintaPie(){
       <span><b>Crear un viaje</b><small>Días, paradas y navegación, montado por ti</small></span>
     </a>
     <div class="mantenimiento">
-      <p class="ver">Versión ${VERSION} · <span id="nube"></span></p>
+      <p class="ver">Versión ${VERSION}</p>
+      <button class="estado-linea" id="nube" aria-live="polite"
+              aria-expanded="false" aria-controls="estado-detalle">comprobando…</button>
+      <div id="estado-detalle" hidden></div>
       <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
       <button class="btn-act ligero" id="btn-compartir">Compartir la app</button>
       <p class="nota" style="margin-top:10px">Actualiza esta portada y los viajes a la vez.</p>
@@ -310,13 +329,50 @@ let ultimoEstado = { txt:"comprobando…", ok:false };
 
 function ponEstado(e){
   ultimoEstado = e;
+  pintaSalir(e);
+  pintaEstado();
+}
+
+/* El resumen de una línea, y el detalle debajo si está abierto.
+   El texto se saca del modelo común de sync.js: aquí no se decide nada,
+   solo se pinta, y así las cinco apps dicen lo mismo. */
+let ESTADO_AHORA = null;
+
+async function pintaEstado(){
   const el = document.getElementById("nube");
   if (!el) return;
-  el.innerHTML = e.login ? `${e.txt} · <button class="lnk" id="abrir-login">entrar</button>` : e.txt;
-  el.style.color = e.ok ? "#5BC8B4" : "";
-  const b = document.getElementById("abrir-login");
-  if (b) b.addEventListener("click", pintaLogin);
-  pintaSalir(e);
+  ESTADO_AHORA = await comoEstaTodo();
+  pintaResumenEn(el, resumenDeEstado(ESTADO_AHORA));
+  if (el.getAttribute("aria-expanded") === "true") pintaDetalle();
+}
+
+function pintaDetalle(){
+  const z = document.getElementById("estado-detalle");
+  if (!z || !ESTADO_AHORA) return;
+  z.innerHTML = detalleEstado(ESTADO_AHORA);
+  const b = document.getElementById("est-accion");
+  if (!b) return;
+  b.addEventListener("click", () => {
+    if (b.dataset.accion === "entrar") return pintaLogin();
+    trabajando(b, "Reintentando…", async () => {
+      await SYNC.sincronizar();
+      TODOS = VIAJES.concat(propios());
+      pintaLista();
+      await pintaEstado();
+    }, { fallo:"No se pudo" });
+  });
+}
+
+function activaEstado(){
+  const el = document.getElementById("nube");
+  if (!el) return;
+  el.addEventListener("click", () => {
+    const z = document.getElementById("estado-detalle");
+    const abierto = el.getAttribute("aria-expanded") === "true";
+    el.setAttribute("aria-expanded", String(!abierto));
+    z.hidden = abierto;
+    if (!abierto) pintaDetalle();
+  });
 }
 
 function pintaSalir(e){
@@ -327,9 +383,10 @@ function pintaSalir(e){
        <button class="lnk" id="salir">salir</button></p>` : "";
   const s = document.getElementById("salir");
   if (s) s.addEventListener("click", () => trabajando(s, "saliendo…", async () => {
-    // Antes no daba ninguna señal: ni de que estaba trabajando ni de si acabó
     await conTope(SYNC.salir(), 8000, null);
-    pintaNube();
+    // Se repinta sin volver a preguntar a la nube: acabamos de cerrar sesión,
+    // ya sabemos la respuesta. Antes esto disparaba una sincronización entera.
+    ponEstado({ ok:false, txt:"Sin sesión", login:true });
   }, { fallo:"no se pudo salir" }));
 }
 
@@ -345,26 +402,27 @@ function pintaLogin(){
       <button class="btn-act" id="hacer-login">Entrar</button>
       <p class="nota" id="err-login" style="margin:9px 0 0"></p>
     </div>`;
-  document.getElementById("hacer-login").addEventListener("click", async () => {
+  document.getElementById("hacer-login").addEventListener("click", () => {
     const b = document.getElementById("hacer-login");
     const err = document.getElementById("err-login");
     const correo = document.getElementById("correo").value.trim();
     const clave = document.getElementById("clave").value;
     if (!correo || !clave){ err.textContent = "Falta el correo o la contraseña."; return; }
-    b.textContent = "Entrando…"; err.textContent = "";
-    let r;
-    try {
+    err.textContent = "";
+    // Antes el botón no se desactivaba: dos toques lanzaban dos intentos de
+    // entrar, y en el peor caso encadenado quedaba pulsable medio minuto.
+    trabajando(b, "Entrando…", async () => {
       if (typeof SYNC.entrar !== "function")
         throw new Error("La app está desactualizada. Pulsa «Buscar actualización».");
-      r = await SYNC.entrar(correo, clave);
-    } catch (ex){
-      b.textContent = "Entrar";
-      err.textContent = ex.message || "No se pudo entrar.";
-      return;
-    }
-    if (!r.ok){ b.textContent = "Entrar"; err.textContent = r.txt; return; }
-    z.innerHTML = "";
-    pintaNube();
+      const r = await SYNC.entrar(correo, clave);
+      if (!r.ok) throw new Error(r.txt);
+      z.innerHTML = "";
+      pintaNube();
+    }, { fallo:"No se pudo entrar" }).then(() => {
+      // El motivo se enseña donde ya se enseñaba, no solo en el botón
+      if (document.getElementById("hacer-login") && b.textContent !== "Entrar")
+        err.textContent = b.textContent.replace(/^No se pudo entrar · /, "");
+    });
   });
   document.getElementById("clave").addEventListener("keydown", ev => {
     if (ev.key === "Enter") document.getElementById("hacer-login").click();
@@ -398,6 +456,7 @@ TEMA.aplica();
 TEMA.pintaMini();
 pintaLista();
 pintaPie();
+activaEstado();
 setTimeout(pintaNube, 300);
 
 if ("serviceWorker" in navigator){
