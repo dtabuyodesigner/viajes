@@ -2,8 +2,8 @@
    Con red: trae siempre la versión más reciente y la guarda.
    Sin red: sirve lo último que se guardó en el móvil. */
 
-const CACHE = "asturias26-v11";
-const ARCHIVOS = ["./", "./index.html", "../sync.js", "../assets/app.js"];
+const CACHE = "asturias26-v13";
+const ARCHIVOS = ["./", "./index.html", "./datos.js", "../sync.js", "../assets/app.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));

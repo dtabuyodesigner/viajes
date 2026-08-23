@@ -171,7 +171,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v98 · 10/08 01:10";
+const VERSION = "v100 · 23/08 01:34";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -190,7 +190,14 @@ function estado(v){
 }
 
 function propios(){
-  try { return (JSON.parse(localStorage.getItem("viajes_propios")) || []).map(v => ({
+  // Eslovenia y Asturias tienen su propia app y ya salen arriba. Al
+  // hacerlas editables entran también en los viajes del móvil, y sin
+  // esto la portada las enseñaría dos veces: una a su app y otra al
+  // visor genérico.
+  const conAppPropia = new Set(VIAJES.map(v => v.id));
+  try { return (JSON.parse(localStorage.getItem("viajes_propios")) || [])
+    .filter(v => v && !conAppPropia.has(v.id))
+    .map(v => ({
     id:v.id, n:v.nombre, ruta:`viaje/?id=${v.id}`, desde:v.desde||"", hasta:v.hasta||"",
     acento:"#5BC8B4", propio:true, ndias:(v.dias||[]).length,
     art:`<svg viewBox="0 0 400 104" preserveAspectRatio="xMidYMid slice">

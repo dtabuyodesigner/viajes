@@ -277,14 +277,52 @@ function guardarTodos(v){
   try { localStorage.setItem(CLAVE, JSON.stringify(v)); return true; } catch { return false; }
 }
 
+/* ---- Recoger un viaje que manda otra app ----
+   Eslovenia y Asturias traen su viaje en un archivo, no en el almacén del
+   móvil, así que para editarlo lo dejan aquí antes de abrir el editor.
+
+   En iOS esto puede no llegar: una app añadida a la pantalla de inicio
+   tiene su propio almacén, separado del de Safari (WebKit lo confirma como
+   intencional), así que si al abrir el editor se sale del contenedor de la
+   app, este almacén ya no es el mismo. Por eso el traspaso lleva acuse de
+   recibo: en vez de suponer que ha llegado, se comprueba. */
+const TRASPASO = "traspaso_viaje";
+const TRASPASO_OK = "traspaso_ok";
+
+function recogeTraspaso(vale){
+  try {
+    const crudo = localStorage.getItem(TRASPASO);
+    if (!crudo) return null;
+    const t = JSON.parse(crudo);
+    if (!t || t.vale !== vale || !t.viaje) return null;
+    localStorage.removeItem(TRASPASO);
+    localStorage.setItem(TRASPASO_OK, "1");   // el acuse: aquí sí se comparte
+    return t.viaje;
+  } catch { return null; }
+}
+
 /* ---- Viaje en edición ---- */
 const params = new URLSearchParams(location.search);
 let viaje = null;
 const idExistente = params.get("id");
-if (idExistente) viaje = leerTodos().find(v => v.id === idExistente) || null;
+const vale = params.get("traspaso");
+
+if (vale) viaje = recogeTraspaso(vale);
+if (!viaje && idExistente) viaje = leerTodos().find(v => v.id === idExistente) || null;
+
+// Nos han pedido editar un viaje concreto y no ha llegado. No se finge:
+// abrir un viaje en blanco haría creer que se está editando el de verdad.
+const noLlego = !viaje && !!(idExistente || vale);
 if (!viaje) viaje = { id:nuevoId(), nombre:"", desde:"", hasta:"", salida:"", dias:[] };
 
-if (idExistente && viaje.nombre){
+if (noLlego){
+  document.getElementById("titulo").textContent = "No he podido traer el viaje";
+  document.getElementById("sub").innerHTML =
+    `Este iPhone guarda cada app de la pantalla de inicio por separado, así que el
+     editor no ve lo que guardó la app del viaje. <strong>Esto de abajo está en blanco:
+     no es tu viaje.</strong><br>
+     Vuelve al viaje, usa <em>Copiar el viaje</em> y luego <em>Importar</em> aquí.`;
+} else if ((idExistente || vale) && viaje.nombre){
   document.getElementById("titulo").textContent = viaje.nombre;
   document.getElementById("sub").textContent = "Editando un viaje que ya tenías.";
 }
@@ -1056,32 +1094,49 @@ function leerMarkdown(texto){
   return v.dias.length ? v : null;
 }
 
+/* Pone en su sitio lo que sí se conoce y deja intacto todo lo demás.
+   Antes se reconstruía el viaje con una lista de campos permitidos y
+   cualquier cosa que no estuviera en ella se tiraba en silencio: la guía
+   de lugares, las coordenadas de una parada, el aparcamiento, los vuelos.
+   Un viaje traído de una IA o exportado de otro sitio perdía la mitad. */
 function normalizar(v){
   const texto = x => typeof x === "string" ? x : (x == null ? "" : String(x));
   const dias = Array.isArray(v.dias) ? v.dias : [];
-  return {
-    id: nuevoId(),
-    nombre: texto(v.nombre || v.titulo || "Viaje sin nombre"),
-    desde: texto(v.desde || ""), hasta: texto(v.hasta || ""),
-    salida: texto(v.salida || v.origen || ""),
-    normas: Array.isArray(v.normas) ? v.normas.map(texto).filter(Boolean) : [],
-    actualizado: new Date().toISOString(),
-    dias: dias.map(d => ({
-      t: texto(d.t || d.titulo || d.nombre || ""),
-      dest: texto(d.dest || d.destino || d.duerme || ""),
-      km: texto(d.km || ""),
-      hotel: texto(d.hotel || ""),
-      hotelWeb: texto(d.hotelWeb || ""),
-      lluvia: texto(d.lluvia || ""),
-      paradas: (Array.isArray(d.paradas) ? d.paradas : []).map(p => ({
-        h: texto(p.h || p.hora || ""),
-        txt: texto(p.txt || p.texto || p.nombre || p.titulo || ""),
-        n: texto(p.n || p.nota || p.descripcion || ""),
-        mapa: texto(p.mapa || p.gps || p.buscar || p.txt || p.nombre || ""),
-        key: !!p.key
-      })).filter(p => p.txt)
-    }))
-  };
+
+  // Los nombres alternativos que se aceptan al leer, para no dejarlos
+  // duplicados al lado del bueno una vez recogidos
+  const sinAlias = (o, alias) => { for (const a of alias) delete o[a]; return o; };
+
+  const limpio = sinAlias({ ...v }, ["titulo", "origen"]);
+  limpio.id = nuevoId();
+  limpio.nombre = texto(v.nombre || v.titulo || "Viaje sin nombre");
+  limpio.desde = texto(v.desde || "");
+  limpio.hasta = texto(v.hasta || "");
+  limpio.salida = texto(v.salida || v.origen || "");
+  limpio.normas = Array.isArray(v.normas) ? v.normas.map(texto).filter(Boolean) : [];
+  limpio.actualizado = new Date().toISOString();
+
+  limpio.dias = dias.map(d => {
+    const dia = sinAlias({ ...d }, ["titulo", "nombre", "destino", "duerme"]);
+    dia.t = texto(d.t || d.titulo || d.nombre || "");
+    dia.dest = texto(d.dest || d.destino || d.duerme || "");
+    dia.km = texto(d.km || "");
+    dia.hotel = texto(d.hotel || "");
+    dia.hotelWeb = texto(d.hotelWeb || "");
+    dia.lluvia = texto(d.lluvia || "");
+    dia.paradas = (Array.isArray(d.paradas) ? d.paradas : []).map(p => {
+      const par = sinAlias({ ...p }, ["hora", "texto", "nombre", "titulo", "gps", "buscar", "descripcion", "nota"]);
+      par.h = texto(p.h || p.hora || "");
+      par.txt = texto(p.txt || p.texto || p.nombre || p.titulo || "");
+      par.n = texto(p.n || p.nota || p.descripcion || "");
+      par.mapa = texto(p.mapa || p.gps || p.buscar || p.txt || p.nombre || "");
+      par.key = !!p.key;
+      return par;
+    }).filter(p => p.txt);
+    return dia;
+  });
+
+  return limpio;
 }
 
 document.getElementById("importar").addEventListener("click", () => {

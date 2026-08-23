@@ -71,6 +71,9 @@ const APPS = [
 /* Quita lo que cambia solo y no es comportamiento */
 function normaliza(html){
   return String(html)
+    // El código no se pinta: comparar el fuente haría saltar la fotografía
+    // por un comentario y taparía los cambios que sí importan.
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "<script></script>")
     .replace(/v\d+ · \d{2}\/\d{2} \d{2}:\d{2}/g, "VERSIÓN")
     .replace(/sync\.js\?v=\d+/g, "sync.js?v=N")
     .replace(/\?v=\d{10,}/g, "?v=T")
@@ -79,15 +82,21 @@ function normaliza(html){
     .trim();
 }
 
+/* ---- Mete en línea los scripts propios, como haría el navegador ----
+   Por la etiqueta y no por una lista escrita a mano: así un archivo
+   nuevo del que dependa una app (datos.js) entra solo. */
+function conScriptsDentro(html, rutaHtml){
+  const carpeta = path.posix.dirname(rutaHtml.split(path.sep).join("/"));
+  return html.replace(/<script\s+src="([^"]+)"><\/script>/g, (etiqueta, src) => {
+    if (/^https?:/.test(src)) return etiqueta;
+    const real = path.join(RAIZ, path.posix.normalize(path.posix.join(carpeta, src)));
+    if (!fs.existsSync(real)) return etiqueta;
+    return `<script>\n${fs.readFileSync(real, "utf8")}\n</script>`;
+  });
+}
+
 async function retratar(app){
-  let html = fs.readFileSync(path.join(RAIZ, app.ruta), "utf8");
-  const sync = fs.readFileSync(path.join(RAIZ, "sync.js"), "utf8");
-  html = html.replace(/<script src="[^"]*sync\.js[^"]*"><\/script>/,
-                      `<script>\n${sync}\n</script>`);
-  const motor = fs.existsSync(path.join(RAIZ, "assets/app.js"))
-    ? fs.readFileSync(path.join(RAIZ, "assets/app.js"), "utf8") : "";
-  html = html.replace(/<script src="[^"]*assets\/app\.js[^"]*"><\/script>/,
-                      motor ? `<script>\n${motor}\n</script>` : "");
+  const html = conScriptsDentro(fs.readFileSync(path.join(RAIZ, app.ruta), "utf8"), app.ruta);
 
   const almacen = { tema_viajes: "oscuro", ...(app.almacen || {}) };
   const dom = new JSDOM(html, {
@@ -123,11 +132,17 @@ async function retratar(app){
   if (!botones.length){
     foto["_pagina"] = normaliza(d.body.innerHTML);
   } else {
+    // La barra de pestañas también cuenta: ahí van sus nombres.
+    foto["_pestanas"] = normaliza(d.querySelector("nav")?.innerHTML || "");
+
     for (const b of botones){
       b.click();
       await new Promise(r => setTimeout(r, 120));
       const v = d.getElementById("v-" + b.dataset.v);
       foto[b.dataset.v] = normaliza(v ? v.innerHTML : "");
+      // La cabecera cambia con la pestaña: el título y las fechas del
+      // viaje se repintan al cambiar de vista, así que va una por vista.
+      foto[b.dataset.v + "-cabecera"] = normaliza(d.querySelector("header")?.innerHTML || "");
 
       // dentro de Días, abrir cada jornada
       if (b.dataset.v === "dias"){

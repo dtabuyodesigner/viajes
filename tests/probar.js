@@ -15,7 +15,7 @@
 
 const fs = require("fs");
 const path = require("path");
-const { JSDOM } = require("jsdom");
+const { JSDOM, VirtualConsole } = require("jsdom");
 
 const RAIZ = path.join(__dirname, "..");
 let fallos = 0, pruebas = 0;
@@ -30,6 +30,20 @@ function comprobar(desc, condicion, detalle){
   else { fallos++; console.log(`  ${rojo("✗")} ${desc}${detalle ? gris("  → " + detalle) : ""}`); }
 }
 
+/* ---- Mete en línea los scripts propios, como haría el navegador ----
+   jsdom no baja scripts por red, así que hay que darle el contenido. Al
+   hacerlo por la etiqueta y no por una lista escrita a mano, un archivo
+   nuevo del que dependa una app (datos.js) entra solo en las pruebas. */
+function conScriptsDentro(html, rutaHtml){
+  const carpeta = path.posix.dirname(rutaHtml.split(path.sep).join("/"));
+  return html.replace(/<script\s+src="([^"]+)"><\/script>/g, (etiqueta, src) => {
+    if (/^https?:/.test(src)) return etiqueta;
+    const real = path.join(RAIZ, path.posix.normalize(path.posix.join(carpeta, src)));
+    if (!fs.existsSync(real)) return etiqueta;
+    return `<script>\n${fs.readFileSync(real, "utf8")}\n</script>`;
+  });
+}
+
 /* ---- Monta una app en un navegador simulado ---- */
 function abrir(rutaHtml, opciones = {}){
   const {
@@ -42,19 +56,22 @@ function abrir(rutaHtml, opciones = {}){
     respuestaFetch = null
   } = opciones;
 
-  let html = fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8");
-  // sync.js se inyecta en línea, como haría el navegador
-  const sync = fs.readFileSync(path.join(RAIZ, "sync.js"), "utf8");
-  html = html.replace(/<script src="[^"]*sync\.js[^"]*"><\/script>/,
-                      `<script>\n${sync}\n</script>`);
-  const motor = fs.existsSync(path.join(RAIZ, "assets/app.js"))
-    ? fs.readFileSync(path.join(RAIZ, "assets/app.js"), "utf8") : "";
-  html = html.replace(/<script src="[^"]*assets\/app\.js[^"]*"><\/script>/,
-                      motor ? `<script>\n${motor}\n</script>` : "");
+  const html = conScriptsDentro(fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8"), rutaHtml);
 
   const errores = [];
+  // jsdom no es un navegador: avisa de lo que no implementa (navegar,
+  // hacer scroll). Eso no son fallos de la app, y su ruido tapa los que
+  // sí lo son. Se filtran solo esos avisos; los errores de JavaScript de
+  // verdad siguen recogiéndose abajo, en el listener de "error".
+  const consola = new VirtualConsole();
+  consola.on("jsdomError", e => {
+    if (/Not implemented/.test(e && e.message)) return;
+    console.error(e && e.message);
+  });
+  ["log","info","warn","error"].forEach(n => consola.on(n, (...a) => console[n](...a)));
+
   const dom = new JSDOM(html, {
-    runScripts: "dangerously", url, pretendToBeVisual: true,
+    runScripts: "dangerously", url, pretendToBeVisual: true, virtualConsole: consola,
     beforeParse(w){
       Object.defineProperty(w, "localStorage", { value: {
         getItem: k => (k in almacen ? almacen[k] : null),
@@ -335,6 +352,782 @@ function posicionEnDosFormas(){
   }
 }
 
+/* ---- 9. Nada se pierde al sincronizar ----
+   El móvil manda: lo que la nube no sepa llevar no puede borrarlo. */
+function montarNube(opciones = {}){
+  const { columnasViejas = false } = opciones;
+  // Se puede quitar la cobertura o tirar el servidor a mitad de la prueba
+  const red = { conectada:true, falla:null, fallaBorrado:null };
+  const codigo = fs.readFileSync(path.join(RAIZ, "sync.js"), "utf8");
+
+  const almacen = {};
+  const localStorage = {
+    getItem: k => (k in almacen ? almacen[k] : null),
+    setItem: (k, v) => { almacen[k] = String(v); },
+    removeItem: k => { delete almacen[k]; }
+  };
+
+  // Un servidor que solo acepta las columnas que existen de verdad
+  const COLUMNAS = ["id","nombre","desde","hasta","salida","dias","autor","actualizado","borrado"];
+  if (!columnasViejas) COLUMNAS.push("extra");
+  const TABLA = new Map();
+  const cliente = { from(){ return {
+    async upsert(fila){
+      if (red.falla) return { error:red.falla };
+      const sobran = Object.keys(fila).filter(k => !COLUMNAS.includes(k));
+      if (sobran.length) return { error:{
+        code:"PGRST204",
+        message:`Could not find the '${sobran[0]}' column of 'viajes' in the schema cache` } };
+      TABLA.set(fila.id, { ...fila });
+      return { error:null };
+    },
+    async select(){ return red.falla ? { data:null, error:red.falla }
+                                     : { data:[...TABLA.values()], error:null }; },
+    update(campos){ return { eq: async (_col, id) => {
+      if (red.falla || red.fallaBorrado) return { error:red.falla || red.fallaBorrado };
+      const f = TABLA.get(id);
+      if (f) TABLA.set(id, { ...f, ...campos });
+      return { error:null };
+    } }; }
+  }; } };
+
+  const ctx = {
+    localStorage,
+    window: { addEventListener(){}, supabase:null },
+    document: { head:{ appendChild(){} }, createElement:() => ({}) },
+    navigator: { onLine:true },
+    setTimeout, clearTimeout, console,
+    Promise, JSON, Date, Set, Map, Object, Array, String, Number, Math,
+    fetch: async () => ({ ok:false })
+  };
+  const fn = new Function(...Object.keys(ctx), codigo + "\nreturn { SYNC };");
+  const { SYNC } = fn(...Object.values(ctx));
+  SYNC.conectar = async () => red.conectada ? cliente : null;
+  SYNC.sesion = { user:{ email:"prueba@ejemplo" } };
+  return { SYNC, TABLA, almacen, red };
+}
+
+function viajeDePrueba(){
+  return {
+    id:"p9", nombre:"Prueba", desde:"2026-07-18", hasta:"2026-07-20", salida:"León",
+    normas:["Andando sin acera se camina por la izquierda"],
+    dias:[{ t:"Día uno", dest:"Zagreb", paradas:[{ h:"10:00", txt:"Llegada" }] }],
+    reservas:{ vuelos:[{ ruta:"MAD → ZAG", loc:"ABC123" }], coche:{ reserva:"R1" }, telefonos:[] },
+    actualizado:"2026-01-01T10:00:00.000Z"
+  };
+}
+
+async function nadaSePierdeEnLaNube(){
+  console.log("\n" + gris("──") + " Nada se pierde al sincronizar");
+
+  // Guardar, subir y volver a bajar no puede vaciar el viaje
+  {
+    const { SYNC } = montarNube();
+    const v = viajeDePrueba();
+    SYNC.guardarLocales([v]);
+    await SYNC.subir(v);
+    await SYNC.sincronizar();
+    const d = SYNC.locales()[0] || {};
+    comprobar("las reservas siguen ahí",
+      d.reservas?.vuelos?.[0]?.loc === "ABC123", "el viaje volvió sin reservas");
+    comprobar("las normas siguen ahí",
+      Array.isArray(d.normas) && d.normas.length === 1, "el viaje volvió sin normas");
+  }
+
+  // Un bloque que el modelo todavía no conoce tampoco puede perderse
+  {
+    const { SYNC } = montarNube();
+    const v = viajeDePrueba();
+    v.guia = [{ zona:"Somiedo", lugares:[{ id:"teitos", n:"Cabañas de teito" }] }];
+    v.inventadoElAnioQueViene = { algo:"que hoy no existe" };
+    SYNC.guardarLocales([v]);
+    await SYNC.subir(v);
+    await SYNC.sincronizar();
+    const d = SYNC.locales()[0] || {};
+    comprobar("la guía sigue ahí",
+      d.guia?.[0]?.lugares?.[0]?.id === "teitos", "el viaje volvió sin guía");
+    comprobar("un campo futuro desconocido sigue ahí",
+      d.inventadoElAnioQueViene?.algo === "que hoy no existe", "se descartó lo que no se reconoce");
+  }
+
+  // Con una base de datos antigua, sin la columna nueva, tampoco se pierde nada
+  {
+    const { SYNC } = montarNube({ columnasViejas:true });
+    const v = viajeDePrueba();
+    SYNC.guardarLocales([v]);
+    const subido = await SYNC.subir(v);
+    await SYNC.sincronizar();
+    const d = SYNC.locales()[0] || {};
+    comprobar("con la base de datos antigua, el viaje se sube igual",
+      subido === true, "se quedó pendiente de subir");
+    comprobar("con la base de datos antigua, las reservas siguen ahí",
+      d.reservas?.vuelos?.[0]?.loc === "ABC123", "el viaje volvió sin reservas");
+  }
+
+  // Un fallo pasajero no es lo mismo que una columna que no existe
+  {
+    const { SYNC, TABLA, red } = montarNube();
+    const v = viajeDePrueba();
+    SYNC.guardarLocales([v]);
+
+    red.falla = { code:"XX000", message:"el servidor no está disponible" };
+    const primera = await SYNC.subir(v);
+    comprobar("un fallo del servidor no sube el viaje",
+              primera === false && SYNC.pendientes().includes("p9"), "no quedó pendiente");
+    comprobar("y no se confunde con «la columna extra no existe»",
+              SYNC.hayExtra === true, "dejó de mandar los bloques del viaje por un fallo de red");
+
+    red.falla = null;
+    await SYNC.subir(v);
+    comprobar("cuando el servidor vuelve, los bloques del viaje suben con él",
+              !!(TABLA.get("p9") && TABLA.get("p9").extra && TABLA.get("p9").extra.reservas),
+              "subió sin los bloques");
+  }
+
+  // Con la columna de verdad ausente, sí se reintenta sin ella
+  {
+    const { SYNC, TABLA } = montarNube({ columnasViejas:true });
+    const v = viajeDePrueba();
+    SYNC.guardarLocales([v]);
+    await SYNC.subir(v);
+    comprobar("si la columna no existe de verdad, se sube sin ella",
+              TABLA.has("p9") && !("extra" in TABLA.get("p9")), "no reintentó sin la columna");
+    comprobar("y se recuerda para no repetir el intento",
+              SYNC.hayExtra === false, "seguiría intentándolo en cada subida");
+  }
+
+  // Y lo que la nube sí sabe llevar sigue mandando si es más reciente
+  {
+    const { SYNC, TABLA } = montarNube();
+    const v = viajeDePrueba();
+    SYNC.guardarLocales([v]);
+    await SYNC.subir(v);
+    const fila = TABLA.get("p9");
+    fila.nombre = "Cambiado en el otro móvil";
+    fila.actualizado = "2027-01-01T10:00:00.000Z";
+    await SYNC.sincronizar();
+    const d = SYNC.locales()[0] || {};
+    comprobar("gana el más reciente en lo que la nube sí lleva",
+      d.nombre === "Cambiado en el otro móvil", `quedó «${d.nombre}»`);
+    comprobar("y aun así no se lleva por delante las reservas",
+      d.reservas?.vuelos?.[0]?.loc === "ABC123", "el viaje volvió sin reservas");
+  }
+}
+
+/* ---- 10. Lo que la app carga, su service worker lo guarda ----
+   El fallo más repetido del repositorio: se añade un archivo, se olvida
+   decirlo en el sw.js, y desde el icono de inicio la app se queda a
+   medias porque sin cobertura ese archivo no está. */
+const APPS_CON_SW = [
+  { carpeta: ".",         nombre: "portada"   },
+  { carpeta: "crear",     nombre: "editor"    },
+  { carpeta: "viaje",     nombre: "visor"     },
+  { carpeta: "eslovenia", nombre: "Eslovenia" },
+  { carpeta: "asturias",  nombre: "Asturias"  }
+];
+
+/* Deja una ruta en su forma canónica desde la raíz del repositorio */
+function desdeLaRaiz(carpeta, ruta){
+  const base = carpeta === "." ? "" : carpeta;
+  return path.posix.normalize(path.posix.join(base, ruta)).replace(/^\.\//, "");
+}
+
+function scriptsDe(html){
+  return [...html.matchAll(/<script\s+src="([^"]+)"/g)].map(m => m[1]);
+}
+
+function archivosDelSw(codigo){
+  const m = codigo.match(/const ARCHIVOS\s*=\s*(\[[\s\S]*?\]);/);
+  if (!m) return null;
+  try { return new Function("return " + m[1])(); } catch { return null; }
+}
+
+function dependenciasEnServiceWorker(){
+  console.log("\n" + gris("──") + " Lo que la app carga, su service worker lo guarda");
+
+  for (const app of APPS_CON_SW){
+    const rutaHtml = path.posix.join(app.carpeta === "." ? "." : app.carpeta, "index.html");
+    const rutaSw   = path.posix.join(app.carpeta === "." ? "." : app.carpeta, "sw.js");
+    const html = fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8");
+    const sw   = fs.readFileSync(path.join(RAIZ, rutaSw), "utf8");
+
+    const archivos = archivosDelSw(sw);
+    if (!archivos){
+      comprobar(`${app.nombre}: su sw.js declara qué guardar`, false, "no se pudo leer ARCHIVOS");
+      continue;
+    }
+    const guardados = new Set(archivos.map(a => desdeLaRaiz(app.carpeta, a)));
+
+    for (const src of scriptsDe(html)){
+      if (/^https?:/.test(src)) continue;          // lo de fuera no se guarda
+      const quiere = desdeLaRaiz(app.carpeta, src);
+      comprobar(`${app.nombre}: ${src} está en su sw.js`,
+                guardados.has(quiere),
+                `ARCHIVOS no incluye «${quiere}»`);
+    }
+
+    // Y el archivo debe existir de verdad, no ser una ruta muerta
+    for (const a of archivos){
+      if (a === "./" || /^https?:/.test(a)) continue;
+      const real = path.join(RAIZ, desdeLaRaiz(app.carpeta, a));
+      comprobar(`${app.nombre}: ${a} existe`, fs.existsSync(real), "el sw.js guarda un archivo que no está");
+    }
+  }
+}
+
+/* ---- 11. El editor no pierde lo que todavía no sabe editar ----
+   Abrir un viaje y guardarlo sin tocar nada tiene que devolverlo entero,
+   aunque traiga bloques que el editor no enseña en ningún formulario. */
+function viajeConTodo(){
+  return {
+    id:"asturias", nombre:"Asturias occidental", desde:"2026-08-05", hasta:"2026-08-09",
+    salida:"San Miguel de las Dueñas",
+    actualizado:"2026-01-01T10:00:00.000Z",
+    dias:[{
+      d:1, t:"Subida a Somiedo", dest:"Pola de Somiedo", km:"150 km · 2 h 30",
+      xy:"43.090,-6.250", arte:"puerto", base:"Zona alta de Somiedo",
+      paradas:[{ h:"Mañana", txt:"Puerto de Somiedo", c:"Pola de Somiedo",
+                 n:"Carretera de puerto", mapa:"Pola de Somiedo", key:true,
+                 g:"centro", w:"Somiedo", wl:"lagos de saliencia", xy:"43.090,-6.250",
+                 park:{ n:"La Farrapona", w:"Farrapona aparcamiento", p:"Se llena antes de las 9", gratis:true } }]
+    }],
+    guia:[{ zona:"Somiedo", arte:"lagos", nota:"Parque natural",
+            lugares:[{ id:"teitos", xy:"43.058,-6.094", n:"Cabañas de teito", t:"Techo de escoba" }] }],
+    vuelos:[{ ruta:"MAD → OVD", loc:"ABC123", asientos:[["Dani","22D"]] }],
+    coche:{ proveedor:"Last Minute Rent", franquicia:"1.200 €" },
+    seguros:[{ nombre:"Sanitas", poliza:"P1" }],
+    telefonos:[{ q:"Emergencias", n:"112", urgente:true }],
+    alojamientos:[{ fechas:"5–6 ago", nombre:"Camping Lagos", zona:"Somiedo" }],
+    info:[{ id:"furgo", titulo:"En la furgo", filas:[["Agua","Fuentes en los pueblos"]] }],
+    normas:["Se conduce por la derecha"]
+  };
+}
+
+/* Recorre dos objetos y devuelve la primera ruta que se ha perdido */
+function loQueFalta(antes, despues, ruta = ""){
+  if (antes === null || typeof antes !== "object"){
+    return JSON.stringify(antes) === JSON.stringify(despues) ? null : (ruta || "(raíz)");
+  }
+  if (Array.isArray(antes)){
+    if (!Array.isArray(despues) || despues.length !== antes.length) return ruta + "[]";
+    for (let i = 0; i < antes.length; i++){
+      const f = loQueFalta(antes[i], despues[i], `${ruta}[${i}]`);
+      if (f) return f;
+    }
+    return null;
+  }
+  if (despues === null || typeof despues !== "object") return ruta || "(raíz)";
+  for (const k of Object.keys(antes)){
+    const f = loQueFalta(antes[k], despues[k], ruta ? `${ruta}.${k}` : k);
+    if (f) return f;
+  }
+  return null;
+}
+
+async function editorConservaTodo(){
+  console.log(`\n${gris("──")} El editor no pierde lo que no sabe editar`);
+
+  // Abrir un viaje con todos los bloques y guardarlo sin tocar nada
+  {
+    const original = viajeConTodo();
+    const almacen = { viajes_propios: JSON.stringify([original]) };
+    const dom = abrir("crear/index.html", { url:"https://x/crear/?id=asturias", almacen, conexion:false });
+    await esperar(400);
+    const d = dom.window.document;
+
+    d.getElementById("guardar").click();
+    await esperar(200);
+
+    const guardado = (JSON.parse(almacen.viajes_propios || "[]"))[0] || {};
+    const perdido = loQueFalta({ ...original, actualizado: guardado.actualizado }, guardado);
+    comprobar("abrir y guardar sin tocar nada conserva el viaje entero",
+              perdido === null, `se perdió «${perdido}»`);
+    comprobar("el editor no dio errores al abrirlo", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // Importar tampoco puede tirar lo que no reconoce
+  {
+    const dom = abrir("crear/index.html", { url:"https://x/crear/", almacen:{}, conexion:false });
+    await esperar(400);
+    const w = dom.window;
+    if (!w.normalizar){
+      comprobar("importar conserva los bloques propios", false, "normalizar no es accesible");
+    } else {
+      const v = w.normalizar(viajeConTodo());
+      comprobar("importar conserva la guía de lugares",
+                v.guia?.[0]?.lugares?.[0]?.id === "teitos", "la guía se descartó");
+      comprobar("importar conserva los datos propios de la parada",
+                v.dias[0].paradas[0].g === "centro" && v.dias[0].paradas[0].park?.gratis === true
+                && v.dias[0].paradas[0].xy === "43.090,-6.250", "se descartaron g/park/xy");
+      comprobar("importar conserva lo propio del día",
+                v.dias[0].arte === "puerto" && v.dias[0].base === "Zona alta de Somiedo",
+                "se descartaron arte/base");
+      comprobar("importar conserva vuelos, coche y seguros",
+                !!v.vuelos && !!v.coche && !!v.seguros, "se descartaron los bloques de reserva");
+      comprobar("importar sigue dando un id nuevo",
+                typeof v.id === "string" && v.id !== "asturias", `quedó «${v.id}»`);
+      comprobar("importar sigue normalizando lo que sí conoce",
+                v.dias[0].paradas[0].txt === "Puerto de Somiedo" && v.nombre === "Asturias occidental");
+    }
+  }
+}
+
+/* ---- 12. Los viajes escritos a mano se pueden editar ----
+   Eslovenia y Asturias traen sus datos en datos.js. Al editarlos, manda
+   la copia guardada en el móvil; si no hay copia, manda el archivo.
+   Se mira lo que se pinta, no las variables: `const` en un script normal
+   no se cuelga de window, y compararlas daría verde siempre. */
+function datosOriginales(carpeta){
+  const codigo = fs.readFileSync(path.join(RAIZ, carpeta, "datos.js"), "utf8");
+  return new Function(codigo + "\nreturn VIAJE_ORIGINAL;")();
+}
+
+const A_MEDIDA = [
+  { nombre:"Asturias",  carpeta:"asturias",  url:"https://x/asturias/",  opciones:{} },
+  { nombre:"Eslovenia", carpeta:"eslovenia", url:"https://x/eslovenia/",
+    opciones:{ fecha:"2026-07-25T12:00:00" } }
+];
+
+/* Abre la app, va a Info y devuelve el nombre que enseña la cabecera */
+async function nombreQuePinta(app, almacen){
+  const dom = abrir(`${app.carpeta}/index.html`, { url:app.url, almacen, conexion:false, ...app.opciones });
+  await esperar(400);
+  const d = dom.window.document;
+  [...d.querySelectorAll("nav button")].find(b => b.dataset.v === "info")?.click();
+  await esperar(150);
+  return { dom, d, nombre: d.getElementById("eyebrow")?.textContent || "" };
+}
+
+async function viajesAMedidaEditables(){
+  console.log(`\n${gris("──")} Eslovenia y Asturias se pueden editar`);
+
+  for (const app of A_MEDIDA){
+    const original = datosOriginales(app.carpeta);
+    comprobar(`${app.nombre}: datos.js se sostiene solo`,
+              !!original && Array.isArray(original.dias) && original.dias.length > 0,
+              "no define un viaje con días");
+
+    // Sin copia guardada manda el archivo, y la pestaña Info ofrece editar
+    {
+      const almacen = {};
+      const { dom, d, nombre } = await nombreQuePinta(app, almacen);
+      comprobar(`${app.nombre}: sin copia guardada pinta el viaje del archivo`,
+                nombre === original.nombre, `pintó «${nombre}»`);
+
+      const boton = d.getElementById("btn-editar");
+      comprobar(`${app.nombre}: la pestaña Info ofrece editar el viaje`, !!boton, "no está el botón");
+
+      if (boton){
+        boton.click();
+        await esperar(150);
+        let t = null;
+        try { t = JSON.parse(almacen.traspaso_viaje || "null"); } catch {}
+        comprobar(`${app.nombre}: al editar, deja el viaje para el editor con su id de siempre`,
+                  !!(t && t.id === app.carpeta && t.vale && t.viaje), "no dejó nada que el editor pueda recoger");
+        if (t && t.viaje){
+          const perdido = loQueFalta(original, t.viaje);
+          comprobar(`${app.nombre}: lo que deja es el viaje entero`, perdido === null, `se perdió «${perdido}»`);
+          comprobar(`${app.nombre}: lleva la guía de lugares`,
+                    Array.isArray(t.viaje.guia) && t.viaje.guia.length > 0, "la guía no viajó");
+        }
+      }
+      comprobar(`${app.nombre}: sin errores al ofrecer la edición`, dom.errores.length === 0, dom.errores[0]);
+    }
+
+    // Con copia guardada manda la copia
+    {
+      const editado = { id:app.carpeta, nombre:"Cambiado a mano", desde:"2026-07-18", hasta:"", salida:"",
+                        dias:[{ t:"Un solo día", dest:"Donde sea", paradas:[{ h:"10:00", txt:"Parada única" }] }],
+                        actualizado:"2030-01-01T00:00:00.000Z" };
+      const { dom, nombre } = await nombreQuePinta(app, { viajes_propios: JSON.stringify([editado]) });
+      comprobar(`${app.nombre}: con copia guardada, manda la copia`,
+                nombre === "Cambiado a mano", `pintó «${nombre}»`);
+      comprobar(`${app.nombre}: editado, sigue pintando sin errores`, dom.errores.length === 0, dom.errores[0]);
+    }
+
+    // Y se puede volver atrás: quitar la copia devuelve el viaje del archivo
+    {
+      const editado = { id:app.carpeta, nombre:"Cambiado a mano", desde:"", hasta:"", salida:"",
+                        dias:[{ t:"Un solo día", dest:"Donde sea", paradas:[{ h:"10:00", txt:"Parada única" }] }],
+                        actualizado:"2030-01-01T00:00:00.000Z" };
+      const almacen = { viajes_propios: JSON.stringify([editado, { id:"otro", nombre:"Otro viaje", dias:[] }]) };
+      const { dom, d } = await nombreQuePinta(app, almacen);
+      const volver = d.getElementById("btn-original");
+      comprobar(`${app.nombre}: editado, ofrece volver al viaje original`, !!volver, "no está el botón");
+      if (volver){
+        dom.window.confirm = () => true;
+        volver.click();
+        await esperar(150);
+        const quedan = JSON.parse(almacen.viajes_propios || "[]");
+        comprobar(`${app.nombre}: volver al original quita solo su copia`,
+                  quedan.length === 1 && quedan[0].id === "otro",
+                  `quedaron: ${quedan.map(v => v.id).join(", ")}`);
+      }
+    }
+
+    // Sin copia guardada no se ofrece volver a ningún sitio
+    {
+      const { d } = await nombreQuePinta(app, {});
+      comprobar(`${app.nombre}: sin editar, no se ofrece volver al original`,
+                !d.getElementById("btn-original"), "el botón sobra");
+    }
+
+    // Una copia a medio guardar no puede dejar la app sin itinerario
+    {
+      const roto = JSON.stringify([{ id:app.carpeta, nombre:"A medio guardar", dias:[] }]);
+      const { nombre } = await nombreQuePinta(app, { viajes_propios: roto });
+      comprobar(`${app.nombre}: una copia sin días no deja la app sin viaje`,
+                nombre === original.nombre, `pintó «${nombre}»`);
+    }
+  }
+}
+
+/* ---- 13. La portada no repite un viaje que ya tiene su app ----
+   Al hacer editable Eslovenia o Asturias, su viaje entra en los viajes
+   del móvil. Sin cuidado, la portada lo listaría dos veces: una a su app
+   y otra al visor genérico. */
+async function portadaSinRepetidos(){
+  console.log(`\n${gris("──")} La portada no repite viajes`);
+
+  const almacen = { viajes_propios: JSON.stringify([
+    { id:"eslovenia", nombre:"Eslovenia · Venecia", desde:"2026-07-18", hasta:"2026-07-29",
+      dias:[{ t:"Un día", paradas:[{ txt:"Una parada" }] }] },
+    { id:"v1propio", nombre:"Un viaje mío", desde:"", hasta:"",
+      dias:[{ t:"Un día", paradas:[{ txt:"Una parada" }] }] }
+  ])};
+  const dom = abrir("index.html", { url:"https://x/", almacen, conexion:false });
+  await esperar(500);
+  const d = dom.window.document;
+  const enlaces = [...d.querySelectorAll("#lista a")].map(a => a.getAttribute("href"));
+
+  comprobar("Eslovenia aparece una sola vez",
+            enlaces.filter(h => /eslovenia/.test(h)).length === 1,
+            `enlaces: ${enlaces.join(" · ")}`);
+  comprobar("y sigue llevando a su propia app",
+            enlaces.includes("eslovenia/"), `enlaces: ${enlaces.join(" · ")}`);
+  comprobar("los viajes creados siguen apareciendo",
+            enlaces.includes("viaje/?id=v1propio"), `enlaces: ${enlaces.join(" · ")}`);
+  comprobar("la portada no dio errores", dom.errores.length === 0, dom.errores[0]);
+}
+
+/* ---- 14. Una copia incompleta de la nube no puede borrar los bloques ----
+   Segundo móvil, base de datos sin la columna `extra`: el primero sube solo
+   las columnas antiguas, así que el registro que baja el segundo tiene días
+   pero no guía, ni vuelos, ni seguros. Si esa copia sustituyera al archivo,
+   el viaje perdería casi todo en el móvil que no lo editó. */
+async function contenidoDeVista(app, almacen, pestana){
+  const dom = abrir(`${app.carpeta}/index.html`, { url:app.url, almacen, conexion:false, ...app.opciones });
+  await esperar(400);
+  const d = dom.window.document;
+  [...d.querySelectorAll("nav button")].find(b => b.dataset.v === pestana)?.click();
+  await esperar(200);
+  return { dom, html: d.getElementById("v-" + pestana)?.innerHTML || "",
+           cabecera: d.querySelector("header")?.textContent || "" };
+}
+
+/* Lo que sube un móvil contra una base antigua: solo las columnas de siempre */
+function comoLoBajaUnaBaseAntigua(original, id){
+  return { id, nombre:original.nombre, desde:original.desde || "", hasta:original.hasta || "",
+           salida:original.salida || "", dias:original.dias, actualizado:"2030-01-01T00:00:00.000Z" };
+}
+
+async function copiaIncompletaNoBorraBloques(){
+  console.log(`\n${gris("──")} Una copia incompleta no borra los bloques del archivo`);
+
+  for (const app of A_MEDIDA){
+    const original = datosOriginales(app.carpeta);
+    const truncado = comoLoBajaUnaBaseAntigua(original, app.carpeta);
+    const almacen = { viajes_propios: JSON.stringify([truncado]) };
+
+    comprobar(`${app.nombre}: el registro de la base antigua no trae guía`,
+              !truncado.guia, "la prueba no está simulando lo que quiere simular");
+
+    const guia = await contenidoDeVista(app, almacen, "guia");
+    const fichas = (original.guia || []).reduce((n, z) => n + (z.lugares || []).length, 0);
+    comprobar(`${app.nombre}: la guía sigue enseñando sus ${fichas} fichas`,
+              guia.cabecera.includes(`${fichas} sitios`),
+              `la cabecera decía: ${guia.cabecera.replace(/\s+/g," ").slice(0,90)}`);
+    comprobar(`${app.nombre}: la pestaña Guía sigue con contenido`,
+              guia.html.length > 2000, `solo ${guia.html.length} caracteres`);
+    comprobar(`${app.nombre}: sin errores con el registro incompleto`,
+              guia.dom.errores.length === 0, guia.dom.errores[0]);
+  }
+
+  // Eslovenia además tiene reservas, que es lo que más duele perder
+  {
+    const app = A_MEDIDA.find(a => a.carpeta === "eslovenia");
+    const original = datosOriginales("eslovenia");
+    const almacen = { viajes_propios: JSON.stringify([comoLoBajaUnaBaseAntigua(original, "eslovenia")]) };
+    const r = await contenidoDeVista(app, almacen, "reservas");
+    comprobar("Eslovenia: el localizador del vuelo sigue ahí",
+              r.html.includes(original.vuelos[0].loc), "la pestaña Reservas se quedó sin vuelos");
+    comprobar("Eslovenia: los seguros siguen ahí",
+              r.html.includes(original.seguros[0].poliza), "la pestaña Reservas se quedó sin seguros");
+  }
+
+  // Y lo que la copia SÍ trae tiene que seguir mandando
+  {
+    const app = A_MEDIDA.find(a => a.carpeta === "asturias");
+    const editado = { id:"asturias", nombre:"Cambiado a mano", desde:"", hasta:"", salida:"",
+                      dias:[{ t:"Un solo día", dest:"Donde sea", paradas:[{ h:"10:00", txt:"Parada única" }] }],
+                      actualizado:"2030-01-01T00:00:00.000Z" };
+    const { cabecera } = await contenidoDeVista(app, { viajes_propios: JSON.stringify([editado]) }, "guia");
+    comprobar("Asturias: lo editado sigue mandando sobre el archivo",
+              cabecera.includes("Cambiado a mano"), `la cabecera decía: ${cabecera.replace(/\s+/g," ").slice(0,90)}`);
+  }
+}
+
+/* ---- 15. El traspaso al editor comprueba que ha llegado ----
+   En iOS, una app añadida a la pantalla de inicio tiene su propio almacén,
+   separado del de Safari: WebKit lo confirma como intencional. Si al abrir
+   el editor se sale del contenedor de la app, el viaje no llega.
+
+   Aquí se simulan los dos casos dando a cada página un almacén distinto,
+   que es justo lo que las pruebas de antes no hacían: compartían uno solo
+   y por eso el traspaso siempre parecía funcionar. */
+async function pulsaEditar(app, almacenApp){
+  const dom = abrir(`${app.carpeta}/index.html`, { url:app.url, almacen:almacenApp, conexion:false, ...app.opciones });
+  await esperar(400);
+  const d = dom.window.document;
+  [...d.querySelectorAll("nav button")].find(b => b.dataset.v === "info")?.click();
+  await esperar(150);
+  const b = d.getElementById("btn-editar");
+  if (b) b.click();
+  await esperar(150);
+  let t = null;
+  try { t = JSON.parse(almacenApp.traspaso_viaje || "null"); } catch {}
+  return { dom, d, vale: t && t.vale };
+}
+
+async function abreEditor(almacenEditor, busqueda){
+  const dom = abrir("crear/index.html", { url:"https://x/crear/" + busqueda, almacen:almacenEditor, conexion:false });
+  await esperar(400);
+  const d = dom.window.document;
+  return { dom, d,
+           titulo: d.getElementById("titulo")?.textContent || "",
+           sub: d.getElementById("sub")?.textContent || "",
+           nombre: d.getElementById("nombre")?.value || "" };
+}
+
+async function traspasoComprobado(){
+  console.log(`\n${gris("──")} El traspaso al editor comprueba que ha llegado`);
+
+  for (const app of A_MEDIDA){
+    const original = datosOriginales(app.carpeta);
+
+    // ── Caso 1: mismo almacén (Safari normal, o app instalada que no sale) ──
+    {
+      const almacen = {};
+      const { vale } = await pulsaEditar(app, almacen);
+      comprobar(`${app.nombre}: al pulsar editar deja un traspaso`, !!vale, "no dejó nada");
+
+      const ed = await abreEditor(almacen, `?id=${app.carpeta}&traspaso=${vale}`);
+      comprobar(`${app.nombre}: con el almacén compartido, el editor abre el viaje`,
+                ed.nombre === original.nombre, `el editor abrió «${ed.nombre}»`);
+      comprobar(`${app.nombre}: y deja acuse de recibo`,
+                almacen.traspaso_ok === "1", "no dejó acuse");
+      comprobar(`${app.nombre}: el traspaso se consume, no se queda ahí`,
+                !almacen.traspaso_viaje, "el traspaso siguió sin recoger");
+      comprobar(`${app.nombre}: el editor no dio errores`, ed.dom.errores.length === 0, ed.dom.errores[0]);
+    }
+
+    // ── Caso 2: almacenes separados (app instalada que sale a Safari) ──
+    {
+      const almacenApp = {}, almacenEditor = {};      // dos contenedores distintos
+      const { vale } = await pulsaEditar(app, almacenApp);
+      const ed = await abreEditor(almacenEditor, `?id=${app.carpeta}&traspaso=${vale}`);
+
+      comprobar(`${app.nombre}: con los almacenes separados, el editor lo dice`,
+                ed.titulo === "No he podido traer el viaje", `el título decía «${ed.titulo}»`);
+      comprobar(`${app.nombre}: y no finge que el viaje esté ahí`,
+                ed.nombre === "", `el editor abrió «${ed.nombre}»`);
+      comprobar(`${app.nombre}: sin acuse de recibo`,
+                almacenEditor.traspaso_ok !== "1" && almacenApp.traspaso_ok !== "1", "dejó acuse sin haberlo recibido");
+      comprobar(`${app.nombre}: el editor no dio errores al avisar`,
+                ed.dom.errores.length === 0, ed.dom.errores[0]);
+
+      // Al volver a la app, el traspaso sigue sin recoger: ofrece copiar
+      const dom2 = abrir(`${app.carpeta}/index.html`, { url:app.url, almacen:almacenApp, conexion:false, ...app.opciones });
+      await esperar(400);
+      const d2 = dom2.window.document;
+      [...d2.querySelectorAll("nav button")].find(b => b.dataset.v === "info")?.click();
+      await esperar(150);
+      comprobar(`${app.nombre}: al volver, la app ofrece copiar el viaje`,
+                !!d2.getElementById("btn-copiar"), "sigue ofreciendo el camino que no funciona");
+      comprobar(`${app.nombre}: y lo explica en vez de callarse`,
+                (d2.getElementById("v-info")?.textContent || "").includes("no ha recibido el viaje"),
+                "no explica por qué");
+    }
+  }
+
+  // ── Si el traspaso ya funcionó aquí, volver atrás no es un fallo ──
+  {
+    const app = A_MEDIDA[0];
+    const original = datosOriginales(app.carpeta);
+    const almacen = { traspaso_ok:"1",
+      traspaso_viaje: JSON.stringify({ vale:"t1", id:app.carpeta, viaje:original }) };
+    const dom = abrir(`${app.carpeta}/index.html`, { url:app.url, almacen, conexion:false, ...app.opciones });
+    await esperar(400);
+    const d = dom.window.document;
+    [...d.querySelectorAll("nav button")].find(b => b.dataset.v === "info")?.click();
+    await esperar(150);
+    comprobar(`${app.nombre}: con el camino ya comprobado, no se avisa de un fallo que no hubo`,
+              !d.getElementById("btn-copiar") && !!d.getElementById("btn-editar"),
+              "dio por roto un camino que ya había funcionado");
+  }
+
+  // ── Abrir el editor pidiendo un viaje que no existe tampoco finge ──
+  {
+    const ed = await abreEditor({}, "?id=noexiste");
+    comprobar("pedir un viaje que no está: el editor lo dice",
+              ed.titulo === "No he podido traer el viaje", `el título decía «${ed.titulo}»`);
+  }
+
+  // ── Y el editor normal, sin parámetros, sigue como estaba ──
+  {
+    const ed = await abreEditor({}, "");
+    comprobar("sin parámetros, el editor sigue siendo un viaje nuevo",
+              ed.titulo === "Nuevo viaje", `el título decía «${ed.titulo}»`);
+  }
+}
+
+/* ---- 16. Un viaje borrado no resucita ----
+   Borrar sin cobertura no puede quedarse en nada: si el borrado no llega a
+   la nube, la fila remota sigue viva y en la siguiente sincronización el
+   viaje vuelve. Se apunta como pendiente y se reintenta. */
+function dosViajes(){
+  return [
+    { id:"asturias", nombre:"Asturias occidental", desde:"", hasta:"", salida:"",
+      dias:[{ t:"Día uno", paradas:[{ txt:"Una parada" }] }],
+      guia:[{ zona:"Somiedo", lugares:[{ id:"teitos", n:"Teitos" }] }],
+      actualizado:"2026-01-01T10:00:00.000Z" },
+    { id:"otro", nombre:"Un viaje que no se toca", desde:"", hasta:"", salida:"",
+      dias:[{ t:"Día uno", paradas:[{ txt:"Otra parada" }] }],
+      actualizado:"2026-01-01T10:00:00.000Z" }
+  ];
+}
+
+async function conDosViajesSubidos(opciones){
+  const nube = montarNube(opciones);
+  nube.SYNC.guardarLocales(dosViajes());
+  for (const v of dosViajes()) await nube.SYNC.subir(v);
+  // el diario y las fotos van aparte: tienen que sobrevivir al borrado
+  nube.almacen["diario_asturias"] = JSON.stringify({ hechas:{ "0:0":1 }, notas:{ "0":"una nota" } });
+  return nube;
+}
+
+const sigueViva = (TABLA, id) => TABLA.has(id) && !TABLA.get(id).borrado;
+
+async function elBorradoNoResucita(){
+  console.log(`\n${gris("──")} Un viaje borrado no resucita`);
+
+  // Con cobertura: se borra y se acabó
+  {
+    const { SYNC, TABLA, almacen } = await conDosViajesSubidos();
+    SYNC.guardarLocales(SYNC.locales().filter(v => v.id !== "asturias"));
+    const ok = await SYNC.borrar("asturias");
+    comprobar("con cobertura, el borrado se aplica", ok === true, "borrar() devolvió false");
+    comprobar("y no queda apuntado como pendiente",
+              SYNC.borrados().length === 0, `quedaron: ${SYNC.borrados().join(", ")}`);
+    await SYNC.sincronizar();
+    comprobar("tras sincronizar, el viaje no vuelve",
+              !SYNC.locales().some(v => v.id === "asturias"), "el viaje resucitó");
+    comprobar("el otro viaje sigue intacto",
+              SYNC.locales().some(v => v.id === "otro"), "se llevó por delante otro viaje");
+    comprobar("el diario no se toca", !!almacen["diario_asturias"], "borró el diario");
+  }
+
+  // Sin cobertura: queda apuntado, y al volver la conexión se aplica
+  {
+    const { SYNC, TABLA, almacen, red } = await conDosViajesSubidos();
+    red.conectada = false;
+    SYNC.guardarLocales(SYNC.locales().filter(v => v.id !== "asturias"));
+    const ok = await SYNC.borrar("asturias");
+    comprobar("sin cobertura, el borrado no se pierde: queda apuntado",
+              ok === false && SYNC.borrados().includes("asturias"), "no quedó apuntado");
+    comprobar("sin cobertura, la fila remota sigue viva todavía",
+              sigueViva(TABLA, "asturias"), "la prueba no simula lo que quiere simular");
+    comprobar("el diario sigue sin tocarse", !!almacen["diario_asturias"], "borró el diario");
+
+    // vuelve la conexión
+    red.conectada = true;
+    await SYNC.sincronizar();
+    comprobar("al volver la conexión, el borrado se aplica",
+              !sigueViva(TABLA, "asturias"), "la fila remota siguió viva");
+    comprobar("y el viaje no vuelve al móvil",
+              !SYNC.locales().some(v => v.id === "asturias"), "el viaje resucitó");
+    comprobar("la lápida se retira cuando ya no hace falta",
+              SYNC.borrados().length === 0, `quedaron: ${SYNC.borrados().join(", ")}`);
+    comprobar("el otro viaje sigue intacto",
+              SYNC.locales().some(v => v.id === "otro") && sigueViva(TABLA, "otro"),
+              "se llevó por delante otro viaje");
+  }
+
+  // El servidor falla un rato: se reintenta, no se da por hecho
+  {
+    const { SYNC, TABLA, red } = await conDosViajesSubidos();
+    SYNC.guardarLocales(SYNC.locales().filter(v => v.id !== "asturias"));
+    red.falla = { code:"XX000", message:"el servidor no está disponible" };
+    await SYNC.borrar("asturias");
+    comprobar("si el servidor falla, el borrado queda apuntado",
+              SYNC.borrados().includes("asturias"), "no quedó apuntado");
+    await SYNC.sincronizar();
+    comprobar("y sigue apuntado mientras el servidor siga fallando",
+              SYNC.borrados().includes("asturias"), "se dio por hecho sin confirmarlo");
+    comprobar("el viaje tampoco vuelve mientras tanto",
+              !SYNC.locales().some(v => v.id === "asturias"), "el viaje resucitó");
+
+    red.falla = null;
+    await SYNC.sincronizar();
+    comprobar("cuando el servidor vuelve, el borrado se aplica",
+              !sigueViva(TABLA, "asturias"), "la fila remota siguió viva");
+    comprobar("y la lápida se retira", SYNC.borrados().length === 0, "quedó apuntado de más");
+  }
+
+  // El borrado no se aplica pero el resto de la sincronización sí funciona:
+  // ahí es donde el viaje volvería si el bucle de remotos no lo filtrara
+  {
+    const { SYNC, TABLA, red } = await conDosViajesSubidos();
+    SYNC.guardarLocales(SYNC.locales().filter(v => v.id !== "asturias"));
+    red.fallaBorrado = { code:"42501", message:"no tienes permiso para modificar esa fila" };
+    await SYNC.borrar("asturias");
+
+    await SYNC.sincronizar();     // lee y escribe bien, pero el borrado sigue sin poder aplicarse
+    comprobar("si el borrado no se aplica, el viaje no vuelve al móvil igualmente",
+              !SYNC.locales().some(v => v.id === "asturias"), "el viaje resucitó");
+    comprobar("y el borrado sigue apuntado para más tarde",
+              SYNC.borrados().includes("asturias"), "se perdió el borrado");
+    comprobar("el otro viaje no se ve afectado",
+              SYNC.locales().some(v => v.id === "otro"), "se llevó por delante otro viaje");
+
+    red.fallaBorrado = null;
+    await SYNC.sincronizar();
+    comprobar("y cuando se puede, se aplica",
+              !sigueViva(TABLA, "asturias"), "la fila remota siguió viva");
+  }
+
+  // Borrar gana sobre un cambio que estaba pendiente de subir
+  {
+    const { SYNC, TABLA, red } = await conDosViajesSubidos();
+    red.conectada = false;
+    const v = SYNC.locales().find(x => x.id === "asturias");
+    v.nombre = "Cambiado sin cobertura";
+    SYNC.guardarLocales(SYNC.locales().map(x => x.id === "asturias" ? v : x));
+    await SYNC.subir(v);                       // falla: queda pendiente de subir
+    comprobar("el cambio sin cobertura queda pendiente de subir",
+              SYNC.pendientes().includes("asturias"), "no quedó pendiente");
+
+    SYNC.guardarLocales(SYNC.locales().filter(x => x.id !== "asturias"));
+    await SYNC.borrar("asturias");
+    red.conectada = true;
+    await SYNC.sincronizar();
+    comprobar("borrar manda sobre el cambio pendiente: no lo resucita",
+              !sigueViva(TABLA, "asturias"), "el cambio pendiente lo revivió");
+    comprobar("y deja de estar pendiente de subir",
+              !SYNC.pendientes().includes("asturias"), "siguió pendiente de subir");
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -363,6 +1156,14 @@ function posicionEnDosFormas(){
   temaClaroCompleto();
   idsUnicos();
   posicionEnDosFormas();
+  await nadaSePierdeEnLaNube();
+  dependenciasEnServiceWorker();
+  await editorConservaTodo();
+  await viajesAMedidaEditables();
+  await portadaSinRepetidos();
+  await copiaIncompletaNoBorraBloques();
+  await traspasoComprobado();
+  await elBorradoNoResucita();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);

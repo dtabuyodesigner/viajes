@@ -4,39 +4,30 @@ Ordenado por lo que más cambia las cosas, no por lo que más cuesta.
 
 ---
 
-## 1 · Unificar el motor  ·  fase 1 hecha y publicada
+## 1 · Unificar el motor  ·  fases 1 y 2 hechas
 
-**Hecho (v72–v98).** `assets/app.js` son ya **1.096 líneas** compartidas por las
-tres apps de viaje: ubicación, mapas, búsquedas, cámara, documentos, pernoctas,
-alojamiento y el vistazo del día. Todo lo añadido desde entonces nace ahí
-directamente, que era el objetivo.
+**Fase 1 (v72–v98).** `assets/app.js` es el motor compartido: ubicación, mapas,
+búsquedas, cámara, documentos, pernoctas, alojamiento y el vistazo del día.
 
-**Lo que se ganó, medido:** las correcciones de las últimas horas —posición en
-dos formatos, ubicación fresca, tramo por delante, ids únicos— se hicieron **una
-vez** en vez de tres.
+**Fase 2, hecha.** Eslovenia y Asturias ya no llevan sus datos dentro del HTML:
+están en `eslovenia/datos.js` y `asturias/datos.js`. El HTML pone la estructura,
+`assets/app.js` el motor y `datos.js` el viaje.
 
-**Falta la fase 2**: separar los datos de cada viaje en su propio archivo, para
-que Eslovenia y Asturias sean editables como los viajes creados.
+- Eslovenia: 2.279 → 1.912 líneas de HTML + 381 de datos.
+- Asturias: 1.831 → 1.563 líneas de HTML + 281 de datos.
+- La guía se unificó dentro del viaje (`viaje.guia`); antes Eslovenia la tenía
+  suelta y Asturias dentro. El motor la indexa con `indexaGuia()`.
+- Todos los bloques que no comparten los dos viajes son opcionales de verdad:
+  `guia`, `info`, `vuelos`, `acceso`, `coche`, `seguros`, `telefonos`,
+  `alojamientos`. Un viaje sin ellos abre igual.
 
-**Antes decía (v72, rama `dev`):** `assets/app.js` con la cámara y las fotos,
-«Estoy aquí» y buscar sitios, el mapa del día, el mapa de cabecera, el tiempo de
-Open-Meteo y los tiempos por carretera de OSRM. **758 líneas fuera de la
-triplicación**, de 784 duplicadas quedan 96. Las 34 fotografías salen idénticas.
-
-Aparecieron dos cosas al mover: el visor tenía el hueco del tiempo sin rellenar
-—lo ha ganado gratis— y su función de ubicación se llamaba distinto.
-
-**Falta la fase 2** (separar los datos de cada viaje) y las 96 líneas de bloques
-pequeños que difieren lo justo para no poder moverlos tal cual: dictado por voz,
-compartir el diario y las rutas de Wikiloc.
-
-**Mezclado a `main` en v73**, a petición.
+**Un viaje nuevo ya es un archivo de datos, no una app entera.**
 
 ---
 
-### Lo que había antes
+### Cómo estaba antes, para no olvidar por qué se hizo
 
-**Qué pasa hoy.** Hay cuatro apps con el mismo código copiado: portada, visor,
+**Lo que pasaba.** Había cuatro apps con el mismo código copiado: portada, visor,
 Eslovenia y Asturias. Cada arreglo hay que hacerlo cuatro veces y cada repetición
 es una ocasión de romper algo.
 
@@ -59,15 +50,31 @@ añadiendo con tranquilidad.
 
 ---
 
-## 2 · Que Eslovenia y Asturias se puedan editar
+## 2 · Que Eslovenia y Asturias se puedan editar  ·  hecho
 
-Hoy son archivos escritos a mano: cambiar una parada requiere tocar código y
-publicar. Convertirlas al formato de los viajes creados las haría editables desde
-el móvil y sincronizables como las demás.
+Pestaña Información → **Editar este viaje**. El viaje pasa a los viajes del móvil
+con su id de siempre (`eslovenia`, `asturias`, obligatorio: `viaje_diario` y
+`viaje_fotos` ya tienen filas con esas claves) y se abre en el editor.
 
-**Depende del punto 1.** Es la misma faena.
+`viajeEnUso()` decide cuál manda: la copia guardada si la hay, si no la del
+archivo. Y solo la acepta si tiene días, para que un guardado a medias no deje
+la app sin itinerario en carretera. **Volver al viaje original** deshace.
 
-**Cuidado con:** no perder las guías. Son contenido escrito, no plantilla.
+La guía y las reservas se conservan aunque el editor todavía no las enseñe: hay
+una prueba que compara campo por campo tras abrir y guardar sin tocar nada.
+
+**Lo que falta de esto**, sin prisa:
+
+- El editor no tiene formularios para guía, vuelos, coche, seguros, teléfonos ni
+  alojamientos. Se conservan, pero para cambiarlos hay que tocar `datos.js`.
+- La fecha de salida de Asturias sigue en `PREF.salida`, en el `localStorage` de
+  cada móvil, en vez de en `viaje.desde`. Moverla la haría sincronizable, pero
+  **es un cambio de comportamiento**, no un refactor: hoy cada teléfono puede
+  tener la suya. Decidirlo antes de tocarlo.
+- `vistaInfo()` sigue escrita a mano en cada app, con sus claves (`conducir`,
+  `perras`, `furgo`…). Convertir `info` en una lista de secciones recorrible la
+  dejaría en un solo bucle. No corre prisa: es presentación de cada app, no del
+  motor, y Asturias intercala park4night entre bloques.
 
 ---
 
@@ -119,6 +126,71 @@ Es media hora de SQL. **Hacerlo antes de dar el enlace a nadie más.**
 
 ---
 
+## 2b · Lo que hay que comprobar en un iPhone
+
+**Esto es lo único del hito que no se puede dar por bueno sin probarlo.**
+
+Editar Eslovenia o Asturias pasa el viaje al editor por el almacén del móvil.
+En iOS, una app añadida a la pantalla de inicio tiene su propio almacén,
+separado del de Safari: WebKit lo confirma como intencional en el bug 181849, y
+**ningún** almacén del navegador escapa a esa partición (ni IndexedDB, ni Cache,
+ni `sessionStorage`).
+
+Lo que no se ha podido verificar con ninguna fuente: si `location.href` hacia
+otra carpeta, **desde una app instalada sin manifest**, se queda dentro del
+contenedor o sale a Safari. De eso depende todo, y solo se sabe probando.
+
+Por eso el traspaso **no lo supone**: lleva acuse de recibo. Si el editor no
+recibe el viaje, lo dice y ofrece copiar y pegar, en vez de abrir un viaje en
+blanco haciéndolo pasar por el bueno.
+
+**Cómo comprobarlo, Dani:**
+
+1. Borra el icono de Eslovenia de la pantalla de inicio, si lo tienes.
+2. Abre la web en Safari y añádela otra vez a la pantalla de inicio.
+3. Cierra Safari del todo, desde el selector de apps.
+4. Abre el icono de Eslovenia, ve a Información y pulsa «Abrir en el editor».
+5. Mira si aparece la barra de Safari arriba, y si el editor enseña el viaje o
+   dice «No he podido traer el viaje».
+6. Cuéntalo. Según lo que salga:
+   - **Enseña el viaje** → el camino funciona desde el icono, no hay nada que hacer.
+   - **Dice que no lo ha recibido** → funciona desde Safari pero no desde el
+     icono. Hay que decidir si se añade un manifest con `scope` (ver abajo) o si
+     se deja el copiar y pegar como única vía desde el icono.
+
+**Relacionado:** `index.html` enlaza `<link rel="manifest" href="manifest.json">`
+y **ese archivo no existe**. Ninguna de las cinco apps tiene manifest de verdad;
+todas van con el `<meta apple-mobile-web-app-capable>` de siempre. Un manifest
+con `scope` podría hacer que la navegación se quede dentro de la app instalada,
+pero cambia cómo se instalan y no se puede probar sin un iPhone. **Decidirlo
+después del punto anterior, no antes.**
+
+---
+
+## 6b · Cosas pequeñas encontradas y no arregladas
+
+Ninguna bloquea. Anotadas para no volver a descubrirlas:
+
+- **Ids sin parte aleatoria.** `nuevoId()` del editor y los ids de `visitas` y
+  `pernoctas` en `sync.js` son `Date.now().toString(36)` a secas. Los de fotos y
+  documentos sí llevan azar, precisamente porque ya hubo colisiones. Dos viajes
+  creados en el mismo milisegundo colisionarían. Riesgo bajo hoy.
+- **El visor duplica la lectura de `viajes_propios`** en vez de usar
+  `SYNC.locales()`.
+- **El visor tiene `VIAJE_ID` e `ID`** para lo mismo, con distinto respaldo.
+- **`distancia()` redondeaba a entero en Eslovenia y Asturias y no en el visor.**
+  Mismo nombre, mismo algoritmo, resultado distinto. Sigue así: unificarlo
+  cambiaría las distancias que ve una de las dos familias, y hay que decidir cuál
+  gana antes de tocarlo.
+- **El acuse del traspaso (`traspaso_ok`) es por móvil, no por app.** Si un móvil
+  usa a la vez Safari y el icono de inicio, el acuse que deja Safari no dice nada
+  sobre lo que pasa desde el icono. Es conservador en la dirección buena (como
+  mucho, avisa de un fallo que en Safari no ocurre), pero conviene saberlo.
+- **Los cambios de un viaje editado llegan al abrir la portada**, que es donde se
+  llama a `SYNC.sincronizar()`. Las apps de viaje solo sincronizan el diario.
+
+---
+
 ## 7 · Datos que faltan
 
 - **Asturias:** las fechas de agosto y los sitios de park4night de cada noche.
@@ -146,6 +218,14 @@ delante, y al final la posición estaba caducada. v80 a v87.
 **Dar mensajes útiles.** Mientras el error decía «no se pudo consultar», cada
 diagnóstico eran varios intentos a ciegas. En cuanto mostró `x.split is not a
 function`, se arregló en minutos.
+
+**Un borrado de datos que nadie veía.** `subir()` no mandaba `reservas` ni
+`normas`, y `_sincronizar()` sustituía el viaje local por el de la nube en vez de
+fundirlos. Bastaba un móvil: al guardar quedaba `actualizado` = T0 en local y T1
+en la nube, así que en la siguiente sincronización la nube ganaba siempre y se
+llevaba por delante vuelos, localizadores, coche, teléfonos y normas. Llevaba
+tiempo publicado y ninguna prueba lo miraba, porque todas comprobaban que las
+apps pintaran, no que los datos sobrevivieran a un viaje de ida y vuelta.
 
 **Los formatos que cada app usa por su cuenta.** Al unificar aparecieron tres:
 `MIPOS` como lista y `miPos` como texto, `distancia` y `distKm`, `pedirUbicacion`
@@ -193,6 +273,10 @@ Para no volver a proponerlo:
 | Añadir sitios por los que ya se pasó | v68 |
 | Mapa en cada día | v69–v72 |
 | Motor común, fase 1 | v72 · `dev` |
+| Motor común, fase 2: los datos de cada viaje, aparte | esta rama |
+| Eslovenia y Asturias, editables desde el móvil | esta rama |
+| La nube deja de borrar reservas, normas y guía al sincronizar | esta rama |
+| Prueba de que lo que carga una app está en su service worker | esta rama |
 | El primer vistazo: lo que importa del día, al abrir | v73 |
 | El vistazo recuerda tus notas de ayer y de días pasados | v73 |
 | Servicios ordenados por tiempo real | v74 |

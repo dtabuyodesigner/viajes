@@ -71,13 +71,24 @@ un fallo grave, no un detalle.
 En modo privado de iOS lanza excepción. Sin el `catch`, la app entera se cae.
 
 ### El caché es traicionero
-Si tocas `sync.js`, sube el `?v=NN` en las tres páginas que lo cargan. Si tocas
-una app, sube su `const VERSION`. Ya ha pasado dos veces que el usuario viera
-una versión antigua y pensara que algo estaba roto.
+El código común (`sync.js`, `assets/app.js`, los `datos.js`) se pide **sin
+`?v=`**: la versión la lleva el service worker. Si tocas cualquiera de esos
+archivos, sube el `CACHE` de los `sw.js` que lo guardan. Si tocas una app, sube
+su `const VERSION`. Ya ha pasado dos veces que el usuario viera una versión
+antigua y pensara que algo estaba roto.
 
 ### Mover código: fotografiar antes
 Si vas a refactorizar, `node tests/foto.js guardar` primero. Mueve **un bloque**,
 `comparar`, sigue. Nunca cinco de golpe: si algo se rompe no sabrás cuál fue.
+
+### Cada viaje son datos, no una app
+Eslovenia y Asturias viven en `carpeta/datos.js` con un `VIAJE_ORIGINAL`. El
+HTML pone la estructura y `assets/app.js` el motor. Si al añadir algo te sale
+un `if` con el nombre del viaje dentro del motor, ese trozo no era común: hazlo
+dato o bloque opcional.
+
+Y si añades un `datos.js` nuevo, dilo en su `sw.js`. Hay una prueba que lo
+vigila, pero es mejor no verla saltar.
 
 ### Nada de dependencias
 Ni frameworks, ni compilación, ni `node_modules` en producción. Un archivo HTML
@@ -154,6 +165,13 @@ Están aquí para que no se repitan:
 | «Demasiados resultados en 10 km» | Se culpaba al radio de un fallo del servidor, sin reintentar | Tres servidores alternativos y tres intentos pidiendo menos cada vez |
 | Se volvió a publicar con pruebas en rojo | Segunda vez. Se lanzó la subida en el mismo comando que las pruebas, sin leer la salida | **Ejecutar las pruebas en un comando aparte, leerlas, y solo entonces subir** |
 | El motor usaba `distancia()` y el visor `distKm()` | Al unificar, los nombres deben unificarse también | La prueba de funciones sin definir lo cazó al enseñarle qué es el motor |
+| La fotografía saltaba al cambiar un comentario | `_pagina` guardaba el `body` entero, y ahí van inyectados `sync.js` y el motor: comparaba código, no lo pintado | `normaliza()` vacía los `<script>`. Si la red de seguridad avisa de lo que no importa, deja de servir para lo que importa |
+| Una prueba daba verde comparando dos `undefined` | Miraba `window.VIAJE`, pero un `const` de un script normal **no** se cuelga de `window`. Comparaba `undefined === undefined` | Comprobar lo que se pinta en el DOM, no las variables. Y desconfiar de una prueba que pasa a la primera |
+| Reservas, normas y guía se borraban solas al sincronizar | `subir()` no mandaba esos campos y `_sincronizar()` **sustituía** el viaje local por el de la nube | Al fundir, partir de lo local y poner la nube encima. Lo que la nube no sepa llevar no puede borrarlo |
+| Una prueba con el fallo puesto no saltaba, y la prueba estaba bien | El fallo se inyectó en una línea a la que no se llega en ese caso: el código salía antes | Al verificar en los dos sentidos, comprobar que el fallo inyectado **se ejecuta**, no solo que está escrito |
+| Las pruebas del traspaso al editor daban verde en falso | Compartían un solo `localStorage` simulado, así que nunca podían reproducir el caso que importaba | Cuando dos páginas pueden estar en almacenes distintos, la prueba tiene que darles almacenes distintos |
+| Un reemplazo se llevó cuatro funciones por delante | Se sustituyó por rango entre dos anclas y en medio había más código del que se creía | Después de reemplazar por rango, comprobar qué funciones siguen definidas, no solo `node --check` |
+| Las pestañas Info y Reservas reventaban con un viaje editado | Un viaje creado en el editor no trae `info`, ni `vuelos`, ni `seguros`. El código los daba por seguros | Todo bloque que no tengan los dos viajes es opcional: `(VIAJE.x \|\| [])`, y el bloque vacío no se pinta |
 
 El patrón se repite: **dar algo por bueno sin ejecutarlo**. Por eso existen las
 pruebas.
@@ -167,9 +185,10 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 ## Cómo se publica
 
 ```bash
-node tests/probar.js              # las 68 en verde, y LEER el resultado
+node tests/probar.js              # las 211 en verde, y LEER el resultado
 node tests/foto.js comparar       # si has movido código
-# subir VERSION, y el ?v=NN de sync.js y assets/app.js si los tocaste
+# subir VERSION, y el CACHE del sw.js de cada app que toques
+#   (el código común va SIN ?v=: la versión la lleva el service worker)
 # actualizar README / PENDIENTE / USO / AGENTS según toque
 git checkout dev && git commit -am "…" && git push origin dev
 # …y parar aquí. A main solo cuando lo pidan.

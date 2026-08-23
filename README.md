@@ -11,28 +11,34 @@ conduce por sitios donde no hay línea.
 
 ```
 /                     portada: elige viaje, sincroniza, actualiza, comparte
-/eslovenia/           Eslovenia y Venecia, 18–29 julio 2026   (a medida)
-/asturias/            Asturias occidental, 5 días             (a medida)
-/crear/               editor: crear, pedir a una IA e importar viajes
+/eslovenia/           Eslovenia y Venecia, 18–29 julio 2026
+/eslovenia/datos.js     …sus datos: días, guía, vuelos, seguros, info
+/asturias/            Asturias occidental, 5 días
+/asturias/datos.js      …sus datos: días, guía, park4night, info
+/crear/               editor: crear, editar, pedir a una IA e importar
 /viaje/?id=xxx        visor de los viajes creados
-/assets/app.js        motor común: lo que comparten las tres apps de viaje
+/assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               72 comprobaciones + fotografías de comportamiento
+/tests/               211 comprobaciones + fotografías de comportamiento
 ```
 
-Cada carpeta es una app independiente de **un solo archivo HTML** con su CSS y su
-JavaScript dentro. Sin compilar, sin dependencias en producción.
+Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
+viajes escritos a mano ya no llevan sus datos dentro: el HTML pone la estructura,
+`assets/app.js` el motor y `datos.js` el viaje. **Un viaje nuevo es un archivo de
+datos, no una app entera.**
 
 | | líneas | peso |
 |---|--:|--:|
 | portada | 424 | 18 KB |
 | editor | 1.356 | 60 KB |
 | visor | 1.072 | 54 KB |
-| Eslovenia | 2.281 | 134 KB |
-| Asturias | 1.831 | 103 KB |
-| **assets/app.js** | **1.096** | **46 KB** |
-| sync.js | 828 | 30 KB |
+| Eslovenia | 1.912 | — |
+| …sus datos | 381 | — |
+| Asturias | 1.563 | — |
+| …sus datos | 281 | — |
+| **assets/app.js** | **1.176** | — |
+| sync.js | 845 | — |
 
 ---
 
@@ -60,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 72 en verde
+node tests/probar.js   # las 211 en verde
 node tests/foto.js comparar
 ```
 
@@ -81,8 +87,9 @@ node tests/foto.js comparar
 | Recorrido real en el mapa | | ● | ● | | |
 | Alojamiento con sus enlaces | | ● | ● | ● | |
 | Tarjetas de embarque | | ● | | | |
-| Guía de lugares | | 39 fichas | 27 fichas | | |
+| Guía de lugares | | 40 fichas | 27 fichas | | |
 | Reservas y localizadores | | ● | | ● | ● |
+| Editar el viaje desde el móvil | | ● | ● | ● | ● |
 | Qué ver por aquí | | ● | ● | ● | |
 | Servicios: cerca o de camino | | ● | ● | ● | |
 | Tiempo real por carretera | | ● | ● | ● | |
@@ -96,7 +103,7 @@ node tests/foto.js comparar
 
 ## El motor común
 
-`assets/app.js` tiene lo que era idéntico en las tres apps de viaje:
+`assets/app.js` tiene lo que era idéntico en las apps de viaje:
 
 - **Ubicación**: `comoTexto` / `comoPar` (admite `"lat,lon"` y `[lat, lon]`),
   `ubicacionRapida` (pinta ya, afina después), `ubicacionFresca` (antes de cada
@@ -105,10 +112,15 @@ node tests/foto.js comparar
 - **Buscar**: `buscarServicios`, `buscarEnRuta`, `queVerCerca`, `porCarretera`
 - **Guardar**: cámara y galería, portada del día, «Estoy aquí», pernoctas,
   documentos
-- **Mostrar**: `bloqueHotel`, `frasesDelDia` (el primer vistazo)
+- **Mostrar**: `bloqueHotel`, `frasesDelDia` (el primer vistazo), `indexaGuia`
+- **Qué viaje manda**: `viajeEnUso(id, delArchivo)` pone la copia guardada en el
+  móvil encima de la del archivo, **fusionando**: lo que la copia no traiga se
+  queda como está en el archivo
+- **Llevar el viaje al editor**: `dejaTraspaso` lo deja para la otra app y el
+  editor deja acuse de recibo; `traspasoSinRecoger` detecta que no llegó
 
 Las apps aportan sus datos y sus piezas propias. Eslovenia tiene vuelos, seguros
-y guía; Asturias, park4night; el visor, el editor detrás.
+y tarjetas de embarque; Asturias, park4night; el visor, el editor detrás.
 
 **Señal de que te estás pasando al unificar:** si hace falta un `if` con el
 nombre del viaje dentro del motor, ese trozo no era común.
@@ -139,7 +151,8 @@ que iniciar sesión en cada una.
 
 | Tabla | Qué guarda | Conflictos |
 |---|---|---|
-| `viajes` | un viaje por fila, días en `jsonb` | gana el más reciente |
+| `viajes` | un viaje por fila, días en `jsonb`, el resto en `extra` | gana el más reciente, **fundiendo**: lo que la nube no lleve no se borra |
+| — | borrados pendientes en `viajes_borrados` | se reintentan hasta que el servidor confirma: un viaje borrado sin cobertura no resucita |
 | `viaje_diario` | marcas, notas, posiciones, visitas, pernoctas, portadas | **por entrada**, con marca de tiempo propia |
 | `viaje_fotos` | fotos compartidas | por id, borrado lógico |
 
@@ -147,20 +160,47 @@ Las tarjetas de embarque **no** van a la nube: llevan nombre y código de barras
 
 ### Forma de un viaje
 
+Solo `id`, `nombre` y `dias` hacen falta. **Todo lo demás es opcional**: un viaje
+sin guía, sin vuelos o sin información se abre igual, y las pestañas que no
+tienen nada que enseñar salen vacías en vez de romperse.
+
 ```js
 {
   id, nombre, desde, hasta, salida,
   normas: ["Andando sin acera se camina por la izquierda", …],
+
   dias: [{
     t, dest, xy, km, lluvia, foto,
     hotel: "Hotel Jägerhorn",              // nombre exacto, para buscarlo
-    hotelWeb: "https://…",                 // solo si la IA la sabe de verdad
+    hotelWeb: "https://…",                 // solo si se sabe de verdad
+    f: "2026-07-18",                       // fecha propia del día, si la tiene
+    d: 1,                                  // o su número, si el viaje no tiene fechas
+    arte: "cueva", base: "Brne Rooms · Postojna",   // ilustración y rótulo
     paradas: [{ h, txt, c, n, mapa, w, xy, g, key, park }]
   }],
-  reservas: { vuelos: [{ ruta, fecha, hora, cia, loc, vuelo, asientos, secuencia }],
-              coche, telefonos }
+
+  // Bloques opcionales. Los usa quien los tenga.
+  guia: [{ zona, arte, nota, lugares: [{ id, xy, n, t, d, k, m, tip, wl }] }],
+  info: { clave: [[etiqueta, texto], …] },
+  vuelos: [{ ruta, fecha, hora, cia, loc, vuelo, terminal, puerta, asientos, secuencia }],
+  acceso: { cia, email, url },
+  coche: { proveedor, reserva, recogida, devolucion, telefono, franquicia, … },
+  seguros: [{ nombre, poliza, limite, que, no }],
+  telefonos: [{ q, sub, n, wa, urgente }],
+  alojamientos: [{ fechas, nombre, zona }],
+
+  // Y lo que se invente mañana: ni el editor ni la nube lo tiran.
+  reservas: { vuelos, coche, telefonos }   // forma antigua, se sigue leyendo
 }
 ```
+
+**Una parada apunta a su ficha de la guía con `g`**, que es el `id` del lugar.
+`xyDeParada()` usa las coordenadas de la ficha si la parada no trae las suyas.
+
+**Los campos que no se reconocen se conservan.** El editor parte del viaje que
+recibe y solo pone en su sitio lo que sabe; la nube manda en la columna `extra`
+todo lo que no tiene columna propia. Abrir un viaje y guardarlo sin tocarlo lo
+devuelve entero: hay una prueba que lo vigila campo por campo.
 
 ### El diario, aparte
 
@@ -181,6 +221,7 @@ Las tarjetas de embarque **no** van a la nube: llevan nombre y código de barras
 **Si añades un archivo del que depende la app, dilo en los cinco `sw.js`.** Al
 crear `assets/app.js` no se hizo, y desde el icono de inicio la app se quedaba a
 medias: el service worker devolvía el HTML de la página donde iba un script.
+Ahora hay una prueba que lo caza, pero la regla sigue siendo la misma.
 
 **El código común se pide sin `?v=`.** La versión la lleva el service worker. Con
 `?v=` la copia guardada nunca coincidía con la pedida.
@@ -200,6 +241,17 @@ búsqueda. Ya se publicaron 34 enlaces de Wikiloc que daban 404.
 
 **Cambiar la lógica obliga a revisar los textos.** «Buscando en 5 km» en un modo
 sin radio es peor que no decir nada.
+
+**El almacén de una app instalada en iOS no es el de Safari.** WebKit lo tiene
+documentado como intencional (bug 181849). Por eso llevar un viaje de
+`/eslovenia/` a `/crear/` no se da por hecho: se deja un traspaso, el editor deja
+acuse de recibo, y si no llega se dice en vez de abrir un viaje en blanco. **No
+hay ningún almacén del navegador que escape a ese aislamiento**: IndexedDB, Cache
+y `sessionStorage` se parten igual.
+
+**Un error del servidor no es una columna que falta.** Solo se deja de mandar
+`extra` cuando el error lo identifica (`PGRST204`, o el mensaje de la columna).
+Con cualquier otro fallo el viaje queda pendiente y se reintenta entero.
 
 **Nada de colores fijos en lo estructural**, o el modo claro se rompe. Hay una
 prueba que lo vigila.
@@ -227,11 +279,14 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 72 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 211 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
-tiene sus ids, que la ubicación vale en sus dos formatos.
+tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
+app está en su service worker**, que **la nube no borra bloques del viaje**, que
+**abrir y guardar en el editor conserva el viaje entero**, y que Eslovenia y
+Asturias se pueden editar sin perder su guía.
 
-**`node tests/foto.js`** — guarda el HTML de 34 vistas y lo compara después de
+**`node tests/foto.js`** — guarda el HTML de 51 vistas y lo compara después de
 mover código. Es lo que hace seguro refactorizar.
 
 Y pruebas sueltas para lo que costó acertar: `posicion.js`, `ruta-delante.js`,
