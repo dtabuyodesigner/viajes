@@ -176,6 +176,16 @@ no tiene.
 
 ## Si algo va raro
 
+**Un botón se queda pensando** → ya no puede quedarse para siempre. Todo lo que
+va por red tiene un límite; si se pasa, el botón te dice qué ha fallado y vuelve
+a estar listo para intentarlo otra vez. Mientras trabaja, se apaga: si lo tocas
+dos veces no se hace dos veces.
+
+**«Guardado» no es lo mismo que «Guardado y sincronizado»** → el primero quiere
+decir que está a salvo en este móvil. El segundo, que el otro móvil ya lo ve. Sin
+cobertura verás el primero, y subirá solo cuando vuelva la línea.
+
+
 **Sale un botón «Versión nueva · tocar para usarla»** → tócalo. Es la forma
 rápida y segura de actualizar.
 

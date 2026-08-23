@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               211 comprobaciones + fotografías de comportamiento
+/tests/               249 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 211 en verde
+node tests/probar.js   # las 249 en verde
 node tests/foto.js comparar
 ```
 
@@ -242,6 +242,11 @@ búsqueda. Ya se publicaron 34 enlaces de Wikiloc que daban 404.
 **Cambiar la lógica obliga a revisar los textos.** «Buscando en 5 km» en un modo
 sin radio es peor que no decir nada.
 
+**Ningún botón puede quedarse esperando.** `conTope()` y `fetchConTope()` en
+`sync.js` ponen límite a todo lo que va por red, y `trabajando()` se encarga del
+botón: lo desactiva mientras trabaja, lo anuncia con `aria-busy`, y lo devuelve
+a su texto **también cuando falla**, enseñando el motivo real.
+
 **El almacén de una app instalada en iOS no es el de Safari.** WebKit lo tiene
 documentado como intencional (bug 181849). Por eso llevar un viaje de
 `/eslovenia/` a `/crear/` no se da por hecho: se deja un traspaso, el editor deja
@@ -279,7 +284,7 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 211 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 249 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que

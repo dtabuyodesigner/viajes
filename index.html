@@ -13,6 +13,9 @@
 :root{
   --fondo:#12181C; --fondo-2:#1C252A; --tinta:#EDF1F3; --tinta-dim:#93A3AA;
   --linea:rgba(237,241,243,.12);
+  /* El rojo de los mensajes de error cambia con el tema: el de fondo
+     oscuro sobre fondo claro daba 2,4 de contraste y no se leía al sol. */
+  --rojo-txt:#E08A72;
   --soca:#4FC3B8;   /* Eslovenia */
   --prau:#7FB069;   /* Asturias */
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
@@ -71,14 +74,16 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
   border:1px solid var(--linea);background:var(--fondo);color:var(--tinta);
   font-family:var(--sans);font-size:15px}
 .login input::placeholder{color:var(--tinta-dim)}
-#err-login{color:#E08A72}
+#err-login{color:var(--rojo-txt)}
 
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
-  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);}
+  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
+  --rojo-txt:#A93226;}
 @media (prefers-color-scheme: light){
   body.auto{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
-  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);}
+  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
+  --rojo-txt:#A93226;}
 }
 
 /* Selector de color, arriba a la derecha */
@@ -171,7 +176,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v100 · 23/08 01:34";
+const VERSION = "v101 · 23/08 12:06";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -263,29 +268,38 @@ function pintaPie(){
     setTimeout(() => { b.textContent = "Compartir la app"; }, 2500);
   });
 
+/* Limpiar puede colgarse: si el service worker no contesta, sin tope el
+   botón se queda en «Limpiando…» para siempre. Y es justo el botón que se
+   pulsa cuando algo ya va mal. Pase lo que pase, se recarga. */
+const TOPE_LIMPIEZA = 4000;
+
+async function limpiaLoGuardado(){
+  if ("serviceWorker" in navigator){
+    const carpetas = ["./", "eslovenia/", "asturias/", "viaje/", "crear/"];
+    for (const c of carpetas){
+      try {
+        const reg = await navigator.serviceWorker.getRegistration(c);
+        if (reg) await reg.unregister();
+      } catch {}
+    }
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+  }
+  if (window.caches){
+    const ks = await caches.keys();
+    await Promise.all(ks.map(k => caches.delete(k)));
+  }
+}
+
   document.getElementById("btn-actualizar").addEventListener("click", async e => {
     const b = e.target;
+    if (b.disabled) return;                    // el segundo toque no relanza la limpieza
+    b.disabled = true;
+    b.setAttribute("aria-busy", "true");
     b.textContent = "Limpiando…";
-    try {
-      // Cada carpeta tiene su propio service worker y getRegistrations() solo
-      // devuelve el de esta. Hay que ir a por los demás uno por uno.
-      if ("serviceWorker" in navigator){
-        const carpetas = ["./", "eslovenia/", "asturias/", "viaje/", "crear/"];
-        for (const c of carpetas){
-          try {
-            const reg = await navigator.serviceWorker.getRegistration(c);
-            if (reg) await reg.unregister();
-          } catch {}
-        }
-        // y por si quedara alguno más
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister()));
-      }
-      if (window.caches){
-        const ks = await caches.keys();
-        await Promise.all(ks.map(k => caches.delete(k)));
-      }
-    } catch {}
+    // Cada carpeta tiene su propio service worker y getRegistrations() solo
+    // devuelve el de esta. Hay que ir a por los demás uno por uno.
+    await conTope(limpiaLoGuardado().catch(() => {}), TOPE_LIMPIEZA, null);
     b.textContent = "Recargando…";
     location.replace(location.pathname + "?v=" + Date.now());
   });
@@ -312,10 +326,11 @@ function pintaSalir(e){
     ? `<p class="nota" style="margin:8px 0 0">Conectado como ${e.correo} ·
        <button class="lnk" id="salir">salir</button></p>` : "";
   const s = document.getElementById("salir");
-  if (s) s.addEventListener("click", async () => {
-    await SYNC.salir();
+  if (s) s.addEventListener("click", () => trabajando(s, "saliendo…", async () => {
+    // Antes no daba ninguna señal: ni de que estaba trabajando ni de si acabó
+    await conTope(SYNC.salir(), 8000, null);
     pintaNube();
-  });
+  }, { fallo:"no se pudo salir" }));
 }
 
 function pintaLogin(){

@@ -48,6 +48,81 @@ function loDemas(viaje){
   return resto;
 }
 
+/* Ninguna llamada a la nube puede esperar para siempre. `conTope` deja
+   pasar un fallo con motivo, que es lo que ya sabe manejar cada llamador:
+   marcar el viaje como pendiente y reintentar más tarde. */
+const NO_RESPONDE = { error: { message: "la nube no responde" } };
+const TOPE_NUBE = 15000;
+
+/* ---- Pedir algo por red con tope ----
+   Aborta de verdad la petición al pasarse del tiempo, en vez de dejarla
+   viva consumiendo batería, y explica el motivo en castellano llano para
+   que el mensaje del botón diga qué pasó. */
+async function fetchConTope(url, ms = 12000, opciones = {}){
+  if (typeof fetch !== "function") throw new Error("este navegador no puede pedirlo");
+  const ctrl = new AbortController();
+  const corte = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { ...opciones, signal: ctrl.signal });
+    if (!r.ok) throw new Error("el servidor respondió " + r.status);
+    return r;
+  } catch (e){
+    if (e && e.name === "AbortError") throw new Error("tardó demasiado");
+    if (!navigator.onLine) throw new Error("sin cobertura");
+    throw e;
+  } finally {
+    clearTimeout(corte);
+  }
+}
+
+/* ---- Un botón que trabaja ----
+   Tres cosas que hasta ahora no hacía ninguno:
+
+   · No se puede pulsar dos veces. El segundo toque no hace nada, en vez
+     de lanzar la operación otra vez (dos visitas, dos pernoctas, dos
+     peticiones). Ningún botón de la app se desactivaba nunca.
+   · Dice lo que está haciendo, y para un lector de pantalla también.
+   · Vuelve SIEMPRE a su texto, también al fallar. Había seis sitios que
+     dejaban «No se pudo» clavado para siempre.
+
+   Si la tarea falla, se enseña el motivo real —no una frase amable— y el
+   botón queda listo para reintentar en el acto. */
+async function trabajando(boton, textoTrabajo, tarea, opciones = {}){
+  const { fallo = "No se pudo", exito = null, vuelve = 2600 } = opciones;
+  if (!boton) return tarea();
+  if (boton.disabled) return;                 // ya está trabajando
+
+  const original = boton.textContent;
+  boton.disabled = true;
+  boton.setAttribute("aria-busy", "true");
+  boton.textContent = textoTrabajo;
+
+  const suelta = () => {
+    boton.disabled = false;
+    boton.removeAttribute("aria-busy");
+  };
+
+  const luegoVuelve = () => setTimeout(() => {
+    try { boton.textContent = original; } catch {}
+  }, vuelve);
+
+  try {
+    const r = await tarea();
+    if (exito){ boton.textContent = exito; suelta(); luegoVuelve(); }
+    else { boton.textContent = original; suelta(); }
+    return r;
+  } catch (e) {
+    // Aquí llegan tanto Error como los rechazos con un texto suelto que
+    // usa DIARIO_SYNC: en los dos casos interesa el motivo, no un «no se pudo».
+    const motivo = e && e.message ? String(e.message)
+                 : typeof e === "string" ? e : "";
+    boton.textContent = motivo && motivo !== fallo ? `${fallo} · ${motivo}` : fallo;
+    suelta();                                 // se puede reintentar ya
+    luegoVuelve();
+    return undefined;
+  }
+}
+
 const SYNC = {
   cliente: null,
   sesion: null,
@@ -172,7 +247,8 @@ const SYNC = {
 
     try {
       if (this.hayExtra){
-        const { error } = await c.from("viajes").upsert({ ...fila, extra: loDemas(viaje) });
+        const { error } = await conTope(
+          c.from("viajes").upsert({ ...fila, extra: loDemas(viaje) }), TOPE_NUBE, NO_RESPONDE);
         if (!error){ this.limpiarPendiente(viaje.id); return true; }
         // Solo si el error dice que la columna no está se reintenta sin ella.
         // Cualquier otro fallo se trata como fallo: queda pendiente y se
@@ -180,7 +256,7 @@ const SYNC = {
         if (!esColumnaExtraAusente(error)) throw error;
         this.hayExtra = false;
       }
-      const { error } = await c.from("viajes").upsert(fila);
+      const { error } = await conTope(c.from("viajes").upsert(fila), TOPE_NUBE, NO_RESPONDE);
       if (error) throw error;
       this.limpiarPendiente(viaje.id);
       return true;
@@ -202,8 +278,9 @@ const SYNC = {
     const c = await this.conectar();
     if (!c || !this.sesion) return false;
     try {
-      const { error } = await c.from("viajes")
-        .update({ borrado:true, actualizado:new Date().toISOString() }).eq("id", id);
+      const { error } = await conTope(c.from("viajes")
+        .update({ borrado:true, actualizado:new Date().toISOString() }).eq("id", id),
+        TOPE_NUBE, NO_RESPONDE);
       if (error) throw error;
       this.limpiarBorrado(id);
       return true;
@@ -234,7 +311,7 @@ const SYNC = {
 
     let remotos = [];
     try {
-      const { data, error } = await c.from("viajes").select("*");
+      const { data, error } = await conTope(c.from("viajes").select("*"), TOPE_NUBE, NO_RESPONDE);
       if (error) throw error;
       remotos = data || [];
     } catch { return { cambios:0, ok:false }; }
@@ -602,11 +679,11 @@ const DIARIO_SYNC = {
     if (!c || !SYNC.sesion) return false;
     const d = this.local(viaje);
     try {
-      const { error } = await c.from("viaje_diario").upsert({
+      const { error } = await conTope(c.from("viaje_diario").upsert({
         viaje, hechas:d.hechas, desmarcadas:d.desmarcadas, notas:d.notas,
         posiciones:d.posiciones, visitas:d.visitas, pernoctas:d.pernoctas, portadas:d.portadas,
         actualizado: new Date().toISOString()
-      });
+      }), TOPE_NUBE, NO_RESPONDE);
       return !error;
     } catch { return false; }
   },
@@ -617,8 +694,8 @@ const DIARIO_SYNC = {
     if (!c || !SYNC.sesion) return { ok:false, cambios:false };
     let remoto = null;
     try {
-      const { data, error } = await c.from("viaje_diario")
-        .select("*").eq("viaje", viaje).maybeSingle();
+      const { data, error } = await conTope(c.from("viaje_diario")
+        .select("*").eq("viaje", viaje).maybeSingle(), TOPE_NUBE, NO_RESPONDE);
       if (error) throw error;
       remoto = data;
     } catch { return { ok:false, cambios:false }; }
@@ -774,10 +851,10 @@ const FOTOS = {
     const f = await this._porId(id);
     if (!f){ this._quitarPendiente(id); return false; }
     try {
-      const { error } = await c.from("viaje_fotos").upsert({
+      const { error } = await conTope(c.from("viaje_fotos").upsert({
         id: f.id, viaje: f.viaje, dia: f.dia, datos: f.datos,
         autor: SYNC.sesion.user?.email || "", borrada: false
-      });
+      }), TOPE_NUBE, NO_RESPONDE);
       if (error) throw error;
       this._quitarPendiente(id);
       return true;
@@ -788,7 +865,8 @@ const FOTOS = {
     const c = await SYNC.conectar();
     if (!c || !SYNC.sesion) return false;
     try {
-      await c.from("viaje_fotos").update({ borrada:true }).eq("id", id);
+      await conTope(c.from("viaje_fotos").update({ borrada:true }).eq("id", id),
+                    TOPE_NUBE, NO_RESPONDE);
       this._quitarPendiente(id);
       return true;
     } catch { return false; }
@@ -805,8 +883,8 @@ const FOTOS = {
 
     let fuera = [];
     try {
-      const { data, error } = await c.from("viaje_fotos")
-        .select("id,borrada").eq("viaje", viaje).eq("dia", dia);
+      const { data, error } = await conTope(c.from("viaje_fotos")
+        .select("id,borrada").eq("viaje", viaje).eq("dia", dia), TOPE_NUBE, NO_RESPONDE);
       if (error) throw error;
       fuera = data || [];
     } catch { return 0; }
@@ -825,8 +903,9 @@ const FOTOS = {
       }
       if (aqui.has(f.id)) continue;
       try {
-        const { data, error } = await c.from("viaje_fotos")
-          .select("id,viaje,dia,datos,cuando").eq("id", f.id).maybeSingle();
+        const { data, error } = await conTope(c.from("viaje_fotos")
+          .select("id,viaje,dia,datos,cuando").eq("id", f.id).maybeSingle(),
+          TOPE_NUBE, NO_RESPONDE);
         if (error || !data) continue;
         const t = await this._tienda("readwrite");
         if (!t) continue;

@@ -477,7 +477,7 @@ if (window.matchMedia)
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v100 · 23/08 01:34";
+const VERSION = "v101 · 23/08 12:06";
 const VIAJE_ID = "asturias";
 const VIAJE = viajeEnUso(VIAJE_ID, VIAJE_ORIGINAL);
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1033,7 +1033,7 @@ function vistaHoy(){
       </div>
     </div>`;
   }
-  h += `<div id="vistazo"></div>` + ilustra(dia.arte) + botonesRuta(i)
+  h += ilustra(dia.arte) + botonesRuta(i)
      + pintaParadas(dia, i, "hoy");
 
   const sig = VIAJE.dias[i+1];
@@ -1264,11 +1264,9 @@ async function lanzarServicios(){
 
 function activaServicios(){
   const bs = document.getElementById("btn-serv");
-  if (bs) bs.addEventListener("click", async () => {
-    bs.textContent = "Localizando…";
-    try { await pedirUbicacion(); vistaGuia(); ponTiempos(); }
-    catch { bs.textContent = "No se pudo obtener la ubicación"; }
-  });
+  if (bs) bs.addEventListener("click", () => trabajando(bs, "Localizando…", async () => {
+    await pedirUbicacion(); vistaGuia(); ponTiempos();
+  }, { fallo:"No se pudo situarte" }));
   document.querySelectorAll("[data-cat]").forEach(x => x.addEventListener("click", () => {
     catActiva = x.dataset.cat; vistaGuia(); lanzarServicios(); }));
   document.querySelectorAll("[data-donde]").forEach(x => x.addEventListener("click", () => {
@@ -1327,11 +1325,9 @@ function bloqueCerca(){
 function activaCerca(){
   const b = document.getElementById("btn-cerca");
   if (!b) return;
-  b.addEventListener("click", async () => {
-    b.textContent = "Buscando…";
-    try { await pedirUbicacion(); ordenCercania = true; vistaGuia(); }
-    catch { b.textContent = "No se pudo obtener la ubicación"; }
-  });
+  b.addEventListener("click", () => trabajando(b, "Buscando…", async () => {
+    await pedirUbicacion(); ordenCercania = true; vistaGuia();
+  }, { fallo:"No se pudo situarte" }));
 }
 
 function ficha(l){
@@ -1468,8 +1464,13 @@ function vistaInfo(){
     b.addEventListener("click", () => { PREF.app = b.dataset.app; vistaInfo(); }));
   const act = document.getElementById("btn-actualizar");
   if (act) act.addEventListener("click", async () => {
+    if (act.disabled) return;
+    act.disabled = true;
+    act.setAttribute("aria-busy", "true");
     act.textContent = "Comprobando…";
-    try {
+    // Con tope: si el service worker no contesta, se recarga igual en vez
+    // de dejar el botón puesto en «Comprobando…» para siempre.
+    await conTope((async () => {
       if ("serviceWorker" in navigator){
         const regs = await navigator.serviceWorker.getRegistrations();
         await Promise.all(regs.map(r => r.update()));
@@ -1479,7 +1480,8 @@ function vistaInfo(){
         const ks = await caches.keys();
         await Promise.all(ks.map(k => caches.delete(k)));
       }
-    } catch {}
+    })().catch(() => {}), 4000, null);
+    act.textContent = "Recargando…";
     sessionStorage.removeItem("recargado");
     location.replace(location.pathname + "?v=" + Date.now());
   });

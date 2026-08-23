@@ -53,7 +53,9 @@ function abrir(rutaHtml, opciones = {}){
     sesion = null,
     fecha = null,
     posicion = null,
-    respuestaFetch = null
+    respuestaFetch = null,
+    fetchPropio = null,          // para simular una petición que no responde
+    swPropio = null              // para simular un service worker que se cuelga
   } = opciones;
 
   const html = conScriptsDentro(fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8"), rutaHtml);
@@ -86,6 +88,8 @@ function abrir(rutaHtml, opciones = {}){
       if (posicion) w.navigator.geolocation = { getCurrentPosition: ok =>
         setTimeout(() => ok({ coords:{ latitude:posicion[0], longitude:posicion[1] } }), 10) };
       if (respuestaFetch) w.fetch = async () => ({ ok:true, json: async () => respuestaFetch });
+      if (fetchPropio) w.fetch = fetchPropio;
+      if (swPropio) Object.defineProperty(w.navigator, "serviceWorker", { value: swPropio, configurable: true });
       w.supabase = { createClient: () => ({
         auth: { getSession: async () => ({ data:{ session: sesion } }),
                 signInWithPassword: async () => ({ data:{}, error:{ message:"Invalid login credentials" } }),
@@ -298,6 +302,62 @@ function temaClaroCompleto(){
 }
 
 /* ═══ 7. Sin identificadores repetidos entre vistas ═══ */
+/* Ningún identificador puede aparecer dos veces en la página pintada: el
+   segundo queda muerto, porque getElementById devuelve siempre el primero.
+   Así había un <div id="vistazo"> de más en Asturias.
+
+   Se mira el DOM ya pintado, no el código fuente: en el fuente hay ids que
+   salen dos veces a propósito, en ramas excluyentes («si no hay ubicación,
+   pinta esto; si la hay, esto otro»), y contarlos daría un falso positivo. */
+async function idsSinRepetir(){
+  console.log(`\n${gris("──")} Ningún identificador se repite en la página`);
+
+  const apps = [
+    { nombre:"portada",   ruta:"index.html",           url:"https://x/" },
+    { nombre:"editor",    ruta:"crear/index.html",     url:"https://x/crear/" },
+    { nombre:"visor",     ruta:"viaje/index.html",     url:"https://x/viaje/?id=p1",
+      opciones:{ almacen:{ viajes_propios: JSON.stringify([{ id:"p1", nombre:"Prueba",
+        desde:"", hasta:"", salida:"", dias:[{ t:"Día uno", dest:"Zagreb",
+        paradas:[{ h:"Tarde", txt:"Una parada" }] }] }]) } } },
+    { nombre:"Eslovenia", ruta:"eslovenia/index.html", url:"https://x/eslovenia/",
+      opciones:{ fecha:"2026-07-25T12:00:00" } },
+    { nombre:"Asturias",  ruta:"asturias/index.html",  url:"https://x/asturias/" }
+  ];
+
+  // Los ids de dentro de un SVG se quedan fuera: los gradientes repiten el
+  // suyo en cada ilustración y `url(#g)` resuelve al primero, que es idéntico
+  // al resto. Es marcado inválido, sí, pero no rompe nada y arreglarlo mueve
+  // las fotografías sin que nadie note la diferencia. Anotado en PENDIENTE.
+  const repetidos = d => {
+    const visto = new Set(), repes = new Set();
+    for (const el of d.querySelectorAll("[id]")){
+      if (el.closest("svg")) continue;
+      if (visto.has(el.id)) repes.add(el.id); else visto.add(el.id);
+    }
+    return [...repes];
+  };
+
+  for (const app of apps){
+    const dom = abrir(app.ruta, { url:app.url, conexion:false, almacen:{}, ...(app.opciones || {}) });
+    await esperar(400);
+    const d = dom.window.document;
+    const botones = [...d.querySelectorAll("nav button")];
+    let malas = [];
+
+    if (!botones.length){
+      malas = repetidos(d).map(x => `(página) ${x}`);
+    } else {
+      for (const b of botones){
+        b.click();
+        await esperar(120);
+        malas = malas.concat(repetidos(d).map(x => `${b.dataset.v}: ${x}`));
+      }
+    }
+    comprobar(`${app.nombre}: ningún id repetido en ninguna pestaña`,
+              malas.length === 0, [...new Set(malas)].join(" · "));
+  }
+}
+
 function idsUnicos(){
   console.log(`\n${gris("──")} Cada vista tiene sus propios identificadores`);
   const archivos = ["viaje/index.html","eslovenia/index.html","asturias/index.html"];
@@ -1128,6 +1188,233 @@ async function elBorradoNoResucita(){
   }
 }
 
+/* ---- 17. Ningún botón se queda esperando para siempre ----
+   La regla de la casa: «un botón que se queda en Cargando… para siempre
+   es un fallo grave». Hasta ahora ninguno se desactivaba tampoco, así que
+   todos admitían doble pulsación. */
+
+/* Un service worker que no responde nunca */
+function swColgado(){
+  const nunca = () => new Promise(() => {});
+  return { getRegistration: nunca, getRegistrations: nunca,
+           register: nunca, addEventListener(){}, controller:null };
+}
+
+async function nadaSeQuedaEsperando(){
+  console.log(`\n${gris("──")} Ningún botón se queda esperando para siempre`);
+
+  // El botón de auto-rescate de la portada, con el service worker colgado
+  {
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, conexion:true,
+                                      swPropio: swColgado() });
+    await esperar(400);
+    const d = dom.window.document;
+    const b = d.getElementById("btn-actualizar");
+    comprobar("la portada tiene botón de actualizar", !!b, "no está");
+    if (!b) return;
+
+    b.click();
+    await esperar(80);
+    comprobar("mientras limpia, el botón se desactiva",
+              b.disabled === true, "se puede pulsar otra vez y volver a limpiar");
+    comprobar("y dice lo que está haciendo a un lector de pantalla",
+              b.getAttribute("aria-busy") === "true", "sin aria-busy");
+
+    // Y no se queda ahí: el tope lo saca. Se espera un número literal
+    // porque un `const` de un script normal no se cuelga de window, y
+    // leerlo de ahí daría NaN y una espera de cero.
+    await esperar(4400);
+    comprobar("con el service worker colgado, el botón no se queda en «Limpiando…»",
+              b.textContent !== "Limpiando…", `se quedó en «${b.textContent}»`);
+    comprobar("y llega a recargar de todas formas",
+              b.textContent === "Recargando…", `quedó en «${b.textContent}»`);
+    comprobar("la portada no dio errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // Una petición que no responde termina por tope, y aborta de verdad
+  {
+    const dom = abrir("crear/index.html", { url:"https://x/crear/", almacen:{}, conexion:true });
+    await esperar(300);
+    const w = dom.window;
+
+    let abortada = false, recibioSenal = false;
+    w.fetch = (url, o) => new Promise((_, mal) => {
+      recibioSenal = !!(o && o.signal);
+      if (o && o.signal) o.signal.addEventListener("abort", () => {
+        abortada = true;
+        mal(Object.assign(new Error("abortada"), { name:"AbortError" }));
+      });
+    });
+
+    const t0 = Date.now();
+    let motivo = "";
+    try { await w.fetchConTope("https://ejemplo/foto.jpg", 150); }
+    catch (e){ motivo = e.message; }
+    const tardo = Date.now() - t0;
+
+    comprobar("una petición que nunca responde termina por tope",
+              tardo < 1500, `tardó ${tardo} ms`);
+    comprobar("la petición lleva señal de aborto", recibioSenal, "se pidió sin signal");
+    comprobar("y se aborta de verdad", abortada === true, "nunca se llamó a abort()");
+    comprobar("el motivo se explica en castellano",
+              motivo === "tardó demasiado", `dijo «${motivo}»`);
+  }
+
+  // Sin cobertura se dice enseguida, sin esperar al tope
+  {
+    const dom = abrir("crear/index.html", { url:"https://x/crear/", almacen:{}, conexion:false });
+    await esperar(300);
+    const w = dom.window;
+    w.fetch = () => Promise.reject(new TypeError("Failed to fetch"));
+    const t0 = Date.now();
+    let motivo = "";
+    try { await w.fetchConTope("https://ejemplo/foto.jpg", 9000); }
+    catch (e){ motivo = e.message; }
+    comprobar("sin cobertura se avisa enseguida, sin agotar el tope",
+              Date.now() - t0 < 1000, "esperó al tope");
+    comprobar("y dice que es por cobertura", motivo === "sin cobertura", `dijo «${motivo}»`);
+  }
+
+  // El botón de la foto: se desactiva, vuelve, y deja reintentar
+  {
+    const dom = abrir("crear/index.html", { url:"https://x/crear/", almacen:{}, conexion:true });
+    await esperar(300);
+    const d = dom.window.document, w = dom.window;
+
+    const b = d.createElement("button");
+    b.textContent = "Usar la foto";
+    d.body.appendChild(b);
+
+    let veces = 0;
+    const tarea = () => { veces++; return new Promise(r => setTimeout(r, 120)); };
+
+    const p1 = w.trabajando(b, "Guardando…", tarea, { fallo:"No se pudo guardar" });
+    await esperar(20);
+    comprobar("el botón de la foto se desactiva mientras baja",
+              b.disabled === true && b.textContent === "Guardando…", `quedó «${b.textContent}»`);
+    w.trabajando(b, "Guardando…", tarea, { fallo:"No se pudo guardar" });   // segundo toque
+    await esperar(20);
+    comprobar("dos pulsaciones no lanzan dos descargas", veces === 1, `se lanzó ${veces} veces`);
+    await p1; await esperar(30);
+    comprobar("al terminar, el botón vuelve a su texto",
+              b.disabled === false && b.textContent === "Usar la foto", `quedó «${b.textContent}»`);
+
+    // y cuando falla
+    await w.trabajando(b, "Guardando…", async () => { throw new Error("tardó demasiado"); },
+                       { fallo:"No se pudo guardar", vuelve:150 });
+    comprobar("si falla, el botón dice el motivo",
+              b.textContent === "No se pudo guardar · tardó demasiado", `dijo «${b.textContent}»`);
+    comprobar("y se puede reintentar en el acto", b.disabled === false, "quedó bloqueado");
+    await esperar(250);
+    comprobar("y después vuelve a su texto de siempre",
+              b.textContent === "Usar la foto", `quedó «${b.textContent}»`);
+  }
+
+  // «Estoy aquí»: dos toques seguidos no pueden guardar dos visitas
+  {
+    const almacen = {};
+    const dom = abrir("eslovenia/index.html", { url:"https://x/eslovenia/", almacen,
+      conexion:false, fecha:"2026-07-25T12:00:00", posicion:[46.36, 14.11] });
+    await esperar(400);
+    const d = dom.window.document, w = dom.window;
+
+    // Se cuenta cuántas veces se pide de verdad la posición. Mirar solo
+    // cuántas visitas quedan guardadas NO vale: dos toques a la vez leen el
+    // diario antes de que el otro escriba, se pisan, y queda una sola. La
+    // prueba pasaría con el fallo puesto.
+    let pedidas = 0;
+    w.navigator.geolocation = { getCurrentPosition: ok => {
+      pedidas++;
+      setTimeout(() => ok({ coords:{ latitude:46.36, longitude:14.11 } }), 60);
+    } };
+
+    const b = d.querySelector("[data-aqui]");
+    comprobar("«Estoy aquí» está en el día", !!b, "no está el botón");
+    if (b){
+      // Sin esperar: `trabajando` desactiva antes del primer await, y si se
+      // espera, la operación ya ha terminado y ha repintado el botón.
+      b.click();
+      comprobar("mientras localiza, el botón se desactiva", b.disabled === true, "admite otro toque");
+      b.click();                                   // segundo toque, a propósito
+      await esperar(600);
+      comprobar("dos toques no lanzan dos veces la operación",
+                pedidas === 1, `se pidió la posición ${pedidas} veces`);
+      const todas = (JSON.parse(almacen["diario_eslovenia"] || "{}").visitas || []);
+      comprobar("y queda una sola visita guardada",
+                todas.length === 1, `se guardaron ${todas.length}`);
+      comprobar("y el botón vuelve a su sitio",
+                b.disabled === false, "quedó bloqueado");
+    }
+    comprobar("sin errores al apuntar dónde estamos", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // conTope corta de verdad una promesa que no termina nunca
+  {
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, conexion:true });
+    await esperar(300);
+    const w = dom.window;
+    const t0 = Date.now();
+    const r = await w.conTope(new Promise(() => {}), 120, { error:{ message:"la nube no responde" } });
+    comprobar("una promesa que no termina se corta por tope",
+              Date.now() - t0 < 1200, `tardó ${Date.now() - t0} ms`);
+    comprobar("y devuelve el fallo con motivo, no un cuelgue",
+              r && r.error && r.error.message === "la nube no responde", JSON.stringify(r));
+  }
+
+  // Ninguna llamada a la nube puede quedarse sin tope. Es comprobación de
+  // código, no de ejecución: los topes reales son de 15 s y esperar a que
+  // salten haría la suite inútilmente lenta. Lo que vigila es que nadie
+  // añada mañana una llamada suelta.
+  {
+    const codigo = fs.readFileSync(path.join(RAIZ, "sync.js"), "utf8");
+    const sueltas = [...codigo.matchAll(/await\s+c\.from\(/g)].length;
+    comprobar("ninguna llamada a Supabase se hace sin tope",
+              sueltas === 0, `${sueltas} llamadas con «await c.from(» sin conTope`);
+    const conTopeadas = [...codigo.matchAll(/conTope\(\s*c\.from\(/g)].length;
+    comprobar("y las que hay van todas envueltas",
+              conTopeadas >= 4, `solo ${conTopeadas} envueltas`);
+  }
+
+  // El editor no puede decir «sincronizado» si solo está en el móvil
+  {
+    const almacen = {};
+    const dom = abrir("crear/index.html", { url:"https://x/crear/", almacen, conexion:false });
+    await esperar(350);
+    const d = dom.window.document, w = dom.window;
+    const nombre = d.getElementById("nombre");
+    nombre.value = "Viaje sin cobertura";
+    nombre.dispatchEvent(new w.Event("input", { bubbles:true }));
+    d.getElementById("add-dia").click();
+    await esperar(40);
+    d.getElementById("guardar").click();
+    await esperar(400);
+
+    const texto = d.getElementById("estado").textContent;
+    comprobar("sin cobertura dice que está guardado en el móvil",
+              /guardado/i.test(texto), `dijo «${texto}»`);
+    comprobar("y NO dice que esté sincronizado",
+              !/sincronizado/i.test(texto), `dijo «${texto}»`);
+    comprobar("y avisa de que subirá cuando haya conexión",
+              /conexi[oó]n|subir/i.test(texto), `dijo «${texto}»`);
+    comprobar("pero el viaje sí está guardado de verdad en el móvil",
+              (JSON.parse(almacen.viajes_propios || "[]")).length === 1, "no se guardó");
+  }
+
+  // Y por el camino normal sigue funcionando
+  {
+    const sw = { getRegistration: async () => null, getRegistrations: async () => [],
+                 register: async () => ({ update(){}, addEventListener(){} }),
+                 addEventListener(){}, controller:null };
+    const dom = abrir("index.html", { url:"https://x/", almacen:{}, conexion:true, swPropio: sw });
+    await esperar(400);
+    const b = dom.window.document.getElementById("btn-actualizar");
+    b.click();
+    await esperar(300);
+    comprobar("sin service workers que limpiar, recarga igual",
+              b.textContent === "Recargando…", `quedó en «${b.textContent}»`);
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -1155,6 +1442,7 @@ async function elBorradoNoResucita(){
   funcionesDefinidas();
   temaClaroCompleto();
   idsUnicos();
+  await idsSinRepetir();
   posicionEnDosFormas();
   await nadaSePierdeEnLaNube();
   dependenciasEnServiceWorker();
@@ -1162,6 +1450,7 @@ async function elBorradoNoResucita(){
   await viajesAMedidaEditables();
   await portadaSinRepetidos();
   await copiaIncompletaNoBorraBloques();
+  await nadaSeQuedaEsperando();
   await traspasoComprobado();
   await elBorradoNoResucita();
 

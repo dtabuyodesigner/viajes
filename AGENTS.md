@@ -168,6 +168,9 @@ Están aquí para que no se repitan:
 | La fotografía saltaba al cambiar un comentario | `_pagina` guardaba el `body` entero, y ahí van inyectados `sync.js` y el motor: comparaba código, no lo pintado | `normaliza()` vacía los `<script>`. Si la red de seguridad avisa de lo que no importa, deja de servir para lo que importa |
 | Una prueba daba verde comparando dos `undefined` | Miraba `window.VIAJE`, pero un `const` de un script normal **no** se cuelga de `window`. Comparaba `undefined === undefined` | Comprobar lo que se pinta en el DOM, no las variables. Y desconfiar de una prueba que pasa a la primera |
 | Reservas, normas y guía se borraban solas al sincronizar | `subir()` no mandaba esos campos y `_sincronizar()` **sustituía** el viaje local por el de la nube | Al fundir, partir de lo local y poner la nube encima. Lo que la nube no sepa llevar no puede borrarlo |
+| Un botón con `disabled` no despacha el clic | Al verificar la guarda de doble pulsación, quitarla no cambiaba nada: quien impide el segundo toque es el propio `disabled`, no la guarda | Inyectar el fallo donde de verdad decide: quitar `disabled = true`, no la guarda de después |
+| Un reemplazo sin `assert` falló en silencio | Se inyectó un fallo con `s.replace(...)` sin comprobar que la cadena existía; no cambió nada y la prueba «pasó» | Todo reemplazo lleva `assert`, y después se comprueba con `grep` que el cambio está |
+| Una prueba pasaba con y sin el fallo | Contaba visitas guardadas: dos toques a la vez leen el diario antes de que el otro escriba, se pisan, y queda una sola igualmente | Contar las **operaciones lanzadas**, no el resultado, cuando el resultado puede coincidir por otra razón |
 | Una prueba con el fallo puesto no saltaba, y la prueba estaba bien | El fallo se inyectó en una línea a la que no se llega en ese caso: el código salía antes | Al verificar en los dos sentidos, comprobar que el fallo inyectado **se ejecuta**, no solo que está escrito |
 | Las pruebas del traspaso al editor daban verde en falso | Compartían un solo `localStorage` simulado, así que nunca podían reproducir el caso que importaba | Cuando dos páginas pueden estar en almacenes distintos, la prueba tiene que darles almacenes distintos |
 | Un reemplazo se llevó cuatro funciones por delante | Se sustituyó por rango entre dos anclas y en medio había más código del que se creía | Después de reemplazar por rango, comprobar qué funciones siguen definidas, no solo `node --check` |
@@ -185,7 +188,7 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 ## Cómo se publica
 
 ```bash
-node tests/probar.js              # las 211 en verde, y LEER el resultado
+node tests/probar.js              # las 249 en verde, y LEER el resultado
 node tests/foto.js comparar       # si has movido código
 # subir VERSION, y el CACHE del sw.js de cada app que toques
 #   (el código común va SIN ?v=: la versión la lleva el service worker)
