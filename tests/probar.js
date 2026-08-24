@@ -56,7 +56,8 @@ function abrir(rutaHtml, opciones = {}){
     respuestaFetch = null,
     fetchPropio = null,          // para simular una petición que no responde
     swPropio = null,             // para simular un service worker que se cuelga
-    supabasePropio = null        // para simular login/logout colgados
+    supabasePropio = null,       // para simular login/logout colgados
+    conFotos = false             // IndexedDB y las piezas que usa comprimirFoto
   } = opciones;
 
   const html = conScriptsDentro(fs.readFileSync(path.join(RAIZ, rutaHtml), "utf8"), rutaHtml);
@@ -91,6 +92,20 @@ function abrir(rutaHtml, opciones = {}){
       if (respuestaFetch) w.fetch = async () => ({ ok:true, json: async () => respuestaFetch });
       if (fetchPropio) w.fetch = fetchPropio;
       if (swPropio) Object.defineProperty(w.navigator, "serviceWorker", { value: swPropio, configurable: true });
+      if (conFotos){
+        // Guardar una foto pasa por FileReader, Image, canvas e IndexedDB.
+        // jsdom no trae ninguno de los cuatro.
+        const FDB = require("fake-indexeddb");
+        w.indexedDB = new FDB.IDBFactory();
+        w.IDBKeyRange = FDB.IDBKeyRange;
+        w.HTMLCanvasElement.prototype.getContext = () => ({ drawImage(){} });
+        w.HTMLCanvasElement.prototype.toDataURL = () => "data:image/jpeg;base64,FOTO";
+        w.Image = class { set src(v){ this.width = 1200; this.height = 900;
+          setTimeout(() => this.onload && this.onload(), 5); } };
+        w.FileReader = class {
+          readAsDataURL(){ setTimeout(() => { this.result = "x"; this.onload && this.onload(); }, 5); }
+        };
+      }
       w.supabase = supabasePropio || { createClient: () => ({
         auth: { getSession: async () => ({ data:{ session: sesion } }),
                 signInWithPassword: async () => ({ data:{}, error:{ message:"Invalid login credentials" } }),
@@ -2321,6 +2336,189 @@ async function buscarDesdeLaPantalla(){
   }
 }
 
+/* ---- 24. Cámara y documentos: una tanda cada vez ----
+   Comprimir y guardar una foto tarda. Dos selecciones seguidas metían dos
+   tandas a la vez y guardaban lo mismo dos veces. */
+
+/* Le pone archivos de mentira a un <input type=file> y dispara el evento,
+   que es lo que hace el navegador cuando alguien elige algo. */
+function eligeArchivos(d, inp, nombres){
+  Object.defineProperty(inp, "files", {
+    value: nombres.map(n => ({ name:n, type:"image/jpeg", size:1000 })),
+    configurable: true
+  });
+  inp.dispatchEvent(new d.defaultView.Event("change", { bubbles:true }));
+}
+
+async function unaTandaCadaVez(){
+  console.log(`\n${gris("──")} Cámara y documentos: una tanda cada vez`);
+
+  const abreConFotos = async pestana => {
+    const dom = abrir("eslovenia/index.html", { url:"https://x/eslovenia/", almacen:{},
+      conexion:false, fecha:"2026-07-25T12:00:00", conFotos:true });
+    await esperar(500);
+    const d = dom.window.document;
+    if (pestana){
+      [...d.querySelectorAll("nav button")].find(b => b.dataset.v === pestana)?.click();
+      await esperar(300);
+    }
+    return { dom, d, w:dom.window };
+  };
+
+  /* Cuenta cuántas veces se empieza a procesar un archivo: es la operación
+     lanzada, no el resultado. Dos tandas a la vez pueden acabar guardando
+     lo mismo y parecer una sola si solo se miran las fotos guardadas. */
+  const cuentaLecturas = w => {
+    const cuenta = { veces:0, falla:false };
+    w.FileReader = class {
+      readAsDataURL(){
+        cuenta.veces++;
+        setTimeout(() => {
+          if (cuenta.falla) { this.onerror && this.onerror(); return; }
+          this.result = "x"; this.onload && this.onload();
+        }, 40);
+      }
+    };
+    return cuenta;
+  };
+
+  // ═══ CÁMARA ═══
+  {
+    const { dom, d, w } = await abreConFotos(null);
+    const inp = d.querySelector("[data-carrete]");
+    comprobar("la cámara tiene su selector de archivos", !!inp, "no está");
+    if (inp){
+      const cuenta = cuentaLecturas(w);
+      const etiqueta = inp.parentElement;
+
+      eligeArchivos(d, inp, ["una.jpg"]);
+      await esperar(10);
+      comprobar("mientras procesa, el control se marca ocupado",
+                etiqueta.getAttribute("aria-busy") === "true", "sin aria-busy");
+
+      eligeArchivos(d, inp, ["otra.jpg"]);      // segunda selección, a propósito
+      await esperar(20);
+      comprobar("dos selecciones seguidas no lanzan dos tandas",
+                cuenta.veces === 1, `se procesaron ${cuenta.veces} archivos`);
+
+      await esperar(400);
+      comprobar("al terminar, el control queda libre",
+                !etiqueta.hasAttribute("aria-busy"), "siguió ocupado");
+      comprobar("y el selector se vacía para poder elegir otra vez",
+                inp.value === "", `quedó «${inp.value}»`);
+
+      // Y después se puede procesar otra distinta
+      cuenta.veces = 0;
+      eligeArchivos(d, inp, ["tercera.jpg"]);
+      await esperar(400);
+      comprobar("después se puede procesar otra foto",
+                cuenta.veces === 1, `se procesaron ${cuenta.veces}`);
+    }
+    comprobar("la cámara no dio errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // ── Recuperación tras un fallo ──
+  {
+    const { d, w } = await abreConFotos(null);
+    const inp = d.querySelector("[data-carrete]");
+    if (inp){
+      const cuenta = cuentaLecturas(w);
+      cuenta.falla = true;                       // comprimir va a fallar
+      const etiqueta = inp.parentElement;
+      const antes = etiqueta.querySelector("span").textContent;
+
+      eligeArchivos(d, inp, ["rota.jpg"]);
+      await esperar(400);
+      comprobar("si falla, el control vuelve a quedar libre",
+                !etiqueta.hasAttribute("aria-busy"), "siguió ocupado");
+      comprobar("y la etiqueta recupera su texto",
+                etiqueta.querySelector("span").textContent === antes,
+                `quedó «${etiqueta.querySelector("span").textContent}»`);
+
+      cuenta.falla = false; cuenta.veces = 0;
+      eligeArchivos(d, inp, ["buena.jpg"]);
+      await esperar(400);
+      comprobar("y después del fallo se puede volver a intentar",
+                cuenta.veces === 1, `se procesaron ${cuenta.veces}`);
+    }
+  }
+
+  // ── Cancelar el selector no bloquea nada ──
+  {
+    const { d, w } = await abreConFotos(null);
+    const inp = d.querySelector("[data-carrete]");
+    if (inp){
+      const cuenta = cuentaLecturas(w);
+      eligeArchivos(d, inp, []);                 // el selector se cerró sin elegir
+      await esperar(60);
+      comprobar("cancelar el selector no procesa nada",
+                cuenta.veces === 0, `se procesaron ${cuenta.veces}`);
+      eligeArchivos(d, inp, ["ahora-si.jpg"]);
+      await esperar(400);
+      comprobar("y no deja el control bloqueado",
+                cuenta.veces === 1, `se procesaron ${cuenta.veces}`);
+    }
+  }
+
+  // ═══ DOCUMENTOS ═══
+  {
+    const { dom, d, w } = await abreConFotos("reservas");
+    const inp = d.querySelector("[data-doc]");
+    comprobar("las tarjetas de embarque tienen su selector", !!inp, "no está");
+    if (inp){
+      const cuenta = cuentaLecturas(w);
+      const etiqueta = inp.parentElement;
+
+      eligeArchivos(d, inp, ["tarjeta.jpg"]);
+      await esperar(10);
+      comprobar("mientras guarda el documento, el control se marca ocupado",
+                etiqueta.getAttribute("aria-busy") === "true", "sin aria-busy");
+
+      eligeArchivos(d, inp, ["otra-tarjeta.jpg"]);
+      await esperar(20);
+      comprobar("dos selecciones no guardan el documento dos veces",
+                cuenta.veces === 1, `se procesaron ${cuenta.veces}`);
+
+      await esperar(400);
+      comprobar("al terminar, el control de documentos queda libre",
+                !etiqueta.hasAttribute("aria-busy"), "siguió ocupado");
+
+      cuenta.veces = 0;
+      eligeArchivos(d, inp, ["tercera-tarjeta.jpg"]);
+      await esperar(400);
+      comprobar("después se puede guardar otro documento",
+                cuenta.veces === 1, `se procesaron ${cuenta.veces}`);
+    }
+    comprobar("los documentos no dieron errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // ── Documentos: recuperación tras fallo ──
+  {
+    const { d, w } = await abreConFotos("reservas");
+    const inp = d.querySelector("[data-doc]");
+    if (inp){
+      const cuenta = cuentaLecturas(w);
+      cuenta.falla = true;
+      const etiqueta = inp.parentElement;
+      const antes = etiqueta.querySelector("span").textContent;
+
+      eligeArchivos(d, inp, ["rota.jpg"]);
+      await esperar(400);
+      comprobar("si falla el documento, el control vuelve a quedar libre",
+                !etiqueta.hasAttribute("aria-busy"), "siguió ocupado");
+      comprobar("y la etiqueta recupera su texto",
+                etiqueta.querySelector("span").textContent === antes,
+                `quedó «${etiqueta.querySelector("span").textContent}»`);
+
+      cuenta.falla = false; cuenta.veces = 0;
+      eligeArchivos(d, inp, ["buena.jpg"]);
+      await esperar(400);
+      comprobar("y después se puede volver a intentar",
+                cuenta.veces === 1, `se procesaron ${cuenta.veces}`);
+    }
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -2363,6 +2561,7 @@ async function buscarDesdeLaPantalla(){
   await nadaPrometeDeMas();
   await elMotorDeBusqueda();
   await buscarDesdeLaPantalla();
+  await unaTandaCadaVez();
   await traspasoComprobado();
   await elBorradoNoResucita();
 
