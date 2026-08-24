@@ -168,6 +168,9 @@ Están aquí para que no se repitan:
 | La fotografía saltaba al cambiar un comentario | `_pagina` guardaba el `body` entero, y ahí van inyectados `sync.js` y el motor: comparaba código, no lo pintado | `normaliza()` vacía los `<script>`. Si la red de seguridad avisa de lo que no importa, deja de servir para lo que importa |
 | Una prueba daba verde comparando dos `undefined` | Miraba `window.VIAJE`, pero un `const` de un script normal **no** se cuelga de `window`. Comparaba `undefined === undefined` | Comprobar lo que se pinta en el DOM, no las variables. Y desconfiar de una prueba que pasa a la primera |
 | Reservas, normas y guía se borraban solas al sincronizar | `subir()` no mandaba esos campos y `_sincronizar()` **sustituía** el viaje local por el de la nube | Al fundir, partir de lo local y poner la nube encima. Lo que la nube no sepa llevar no puede borrarlo |
+| Una variable usada ocho veces y declarada ninguna | `modoBusca` en el visor: al pulsar «Usar mi ubicación» saltaba un ReferenceError que el try/catch se tragaba, y la pestaña «Qué hay cerca» no llegaba a funcionar nunca | Un `catch` que no enseña el motivo esconde fallos enteros. Las pruebas que recorren la pantalla los encuentran; las que solo miran el estado inicial, no |
+| Una prueba se colgaba esperando su propio simulador | El `fetch` de mentira no rechazaba al abortarlo, y el de verdad sí. El motor esperaba una promesa que no se resolvía jamás | Un simulador de red tiene que rechazar al abortar, o no simula nada |
+| El reloj congelado del banco de pruebas | Con `fecha` fija, `Date.now()` no avanza y cualquier prueba de plazos pasa o falla por el motivo equivocado | Las pruebas de tiempo van en una app abierta sin `fecha` |
 | El estado decía «a salvo» incluyendo datos que no se pueden comprobar | El diario no tiene cola de pendientes: una nota podía no subir y la pantalla afirmar que todo estaba bien | Una frase de estado solo puede responder por lo que se comprueba. Nombrar el alcance: «viajes y fotos», no «todo» |
 | Una prueba leía los comentarios del código como si fueran pantalla | `body.textContent` incluye el contenido de los `<script>`, que en las pruebas van metidos en línea | Clonar el body y quitar `script`, `style` y `template` antes de leer lo que se ve |
 | Un `const` global choca con otro del mismo nombre | Al añadir un `esc()` a `sync.js` habría roto las cinco apps: cada una declara `const esc` y dos declaraciones del mismo nombre en el ámbito global rompen la página antes de ejecutar nada | Antes de añadir algo a `sync.js`, comprobar que el nombre no lo usa ninguna app |
@@ -192,7 +195,7 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 ## Cómo se publica
 
 ```bash
-node tests/probar.js              # las 346 en verde, y LEER el resultado
+node tests/probar.js              # las 391 en verde, y LEER el resultado
 node tests/foto.js comparar       # si has movido código
 # subir VERSION, y el CACHE del sw.js de cada app que toques
 #   (el código común va SIN ?v=: la versión la lleva el service worker)
