@@ -471,6 +471,30 @@ header{position:relative}
 .est-detalle .k{color:var(--paper-dim);flex:0 0 auto}
 .est-detalle .v{text-align:right}
 .btn.parar{border-color:var(--aviso-txt);color:var(--aviso-txt)}
+
+/* Modo conducción: se lee de un vistazo, con sol y con una mano.
+   Los botones no bajan de 56px y el bloque de acciones no se va nunca
+   fuera de la pantalla, aunque la nota de la parada sea larga. */
+.conduce{position:fixed;inset:0;z-index:120;background:var(--karst);color:var(--paper);
+  display:flex;flex-direction:column;
+  padding:calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom))}
+.conduce:focus{outline:none}
+.conduce .cd-texto{flex:1 1 auto;min-height:0;overflow-y:auto}
+.conduce .cd-cab{margin:0;font-size:15px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--paper-dim)}
+.conduce .cd-hora{margin:16px 0 0;font-size:29px;font-weight:700;color:var(--soca)}
+.conduce h1{margin:8px 0 0;font-size:34px;line-height:1.18;font-weight:700}
+.conduce .cd-nota{margin:16px 0 0;font-size:19px;line-height:1.45;color:var(--paper-dim)}
+.conduce .cd-acciones{flex:0 0 auto;padding-top:14px}
+.conduce .cd-btn{display:block;width:100%;box-sizing:border-box;margin:10px 0 0;
+  min-height:56px;padding:15px 18px;border-radius:14px;
+  border:1px solid var(--line);background:transparent;color:var(--paper);
+  font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.25;
+  text-align:center;text-decoration:none;cursor:pointer}
+.conduce .cd-ir{min-height:72px;font-size:26px;font-weight:700;
+  background:var(--soca);color:var(--karst);border-color:var(--soca)}
+.conduce .cd-sin{margin:10px 0 0;min-height:56px;display:flex;align-items:center;
+  justify-content:center;text-align:center;font-size:19px;color:var(--paper-dim)}
 </style>
 </head>
 <body>
@@ -549,7 +573,7 @@ if (window.matchMedia)
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v105 · 24/08 16:08";
+const VERSION = "v106 · 24/08 17:30";
 const VIAJE_ID = "eslovenia";
 const VIAJE = viajeEnUso(VIAJE_ID, VIAJE_ORIGINAL);
 const LUGARES = indexaGuia(VIAJE);
@@ -1044,14 +1068,14 @@ function vistaHoy(){
   document.getElementById("title").textContent = dia.t;
   document.getElementById("subtitle").textContent = `Duermes en ${dia.base}`;
 
-  let h = `<div id="vistazo"></div><div id="mapa-cab-hoy-${i}">${mapaCabecera(i, "hoy")}</div><div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>` + cabecera(dia) + botonesRuta(i) + pintaParadas(dia, i, "hoy");
+  let h = `<div id="vistazo"></div><div id="mapa-cab-hoy-${i}">${mapaCabecera(i, "hoy")}</div><div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>` + cabecera(dia) + botonesRuta(i) + botonModoConduccion() + pintaParadas(dia, i, "hoy");
   if (sig){
     const fs = fecha(sig.f);
     h += `<div class="sec"><span class="label">Mañana · ${esc(fs.wd)}</span><h2>${esc(sig.t)}</h2></div>
           <p class="note">${sig.paradas.map(p => esc(p.txt)).join(" · ")}</p>`;
   }
   document.getElementById("v-hoy").innerHTML = h;
-  activaEnlacesGuia(); activaDiario(); activaAtajoServicios();
+  activaEnlacesGuia(); activaDiario(); activaAtajoServicios(); activaModoConduccion(i);
   activaCamara(i, "hoy"); pintaGaleria(i, true, "hoy");
   activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); pintaPernocta(i, "hoy"); activaMapaCab(i, "hoy"); pintaPortada(i, "hoy");
   pintaVistazo(i);
