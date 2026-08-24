@@ -47,6 +47,22 @@ duermes y, si tienes una parada a menos de 5 km, un aviso.
 **Los botones de navegación** van numerados en el orden del día. El grande abre
 Waze; el pequeño de al lado, **map**, abre Google Maps por si Waze falla.
 
+**Modo conducción.** En Hoy, debajo de los botones de navegación. Abre una
+pantalla a tamaño grande con una sola parada: la primera que no hayáis tachado.
+Sale la hora si la tiene, el nombre de la parada, la nota, y un botón **Ir** que
+ocupa media pantalla. Debajo, *Siguiente* para pasar a la parada de después y
+*Salir del modo conducción* para volver.
+
+Está pensado para mirarlo de reojo en un cruce, así que hace poco a propósito:
+no pide la ubicación, no reordena las paradas por cercanía, y *Siguiente* no
+tacha nada — el diario se queda como estaba. Si una parada no tiene a dónde ir
+—un check-in, una cena, un tramo de carretera— lo dice: «Esta parada no tiene
+ubicación», y no ofrece un botón que llevaría a cualquier sitio. Cuando se
+acaban, pone «No quedan más paradas para hoy». Funciona sin cobertura: lo único
+que necesita red es Waze o Maps, y eso ya es cosa suya.
+
+Se cierra con el botón, con la tecla Escape y con el botón Atrás del navegador.
+
 **Marcar y anotar.** El círculo de cada parada la tacha. Abajo de cada día hay
 un campo para escribir. Todo se sincroniza con el otro móvil.
 

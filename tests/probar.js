@@ -2519,6 +2519,249 @@ async function unaTandaCadaVez(){
   }
 }
 
+/* ═══ El modo conducción ═══
+   Lo importante aquí no es que pinte, es lo que NO hace: no pide GPS,
+   no escribe en el diario y no se inventa un destino para una parada
+   que no tiene ubicación. */
+
+const CONDUCE_APPS = [
+  { nombre:"Eslovenia", ruta:"eslovenia/index.html", url:"https://x/eslovenia/",
+    viaje:"eslovenia", opciones:{ fecha:"2026-07-25T12:00:00" } },
+  { nombre:"Asturias",  ruta:"asturias/index.html",  url:"https://x/asturias/",
+    viaje:"asturias",  opciones:{} },
+  { nombre:"visor",     ruta:"viaje/index.html",     url:"https://x/viaje/?id=p1",
+    viaje:"p1", opciones:{} }
+];
+
+const VIAJE_CONDUCE = JSON.stringify([{ id:"p1", nombre:"Prueba", desde:"", hasta:"",
+  dias:[{ t:"Día uno", dest:"Zagreb", paradas:[
+    { h:"Mañana", txt:"Primera parada", n:"Con nota", mapa:"Zagreb" },
+    { txt:"Segunda sin sitio" },
+    { h:"Tarde", txt:"Tercera parada", mapa:"Split" }
+  ] }] }]);
+
+/* Abre una app en Hoy con el diario que se le diga */
+async function abreConduccion(app, almacen = {}){
+  if (app.viaje === "p1") almacen.viajes_propios = almacen.viajes_propios || VIAJE_CONDUCE;
+  const dom = abrir(app.ruta, { url:app.url, almacen, ...app.opciones });
+  await esperar(700);
+  return { dom, d:dom.window.document, w:dom.window, almacen };
+}
+
+const textoPanel = d => {
+  const v = d.querySelector(".conduce");
+  return v ? v.querySelector("h1").textContent.trim() : null;
+};
+
+/* Marca paradas como hechas dejándolo escrito donde lo lee el diario */
+const diarioCon = (viaje, ...claves) => ({
+  ["diario_" + viaje]: JSON.stringify({
+    hechas: Object.fromEntries(claves.map(c => [c, 1])), desmarcadas:{}, notas:{} })
+});
+
+async function elModoConduccion(){
+  console.log(`\n${gris("──")} Modo conducción`);
+
+  /* ---- 1 · Está en Hoy, abre, y sale ---- */
+  for (const app of CONDUCE_APPS){
+    const { dom, d, w } = await abreConduccion(app);
+    const boton = d.getElementById("abrir-conduccion");
+    comprobar(`${app.nombre}: el botón «Modo conducción» está en Hoy`,
+              !!boton && d.getElementById("v-hoy").contains(boton));
+    if (!boton) continue;
+
+    boton.click();
+    const v = d.querySelector(".conduce");
+    comprobar(`${app.nombre}: al abrirlo aparece la pantalla de conducción`, !!v);
+    comprobar(`${app.nombre}: enseña una parada, no una pantalla vacía`,
+              !!v && (v.querySelector("h1").textContent.trim().length > 2));
+    comprobar(`${app.nombre}: el foco entra en la pantalla`,
+              d.activeElement === v, d.activeElement && d.activeElement.tagName);
+
+    // Escape cierra y devuelve el foco al botón de entrada
+    d.dispatchEvent(new w.KeyboardEvent("keydown", { key:"Escape" }));
+    comprobar(`${app.nombre}: Escape cierra el modo conducción`,
+              !d.querySelector(".conduce"));
+    comprobar(`${app.nombre}: al salir se vuelve a la vista normal`,
+              d.getElementById("v-hoy").innerHTML.trim().length > 40);
+    comprobar(`${app.nombre}: y el foco vuelve al botón de entrada`,
+              d.activeElement === d.getElementById("abrir-conduccion"),
+              d.activeElement && d.activeElement.id);
+
+    // Y también con el botón de salir
+    d.getElementById("abrir-conduccion").click();
+    d.getElementById("cd-salir").click();
+    comprobar(`${app.nombre}: «Salir del modo conducción» también cierra`,
+              !d.querySelector(".conduce"));
+
+    comprobar(`${app.nombre}: usarlo no deja errores de JavaScript`,
+              dom.errores.length === 0, dom.errores[0]);
+  }
+
+  /* ---- 2 · Empieza en la primera parada pendiente ---- */
+  {
+    const app = CONDUCE_APPS[0];
+    const primera = await abreConduccion(app);
+    const i = primera.w.eval("indiceHoy()");
+
+    primera.d.getElementById("abrir-conduccion").click();
+    comprobar("con el diario vacío empieza por la primera parada",
+              textoPanel(primera.d) === "Cascada de Peričnik", textoPanel(primera.d));
+
+    // Con las dos primeras hechas, tiene que saltar a la tercera
+    const saltando = await abreConduccion(app, diarioCon(app.viaje, `${i}:0`, `${i}:1`));
+    saltando.d.getElementById("abrir-conduccion").click();
+    comprobar("las paradas ya hechas se omiten",
+              textoPanel(saltando.d) === "Centro histórico", textoPanel(saltando.d));
+
+    // Si el diario no se puede consultar, no vale suponer «ninguna hecha»:
+    // hay que empezar por la primera.
+    const aCiegas = await abreConduccion(app, diarioCon(app.viaje, `${i}:0`, `${i}:1`));
+    aCiegas.w.eval('DIARIO.esta = () => { throw new Error("diario ilegible"); };');
+    aCiegas.d.getElementById("abrir-conduccion").click();
+    comprobar("sin diario disponible empieza por la primera parada",
+              textoPanel(aCiegas.d) === "Cascada de Peričnik", textoPanel(aCiegas.d));
+    comprobar("y aun así el modo conducción funciona",
+              !!aCiegas.d.querySelector("#cd-salir"));
+
+    // Todas hechas: no queda nada por hacer hoy
+    const todas = await abreConduccion(app,
+      diarioCon(app.viaje, ...[0,1,2,3,4,5].map(k => `${i}:${k}`)));
+    todas.d.getElementById("abrir-conduccion").click();
+    comprobar("con todas las paradas hechas avisa de que no queda ninguna",
+              textoPanel(todas.d) === "No quedan más paradas para hoy", textoPanel(todas.d));
+  }
+
+  /* ---- 3 · «Siguiente» avanza sin tocar nada ---- */
+  {
+    const app = CONDUCE_APPS[0];
+    const { d, w, almacen, dom } = await abreConduccion(app);
+    d.getElementById("abrir-conduccion").click();
+
+    const antes = JSON.stringify(almacen);
+    const orden = [textoPanel(d)];
+    for (let k = 0; k < 6; k++){
+      const sig = d.getElementById("cd-sig");
+      if (!sig) break;
+      sig.click();
+      orden.push(textoPanel(d));
+    }
+
+    comprobar("«Siguiente» recorre las paradas en el orden del día, sin reordenar",
+              orden.slice(0, 6).join(" | ") ===
+              ["Cascada de Peričnik","Bajada a Liubliana","Centro histórico",
+               "Castillo de Liubliana","Cena en las terrazas del río",
+               "Check-in en Pr Ambružarju"].join(" | "), orden.join(" | "));
+    comprobar("al llegar al final dice que no quedan más paradas",
+              orden[orden.length - 1] === "No quedan más paradas para hoy",
+              orden[orden.length - 1]);
+    comprobar("en el final ya no se ofrece «Siguiente»",
+              !d.getElementById("cd-sig"));
+    comprobar("«Siguiente» no escribe nada en el almacenamiento",
+              JSON.stringify(almacen) === antes, "cambió el almacén");
+    comprobar("y no marca ninguna parada como hecha",
+              w.eval(`DIARIO.esta("${w.eval("indiceHoy()")}:0")`) === false);
+    comprobar("recorrerlo entero no deja errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  /* ---- 4 · Con ubicación y sin ella ---- */
+  {
+    const app = CONDUCE_APPS[0];
+    const { d, w } = await abreConduccion(app);
+    d.getElementById("abrir-conduccion").click();
+
+    const ir = d.querySelector(".conduce .cd-ir");
+    // El aparcamiento va por delante del sitio: es el destino real de esa
+    // parada en los datos, el mismo que ya usan los chips de ruta.
+    comprobar("«Ir» lleva al destino real de la parada",
+              !!ir && ir.getAttribute("href") === w.eval('navegar("Koča pri Peričniku")'),
+              ir && ir.getAttribute("href"));
+    comprobar("«Ir» dice a dónde va y con qué aplicación",
+              !!ir && /Ir a Koča pri Peričniku con (Waze|Maps)/.test(ir.getAttribute("aria-label")),
+              ir && ir.getAttribute("aria-label"));
+
+    d.getElementById("cd-sig").click();
+    const panel = d.querySelector(".conduce");
+    comprobar("una parada sin ubicación lo dice",
+              /Esta parada no tiene ubicación/.test(panel.textContent));
+    comprobar("y no se inventa ninguna navegación para ella",
+              panel.querySelectorAll("a[href]").length === 0,
+              [...panel.querySelectorAll("a[href]")].map(a => a.getAttribute("href")).join(" "));
+    comprobar("pero la parada se sigue viendo",
+              textoPanel(d) === "Bajada a Liubliana", textoPanel(d));
+  }
+
+  /* ---- 5 · Ni GPS ni cobertura ---- */
+  {
+    const app = CONDUCE_APPS[1];
+    const { d, w, dom } = await abreConduccion(
+      { ...app, opciones:{ ...app.opciones, conexion:false, posicion:[43.1, -6.2] } });
+
+    // El contador se pone después de cargar: lo que se vigila es el modo
+    // conducción, no lo que la app haga al arrancar.
+    let peticiones = 0;
+    w.navigator.geolocation = { getCurrentPosition(){ peticiones++; },
+                                watchPosition(){ peticiones++; return 1; } };
+
+    d.getElementById("abrir-conduccion").click();
+    const v = d.querySelector(".conduce");
+    comprobar("sin cobertura el modo conducción abre igual", !!v);
+    comprobar("y enseña la parada", textoPanel(d) === "San Miguel → Villablino → Puerto de Somiedo",
+              textoPanel(d));
+    const ir = v.querySelector(".cd-ir");
+    comprobar("sin cobertura «Ir» sigue teniendo un enlace de navegación válido",
+              !!ir && /^(https:|waze:)/.test(ir.getAttribute("href")),
+              ir && ir.getAttribute("href"));
+
+    d.getElementById("cd-sig").click();
+    d.getElementById("cd-sig").click();
+    comprobar("el modo conducción no pide la ubicación en ningún momento",
+              peticiones === 0, `la pidió ${peticiones} vez/veces`);
+    comprobar("sin cobertura tampoco hay errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  /* ---- 6 · El visor: sus propios datos ---- */
+  {
+    const app = CONDUCE_APPS[2];
+    const { d, w } = await abreConduccion(app);
+    d.getElementById("abrir-conduccion").click();
+    const ir = d.querySelector(".conduce .cd-ir");
+    comprobar("visor: «Ir» usa el destino escrito en el viaje",
+              !!ir && ir.getAttribute("href") === w.eval('navegar("Zagreb")'),
+              ir && ir.getAttribute("href"));
+    comprobar("visor: enseña la nota de la parada",
+              /Con nota/.test(d.querySelector(".conduce").textContent));
+
+    d.getElementById("cd-sig").click();
+    comprobar("visor: la parada sin sitio no genera navegación",
+              d.querySelectorAll(".conduce a[href]").length === 0 &&
+              /Esta parada no tiene ubicación/.test(d.querySelector(".conduce").textContent));
+  }
+
+  /* ---- 7 · Los dos temas ---- */
+  {
+    const app = CONDUCE_APPS[0];
+    const lee = async tema => {
+      const { d } = await abreConduccion(app, { tema_viajes: tema });
+      d.getElementById("abrir-conduccion").click();
+      return d.querySelector(".conduce").textContent.replace(/\s+/g, " ").trim();
+    };
+    const oscuro = await lee("oscuro"), claro = await lee("claro");
+    comprobar("el modo conducción enseña lo mismo en claro y en oscuro",
+              oscuro === claro && oscuro.length > 30);
+
+    // Un color escrito a mano en el CSS sería invisible en uno de los dos
+    // temas: por eso todo va con variables.
+    for (const a of CONDUCE_APPS){
+      const bloque = fs.readFileSync(path.join(RAIZ, a.ruta), "utf8")
+        .match(/\.conduce\{[\s\S]*?\.conduce \.cd-sin\{[^}]*\}/);
+      comprobar(`${a.nombre}: el modo conducción no escribe colores a mano`,
+                !!bloque && !/#[0-9a-fA-F]{3,8}\b/.test(bloque[0]),
+                bloque && (bloque[0].match(/#[0-9a-fA-F]{3,8}\b/) || [""])[0]);
+    }
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -2564,6 +2807,7 @@ async function unaTandaCadaVez(){
   await unaTandaCadaVez();
   await traspasoComprobado();
   await elBorradoNoResucita();
+  await elModoConduccion();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);

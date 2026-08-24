@@ -303,6 +303,24 @@ Ninguna bloquea. Anotadas para no volver a descubrirlas:
   mucho, avisa de un fallo que en Safari no ocurre), pero conviene saberlo.
 - **Los cambios de un viaje editado llegan al abrir la portada**, que es donde se
   llama a `SYNC.sincronizar()`. Las apps de viaje solo sincronizan el diario.
+- **`indiceHoy()` está escrito tres veces y de tres maneras.** Eslovenia mira la
+  fecha fija de cada día, Asturias una preferencia local (`ast_salida`) y el
+  visor un campo del viaje (`VIAJE.desde`). El modo conducción no lo tocó: pide
+  el índice a la app y ya está. Unificarlo cambiaría qué día abre Asturias, así
+  que hay que decidirlo antes, no de paso.
+- **El diario vive en `DIARIO` en dos apps y en `P` en el visor.** Mismo formato
+  de clave (`dia:parada`), mismo delegado (`DIARIO_SYNC`), distinto nombre y
+  distinto prefijo de `localStorage` (`eslo_`, `astu_`, `vp_{id}_`).
+  `marcasDeParadas()` mira cuál de los dos existe. Es una adaptación pequeña,
+  pero el día que se unifique hay que migrar los tres prefijos.
+- **`botonesRuta()` del visor no aplica la cascada `park.w || w || mapa`**, solo
+  `p.mapa`. Eslovenia y Asturias sí. El modo conducción usa la cascada completa
+  en las tres, porque en el visor sobra sin hacer daño: si no hay `park` ni `w`,
+  cae en `mapa` igual. Los chips del visor siguen como estaban.
+- **Nada en el proyecto usaba el historial del navegador.** El modo conducción es
+  lo primero que llama a `history.pushState`, para que el botón Atrás lo cierre
+  en vez de sacar de la app. Si algún día se añade otra pantalla superpuesta,
+  conviene que use el mismo patrón y no dos historiales compitiendo.
 
 ---
 
@@ -353,7 +371,6 @@ y `ubicacion`. Ninguno daba error de sintaxis; todos fallaban al usarlos.
 
 - **Preparativos antes de salir**, con cuenta atrás: antiparasitario, revisión de
   la furgo, viñeta, mapas descargados, taxi de madrugada.
-- **Modo conducción:** letra grande, solo la siguiente parada, un botón.
 - **El diario de vuelta:** convertir marcas, notas y fotos en un recuerdo
   compartible cuando acabe el viaje.
 - **Presupuesto por viaje**, tirando de la app de gastos que ya existe.
@@ -410,6 +427,7 @@ Para no volver a proponerlo:
 | Alojamiento con web propia, Booking y búsqueda | v91 |
 | Guardar las tarjetas de embarque en el móvil | v93 |
 | El mapa se sitúa al momento, sin esperar al GPS | v91 |
+| Modo conducción: una parada, letra grande y un botón | v106 |
 
 ---
 
