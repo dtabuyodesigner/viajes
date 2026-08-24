@@ -23,13 +23,19 @@ function formatoTiempo(seg){
   return r ? `${h} h ${r}` : `${h} h`;
 }
 
-async function porCarretera(origen, destinos){
+async function porCarretera(origen, destinos, opciones = {}){
+  // `senal` deja que la búsqueda entera se cancele de golpe; `ms` que el
+  // tope venga de fuera, para que las pruebas no tarden doce segundos.
+  const { ms = 12000, senal = null } = opciones;
   if (!navigator.onLine || !destinos.length) return null;
+  if (senal && senal.aborted) return null;
   const puntos = [origen, ...destinos].map(p => `${p[1]},${p[0]}`).join(";");
   const url = `https://router.project-osrm.org/table/v1/driving/${puntos}` +
               `?sources=0&annotations=duration,distance`;
   const ctrl = new AbortController();
-  const corte = setTimeout(() => ctrl.abort(), 12000);
+  const contagia = () => { try { ctrl.abort(); } catch {} };
+  if (senal) senal.addEventListener("abort", contagia, { once:true });
+  const corte = setTimeout(contagia, ms);
   try {
     const r = await fetch(url, { signal: ctrl.signal });
     clearTimeout(corte);
@@ -398,6 +404,232 @@ function bloqueHotel(d){
   </div>`;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Buscar sin que la espera se vaya de las manos.
+
+   Antes, una búsqueda podía tener a la persona esperando hasta
+   noventa segundos sin poder hacer nada: diez de GPS, sesenta y
+   ocho encadenando tres servidores de mapas, y doce más de
+   tiempos por carretera. Sin cobertura no pasaba —fetch falla al
+   instante— pero con cobertura débil de montaña sí, que es justo
+   donde se usa esto.
+
+   Ahora hay UN plazo desde el toque, no uno por fase. Quien
+   busca no distingue GPS de servidor de mapas: solo ve que no
+   puede hacer nada. Cambiar de servidor no reinicia la espera:
+   cada intento se queda con lo que quede.
+
+   Y se puede cancelar. El GPS no admite cancelación —la API no
+   la tiene— así que su respuesta se tira si llega tarde, en vez
+   de repintar una pantalla que la persona ya ha abandonado.
+   ═══════════════════════════════════════════════════════════ */
+
+const PRESUPUESTO_BUSQUEDA = 30000;   // GPS + mapas, hasta los primeros resultados
+const TOPE_GPS  = 8000;               // localizar no puede comerse el plazo
+const TOPE_RUTA = 8000;               // los tiempos por carretera van aparte
+
+/* La búsqueda en marcha, y su generación.
+
+   La generación hace falta además del AbortController porque hay cosas
+   que no se pueden abortar: el GPS no tiene cancelación, y una respuesta
+   vieja de Overpass o de OSRM puede llegar cuando la persona ya ha
+   pedido otra categoría. Comparando la generación se sabe si lo que
+   acaba de llegar sigue valiendo o hay que tirarlo. */
+let BUSQUEDA = null;
+let GENERACION = 0;
+
+function hayBusqueda(){ return !!BUSQUEDA; }
+function generacionBusqueda(){ return GENERACION; }
+
+/* Reemplazar no es cancelar. Si la búsqueda vieja se marcara como
+   cancelada, su orquestador pintaría «Búsqueda cancelada» encima de los
+   resultados de la nueva. Al reemplazar se calla; al cancelar, avisa. */
+function invalidaBusqueda(){
+  if (!BUSQUEDA) return false;
+  try { BUSQUEDA.maestro.abort(); } catch {}
+  BUSQUEDA = null;
+  GENERACION++;                  // nada de la generación vieja repinta
+  return true;
+}
+
+function cancelaBusqueda(){
+  if (!BUSQUEDA) return false;
+  BUSQUEDA.cancelada = true;     // lo pidió la persona
+  return invalidaBusqueda();
+}
+
+/* Abre una operación con su plazo. Cancela la anterior: cada cambio de
+   categoría, radio o modalidad manda sobre lo que hubiera en vuelo. */
+function abreBusqueda(presupuesto = PRESUPUESTO_BUSQUEDA){
+  invalidaBusqueda();
+  const gen = ++GENERACION;
+  const op = {
+    gen,
+    maestro: new AbortController(),
+    cancelada: false,
+    fin: Date.now() + presupuesto,
+    queda(){ return this.fin - Date.now(); },
+    viva(){ return this.gen === GENERACION && !this.cancelada; }
+  };
+  BUSQUEDA = op;
+  return op;
+}
+
+function cierraBusqueda(op){ if (BUSQUEDA === op) BUSQUEDA = null; }
+
+/* Dónde estamos, sin comerse el plazo.
+
+   El GPS no se puede abortar: la API no lo permite. Así que si cancelan
+   mientras tanto, su respuesta se descarta — ni se guarda la posición ni
+   se repinta nada. */
+async function ubicacionDeBusqueda(op){
+  if (!op || !op.viva()) return null;
+  const ms = Math.min(TOPE_GPS, op.queda());
+  if (ms <= 300) return null;
+
+  const p = await new Promise(ok => {
+    if (!navigator.geolocation) return ok(null);
+    let hecho = false;
+    const cierra = v => {
+      if (hecho) return;
+      hecho = true;
+      clearTimeout(corte);
+      op.maestro.signal.removeEventListener("abort", corta);
+      ok(v);
+    };
+    // Si cancelan, se deja de esperar AHORA. El GPS sigue por dentro —no se
+    // puede abortar— pero su respuesta ya no le importa a nadie, y los
+    // botones vuelven en el acto en vez de al cabo de ocho segundos.
+    const corta = () => cierra(null);
+    const corte = setTimeout(corta, ms);
+    op.maestro.signal.addEventListener("abort", corta, { once:true });
+    navigator.geolocation.getCurrentPosition(
+      pos => cierra([pos.coords.latitude, pos.coords.longitude]),
+      () => cierra(null),
+      { enableHighAccuracy:true, timeout:ms, maximumAge:30000 });
+  });
+
+  if (!op.viva()) return null;          // llegó tarde: se tira
+  if (p){ try { if (typeof guardaPosicion === "function") guardaPosicion(p); } catch {} }
+  return p;
+}
+
+/* Recorre los intentos sin pasarse del plazo.
+
+   `pide(n, senal)` hace la petición del intento n con esa señal y
+   devuelve { listo:true, valor } si hay resultado, { vacia:true } si el
+   servidor respondió y de verdad no hay nada, o { motivo } si falló.
+
+   Devuelve un estado, nunca lanza:
+     bien · vacia · cancelada · tarde · fallaron · reemplazada */
+async function conPresupuesto(op, intentos, pide, opciones = {}){
+  const { alProbar = null } = opciones;
+  let ultimo = "";
+  const fuera = () => ({ estado: op.cancelada ? "cancelada" : "reemplazada" });
+
+  for (let n = 0; n < intentos.length; n++){
+    if (!op.viva()) return fuera();
+
+    const queda = op.queda();
+    if (queda <= 300) return { estado:"tarde", motivo:ultimo };
+
+    if (alProbar) { try { alProbar(n, intentos.length); } catch {} }
+
+    const propio = new AbortController();
+    const contagia = () => { try { propio.abort(); } catch {} };
+    op.maestro.signal.addEventListener("abort", contagia, { once:true });
+    const corte = setTimeout(contagia, Math.min(intentos[n].ms, queda));
+
+    try {
+      const r = await pide(n, propio.signal);
+      if (!op.viva()) return fuera();
+      if (r && r.listo) return { estado:"bien", valor:r.valor };
+      if (r && r.vacia) return { estado:"vacia" };
+      if (r && r.motivo) ultimo = r.motivo;
+    } catch (e){
+      if (!op.viva()) return fuera();
+      ultimo = /abort/i.test(String((e && e.name) || e)) ? "lento"
+             : String((e && e.message) || e);
+    } finally {
+      clearTimeout(corte);
+      op.maestro.signal.removeEventListener("abort", contagia);
+    }
+  }
+  return { estado:"fallaron", motivo:ultimo };
+}
+
+/* Los tiempos por carretera: mejora, no requisito.
+
+   Va con su propio límite corto, fuera del plazo principal, porque para
+   cuando se llama los resultados ya están en pantalla y ya sirven. Si
+   falla, si lo cancelan o si tarda, los resultados se quedan como están
+   y solo cambia la nota de abajo. Nunca sustituye resultados válidos por
+   un mensaje de error. */
+async function porCarreteraDeBusqueda(op, origen, destinos){
+  if (!op || !op.viva()) return null;
+  try {
+    const t = await porCarretera(origen, destinos, { ms: TOPE_RUTA, senal: op.maestro.signal });
+    return op.viva() ? t : null;        // llegó tarde, ya hay otra búsqueda
+  } catch { return null; }
+}
+
+/* Lo que se le dice a la persona. Cancelar no es un fallo: fue decisión
+   suya, y el texto no puede sonar a que algo se ha roto. Y no se dice
+   cuántos servidores se probaron, porque no son los mismos en todas las
+   apps: el visor consulta uno solo. */
+function textoDeBusqueda(r, contexto = {}){
+  const { km = "", modo = "" } = contexto;
+  if (r.estado === "cancelada")
+    return "Búsqueda cancelada. Puedes intentarlo otra vez cuando quieras.";
+  if (r.estado === "tarde")
+    return "Los servidores de mapas no han respondido a tiempo. Prueba en un momento.";
+  if (r.estado === "vacia")
+    return `Nada en ${km} km. Prueba a ampliar el radio.`;
+  if (!navigator.onLine)
+    return "Sin cobertura. Esto necesita red.";
+  const m = String(r.motivo || "");
+  if (m === "ocupado")
+    return "El servidor de mapas está saturado ahora mismo. Prueba en un minuto.";
+  if (m === "lento" || /abort/i.test(m))
+    return `El servidor de mapas va lento ahora mismo. ${+km > 25
+      ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`;
+  if (m) return `No se pudo consultar${modo === "ruta" ? " por el camino" : ""}.`;
+  return "Los servidores de mapas no responden ahora. Prueba en un momento.";
+}
+
+/* La línea de progreso con su botón de cancelar. El botón va aparte de
+   los chips de categoría para que un toque en marcha no lo confunda con
+   relanzar la búsqueda. */
+function pintaBuscando(cont, texto){
+  if (!cont) return;
+  cont.innerHTML =
+    `<p class="note" id="busca-txt" aria-live="polite">${esc(texto)}</p>
+     <div class="btns"><button class="btn parar" id="busca-cancelar"
+       aria-label="Cancelar la búsqueda">Cancelar</button></div>`;
+  const b = document.getElementById("busca-cancelar");
+  if (b) b.addEventListener("click", () => {
+    b.disabled = true;
+    b.textContent = "Cancelando…";
+    cancelaBusqueda();
+  });
+}
+
+/* El final de una búsqueda que no trajo resultados. Cancelar no lleva
+   botón de «ver por qué»: no hubo ningún fallo que explicar. */
+function pintaFinBusqueda(cont, op, r, contexto = {}){
+  if (!cont) return;
+  const texto = textoDeBusqueda(r, contexto);
+  const conDetalle = r.estado === "fallaron" && typeof ULTIMO_FALLO !== "undefined" && ULTIMO_FALLO;
+  cont.innerHTML = `<p class="note" aria-live="polite">${esc(texto)}` +
+    (conDetalle ? ` <button class="lnk" id="ver-motivo">ver por qué</button>` : "") +
+    `</p><div id="detalle-fallo"></div>`;
+}
+
+function progresoBusqueda(texto){
+  const t = document.getElementById("busca-txt");
+  if (t) t.textContent = texto;
+}
+
 /* ---- Qué ver por aquí: lo que merece la pena alrededor ---- */
 const QUE_VER = [
   { id:"mirador", n:"Miradores",  q:'node["tourism"="viewpoint"]' },
@@ -421,28 +653,24 @@ function meritoDe(e){
   return m;
 }
 
-async function queVerCerca(cat, pos, km){
+async function queVerCerca(cat, pos, km, op, alProbar){
   const SERVIDORES = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter"
   ];
-  const intentos = [ {tope:60, espera:25}, {tope:30, espera:15}, {tope:15, espera:10} ];
-  let ultimo = "";
+  const intentos = [ {tope:60, espera:25}, {tope:30, espera:15}, {tope:15, espera:10} ]
+    .map(x => ({ ...x, ms: (x.espera + 6) * 1000 }));
 
-  for (let n = 0; n < intentos.length; n++){
+  return conPresupuesto(op, intentos, async (n, senal) => {
     const { tope, espera } = intentos[n];
     const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
     const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-    const ctrl = new AbortController();
-    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
-    try {
+    {
       const r = await fetch(SERVIDORES[n % SERVIDORES.length] + "?data=" + encodeURIComponent(consulta),
-                            { signal: ctrl.signal });
-      clearTimeout(corte);
+                            { signal: senal });
       if (!r.ok){
-        ultimo = r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status);
-        continue;
+        return { motivo: r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status) };
       }
       const d = await r.json();
       const sitios = (d.elements || []).map(e => {
@@ -468,14 +696,11 @@ async function queVerCerca(cat, pos, km){
         vistos.add(k); return true;
       }).sort((a,b) => (b.merito - a.merito) || (a.km - b.km));
 
-      if (unicos.length) return unicos.slice(0, 20);
-      if (n === 0) return [];
-    } catch (e){
-      clearTimeout(corte);
-      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+      if (unicos.length) return { listo:true, valor: unicos.slice(0, 20) };
+      if (n === 0) return { vacia:true };      // respondió y no hay nada de verdad
+      return {};
     }
-  }
-  throw new Error(ultimo || "sin respuesta");
+  }, { alProbar });
 }
 
 /* Dónde estamos, se llame como se llame en cada app */
@@ -511,18 +736,30 @@ function bloqueQueVer(){
   </div>`;
 }
 
-async function lanzarQueVer(){
+async function lanzarQueVer(presupuesto){
   const cont = document.getElementById("res-quever");
   const cat = QUE_VER.find(c => c.id === verCat);
   if (!cont || !cat) return;
-  cont.innerHTML = `<p class="note">Buscando ${cat.n.toLowerCase()} en ${verKm} km…</p>`;
+  const op = abreBusqueda(presupuesto);
+  pintaBuscando(cont, `Localizando…`);
   try {
-    if (typeof ubicacionFresca === "function") await ubicacionFresca();
-    const r = await queVerCerca(cat, comoPar(posActual()), verKm);
-    if (!r.length){
-      cont.innerHTML = `<p class="note">Nada con nombre en ${verKm} km. Prueba a ampliar el radio o con otra categoría.</p>`;
+    await ubicacionDeBusqueda(op);
+    if (!op.viva()) { pintaFinBusqueda(cont, op, { estado:"cancelada" }, { km:verKm }); return; }
+
+    progresoBusqueda(`Buscando ${cat.n.toLowerCase()} en ${verKm} km…`);
+    const res = await queVerCerca(cat, comoPar(posActual()), verKm, op,
+      n => progresoBusqueda(n === 0 ? `Buscando ${cat.n.toLowerCase()} en ${verKm} km…`
+                                    : "Sigue buscando, probando otro servidor…"));
+
+    if (res.estado === "reemplazada") return;          // ya hay otra búsqueda
+    if (res.estado !== "bien"){
+      if (res.estado === "vacia")
+        cont.innerHTML = `<p class="note">Nada con nombre en ${verKm} km. Prueba a ampliar el radio o con otra categoría.</p>`;
+      else pintaFinBusqueda(cont, op, res, { km:verKm });
       return;
     }
+    const r = res.valor;
+
     cont.innerHTML = `<ul class="plain">${r.map((x, i) => `
       <li>
         <div class="serv-fila">
@@ -540,7 +777,9 @@ async function lanzarQueVer(){
       </li>`).join("")}</ul>
       <p class="note" id="nota-quever">Calculando el tiempo por carretera…</p>`;
 
-    const t = await porCarretera(comoPar(posActual()), r.map(x => x.xy));
+    // Los resultados ya están y ya sirven. Lo de abajo es mejora: si falla,
+    // si se cancela o si tarda, la lista se queda como está.
+    const t = await porCarreteraDeBusqueda(op, comoPar(posActual()), r.map(x => x.xy));
     const nv = document.getElementById("nota-quever");
     if (t){
       t.forEach((x, i) => {
@@ -552,9 +791,9 @@ async function lanzarQueVer(){
       nv.textContent = "Distancias en línea recta. Datos de OpenStreetMap.";
     }
   } catch (e) {
-    const motivo = String(e?.message || "");
-    cont.innerHTML = `<p class="note">${!navigator.onLine ? "Sin conexión. Esto necesita red."
-      : `No se pudo consultar. <span class="motivo">${esc(motivo).slice(0, 60)}</span>`}</p>`;
+    if (op.viva()) pintaFinBusqueda(cont, op, { estado:"fallaron", motivo:String((e && e.message) || e) }, { km:verKm });
+  } finally {
+    cierraBusqueda(op);
   }
 }
 
@@ -861,8 +1100,10 @@ async function ubicacionFresca(){
   });
 }
 
-async function buscarEnRuta(cat, i, km){
-  const aqui = await ubicacionFresca();        // primero, dónde estamos AHORA
+async function buscarEnRuta(cat, i, km, aqui, op, alProbar){
+  // La posición llega de fuera: antes se pedía aquí Y en quien llama, así
+  // que «de camino hoy» podía esperar dos veces al GPS, diez segundos cada
+  // una. Ahora el orquestador es el único que la pide.
   const todos = puntosDeRuta(i, aqui);
   if (todos.length < 2) return null;          // sin ruta que seguir
 
@@ -882,32 +1123,30 @@ async function buscarEnRuta(cat, i, km){
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter"
   ];
-  const intentos = [ {tope:80, espera:25}, {tope:40, espera:15}, {tope:20, espera:10} ];
+  const intentos = [ {tope:80, espera:25}, {tope:40, espera:15}, {tope:20, espera:10} ]
+    .map(x => ({ ...x, ms: (x.espera + 6) * 1000 }));
 
-  let ultimo = "";
-  for (let n = 0; n < intentos.length; n++){
+  return conPresupuesto(op, intentos, async (n, senal) => {
     const { tope, espera } = intentos[n];
     const partes = cat.q.split(";").map(t => `${t}(${caja});`).join("");
     const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-    const ctrl = new AbortController();
-    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
-    try {
+    {
       const r = await fetch(SERVIDORES[n % SERVIDORES.length] + "?data=" + encodeURIComponent(consulta),
-                            { signal: ctrl.signal });
-      clearTimeout(corte);
+                            { signal: senal });
       if (!r.ok){
         // el cuerpo del error suele explicar qué no le gustó
         let detalle = "";
         try { detalle = (await r.text()).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120); } catch {}
-        ultimo = r.status === 429 ? "ocupado"
-               : r.status === 504 ? "lento"
-               : `HTTP ${r.status}${detalle ? " · " + detalle : ""}`;
         ULTIMO_FALLO = { servidor: SERVIDORES[n % SERVIDORES.length], estado: r.status, detalle, consulta };
-        continue;
+        return { motivo: r.status === 429 ? "ocupado"
+                       : r.status === 504 ? "lento"
+                       : `HTTP ${r.status}${detalle ? " · " + detalle : ""}` };
       }
       const d = await r.json();
-      if (d.remark){ ultimo = "aviso: " + String(d.remark).slice(0, 100);
-                     ULTIMO_FALLO = { remark: d.remark, consulta }; continue; }
+      if (d.remark){
+        ULTIMO_FALLO = { remark: d.remark, consulta };
+        return { motivo: "aviso: " + String(d.remark).slice(0, 100) };
+      }
       const origen = todos[0];
       const sitios = (d.elements || []).map(e => {
         const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
@@ -924,17 +1163,14 @@ async function buscarEnRuta(cat, i, km){
         // primero lo que pillas pronto: se ordena por lo lejos que está de ti,
         // ya filtrado a lo que queda de paso
         .sort((a,b) => a.desdeAqui - b.desdeAqui);
-      if (sitios.length) return sitios.slice(0, 20);
-      if (n === 0) return [];
-    } catch (e){
-      clearTimeout(corte);
-      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+      if (sitios.length) return { listo:true, valor: sitios.slice(0, 20) };
+      if (n === 0) return { vacia:true };
+      return {};
     }
-  }
-  throw new Error(ultimo || "sin respuesta");
+  }, { alProbar });
 }
 
-async function buscarServicios(cat, pos, km){
+async function buscarServicios(cat, pos, km, op, alProbar){
   // Tres servidores: si uno está saturado, se prueba el siguiente.
   // Y cada intento pide menos: mejor quince sitios que ninguno.
   const SERVIDORES = [
@@ -943,21 +1179,17 @@ async function buscarServicios(cat, pos, km){
     "https://overpass.private.coffee/api/interpreter"
   ];
   const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
-  const intentos = [ {tope:40, espera:25}, {tope:20, espera:15}, {tope:10, espera:10} ];
+  const intentos = [ {tope:40, espera:25}, {tope:20, espera:15}, {tope:10, espera:10} ]
+    .map(x => ({ ...x, ms: (x.espera + 6) * 1000 }));
 
-  let ultimo = "";
-  for (let n = 0; n < intentos.length; n++){
+  return conPresupuesto(op, intentos, async (n, senal) => {
     const { tope, espera } = intentos[n];
     const servidor = SERVIDORES[n % SERVIDORES.length];
     const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-    const ctrl = new AbortController();
-    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
-    try {
-      const r = await fetch(servidor + "?data=" + encodeURIComponent(consulta), { signal: ctrl.signal });
-      clearTimeout(corte);
+    {
+      const r = await fetch(servidor + "?data=" + encodeURIComponent(consulta), { signal: senal });
       if (!r.ok){
-        ultimo = r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status);
-        continue;
+        return { motivo: r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status) };
       }
       const d = await r.json();
       const sitios = (d.elements || []).map(e => {
@@ -967,14 +1199,11 @@ async function buscarServicios(cat, pos, km){
                  detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
                  xy:[la, lo], km: distancia(pos, [la, lo]) };
       }).filter(Boolean).sort((a,b) => a.km - b.km);
-      if (sitios.length) return sitios.slice(0, 20);
-      if (n === 0) return [];          // no hay nada de verdad
-    } catch (e){
-      clearTimeout(corte);
-      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+      if (sitios.length) return { listo:true, valor: sitios.slice(0, 20) };
+      if (n === 0) return { vacia:true };      // no hay nada de verdad
+      return {};
     }
-  }
-  throw new Error(ultimo || "sin respuesta");
+  }, { alProbar });
 }
 
 /* ---- Cámara y fotos del día ---- */
