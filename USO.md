@@ -67,6 +67,11 @@ miradores, museos, naturaleza, iglesias o plazas. Te saca lo que merece la pena
 alrededor, lo más interesante primero, y los que tienen artículo en Wikipedia
 llevan un botón «Qué es». Sirve en cualquier sitio, esté o no en el viaje.
 
+**Si una búsqueda tarda, puedes pararla.** Mientras busca sale un botón
+**Cancelar**. Y aunque no lo toques, ninguna búsqueda se alarga más de medio
+minuto: antes podía tenerte esperando hasta minuto y medio sin decir nada.
+Cancelar no es un error: puedes volver a intentarlo cuando quieras.
+
 **Comer, gasolina, tiendas.** Botón en el día, o pestaña Guía. Da la ubicación y
 elige qué buscas. Dos formas de buscar: **Cerca de aquí**, con el radio que
 quieras, o **De camino hoy**, que busca en el tramo que te queda por delante —hasta unos

@@ -167,7 +167,7 @@ después del punto anterior, no antes.**
 
 ---
 
-## 2c · Fiabilidad · A1, A2 y A5 hechos; A3 y A4 por hacer
+## 2c · Fiabilidad · A1, A2, A3 y A5 hechos; queda A4
 
 **A1, hecho en `feature/fiabilidad-usabilidad-diseno`:** esperas finitas, doble
 pulsación y recuperación de botones.
@@ -225,12 +225,42 @@ pulsación y recuperación de botones.
   encadenado. Ahora los dos van envueltos, con pruebas de servidor colgado y
   doble pulsación.
 
-- **A3 · La espera de las búsquedas.** `queVerCerca`, `buscarEnRuta` y
-  `buscarServicios` encadenan tres servidores con topes de 31+21+16 s: hasta
-  **68 segundos** antes de decir nada. Sin cobertura no pasa —`fetch` falla al
-  instante— pero **con cobertura débil de montaña sí**, que es el caso de esta
-  app. Necesita decidir cuánto se espera y si se ofrece cancelar: es decisión de
-  producto, no un arreglo mecánico.
+- **A3 · La espera de las búsquedas. HECHO.** Había **cuatro** implementaciones,
+  no tres: el visor tiene la suya, con un solo servidor y hasta 58 s en un único
+  intento. Peor caso de punta a punta, contando GPS y tiempos por carretera:
+  entre 70 y 100 s según el flujo.
+
+  Ahora hay **un plazo desde el toque** —30 s— que cubre GPS y servidores de
+  mapas hasta los primeros resultados. Cambiar de servidor no reinicia el reloj,
+  y tampoco lo reinicia caer de «de camino hoy» a «cerca de aquí». Los tiempos
+  por carretera van después y aparte, con su propio límite corto.
+
+  Se puede **cancelar**, y la cancelación cubre la operación entera: aborta las
+  peticiones en vuelo, deja de esperar al GPS en el acto y descarta su respuesta
+  si llega tarde. Cancelar no se presenta como fallo.
+
+  Además del `AbortController` hay una **generación** de búsqueda. Hace falta
+  porque el GPS no admite aborto y porque una respuesta vieja puede llegar
+  cuando ya se pidió otra categoría: sin ella, una búsqueda vieja podía pisar
+  los resultados de la nueva. Ese fallo existía y no lo veía nadie.
+
+  **El visor entra en la misma política** con el mismo motor, pero mantiene su
+  servidor único: darle los otros dos cambiaría proveedores y eso queda fuera de
+  este bloque. Es una mejora fácil y pendiente.
+
+  **Y se arregló un fallo que dejaba muerta una pestaña entera**: `modoBusca` se
+  usaba ocho veces en el visor y no se declaraba en ninguna. Al pulsar «Usar mi
+  ubicación» saltaba un `ReferenceError` que el `try/catch` se tragaba, así que
+  los chips de categoría no llegaban a aparecer y «Qué hay cerca» no funcionaba.
+  Venía de antes de este bloque.
+
+  **Lo que queda pendiente de aquí:**
+  - Darle al visor los tres servidores de Overpass, como las apps a medida.
+  - En el visor, «De camino hoy» cambia la etiqueta pero busca igual que «Cerca
+    de aquí»: no usa `buscarEnRuta`. O se implementa o se quita el botón.
+  - `lanzarServicios` sigue duplicado casi letra por letra entre Eslovenia y
+    Asturias. El motor común ya se llevó lo que importaba; el orquestador no.
+
 - **A4 · Doble pulsación en cámara y documentos.** `activaCamara` y
   `enganchaDoc` admiten dos selecciones seguidas. Menos grave que las demás
   porque exige dos interacciones deliberadas con el selector de archivos.

@@ -322,6 +322,7 @@ header{position:relative}
   padding:4px 0;font-size:12.5px;align-items:baseline}
 .est-detalle .k{color:var(--td);flex:0 0 auto}
 .est-detalle .v{text-align:right}
+.btn.parar{border-color:var(--aviso-txt);color:var(--aviso-txt)}
 </style>
 </head>
 <body>
@@ -745,6 +746,11 @@ const CATEGORIAS = [
 
 function guardaPosicion(par){ miPos = par.join(","); }
 let miPos = null, catActiva = null, radioKm = 5;
+/* Se usaba en ocho sitios de la vista «Qué hay cerca» y no se declaraba en
+   ninguno: al pulsar «Usar mi ubicación» saltaba un ReferenceError que el
+   try/catch se tragaba, y los chips de categoría no llegaban a aparecer.
+   La pestaña entera no funcionaba. */
+let modoBusca = "cerca";
 
 function distancia(a, b){
   const R = 6371, r = x => x * Math.PI / 180;
@@ -763,29 +769,35 @@ function pedirUbicacion(){
   });
 }
 
-async function buscarCerca(cat, pos, km){
+async function buscarCerca(cat, pos, km, op, alProbar){
   // En radios grandes, cosas como las gasolineras salen a miles y el servidor
   // se atraganta. Se le pide el mínimo y se corta pronto.
+  //
+  // Aquí solo hay un servidor, a diferencia de las apps a medida. Aun así
+  // pasa por el mismo motor de presupuesto y cancelación: el plazo desde el
+  // toque es el mismo, y también se puede parar. Darle los tres servidores
+  // sería otra mejora, y cambia proveedores: queda para su momento.
   const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
   const tope = km >= 50 ? 60 : 40;
   const espera = km >= 50 ? 50 : 25;
-  const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-  const ctrl = new AbortController();
-  const corte = setTimeout(() => ctrl.abort(), (espera + 8) * 1000);
-  try {
+  const intentos = [ { tope, espera, ms: (espera + 8) * 1000 } ];
+
+  return conPresupuesto(op, intentos, async (n, senal) => {
+    const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
     const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(consulta),
-                          { signal: ctrl.signal });
-    clearTimeout(corte);
-    if (!r.ok) throw new Error(r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : r.status);
+                          { signal: senal });
+    if (!r.ok)
+      return { motivo: r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status) };
     const d = await r.json();
-    return (d.elements || []).map(e => {
+    const sitios = (d.elements || []).map(e => {
       const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
       if (la == null) return null;
       return { nombre: e.tags?.name || cat.n,
                detalle: e.tags?.["addr:street"] || e.tags?.operator || e.tags?.description || "",
                xy:[la, lo], km: distancia(pos, [la, lo]) };
     }).filter(Boolean).sort((a,b) => a.km - b.km).slice(0, 12);
-  } catch (e){ clearTimeout(corte); throw e; }
+    return sitios.length ? { listo:true, valor:sitios } : { vacia:true };
+  }, { alProbar });
 }
 
 function hayReservas(){
@@ -897,16 +909,18 @@ function vistaCerca(){
   }));
 }
 
-async function lanzarCerca(){
+async function lanzarCerca(presupuesto){
   const cont = document.getElementById("res-cerca");
   const cat = CATEGORIAS.find(c => c.id === catActiva);
   if (!cont || !cat) return;
-  cont.innerHTML = `<p class="note">${modoBusca === "ruta"
-    ? `Localizando y buscando ${cat.n.toLowerCase()} por delante…`
-    : `Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`}</p>`;
+  const op = abreBusqueda(presupuesto);
+  pintaBuscando(cont, `Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`);
   try {
-    const r = await buscarCerca(cat, miPos, radioKm);
-    if (!r.length){ cont.innerHTML = `<p class="note">Nada en ${radioKm} km. Prueba a ampliar el radio.</p>`; return; }
+    const res = await buscarCerca(cat, miPos, radioKm, op,
+      n => progresoBusqueda(`Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`));
+    if (res.estado === "reemplazada") return;
+    if (res.estado !== "bien"){ pintaFinBusqueda(cont, op, res, { km:radioKm, modo:modoBusca }); return; }
+    const r = res.valor;
     cont.innerHTML = `<ul class="plain">${r.map((x, i) => `
       <li>
         <div class="lugar-fila">
@@ -921,7 +935,7 @@ async function lanzarCerca(){
         </div>
       </li>`).join("")}</ul>
       <p class="note" id="nota-serv">Calculando el tiempo por carretera…</p>`;
-    const t = await porCarretera(miPos, r.map(x => x.xy));
+    const t = await porCarreteraDeBusqueda(op, miPos, r.map(x => x.xy));
     const ns = document.getElementById("nota-serv");
     if (t){
       // con los tiempos reales hay que reordenar: el orden por línea recta no vale
@@ -950,25 +964,11 @@ async function lanzarCerca(){
         : "<b>Distancias en línea recta.</b> Datos de OpenStreetMap.";
     }
   } catch (e) {
-    const motivo = String(e?.message || "");
-    cont.innerHTML = `<p class="note">${
-      motivo === "ocupado" ? "El servidor de mapas está saturado ahora mismo. Prueba en un minuto."
-      : motivo === "lento" || /abort/i.test(motivo)
-        ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
-            ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
-      : !navigator.onLine ? "Sin conexión. Esto necesita red."
-      : `No se pudo consultar${modoBusca === "ruta" ? " por el camino" : ""}.
-          <button class="lnk" id="ver-motivo">ver por qué</button>`}</p>
-      <div id="detalle-fallo"></div>`;
-    const vm = document.getElementById("ver-motivo");
-    if (vm) vm.addEventListener("click", () => {
-      const f = (typeof ULTIMO_FALLO !== "undefined" && ULTIMO_FALLO) || {};
-      document.getElementById("detalle-fallo").innerHTML =
-        `<p class="motivo">${esc(motivo)}${f.servidor ? " · " + esc(f.servidor.replace("https://","").split("/")[0]) : ""}${
-          f.estado ? " · " + f.estado : ""}${f.detalle ? "<br>" + esc(f.detalle) : ""}${
-          f.remark ? "<br>" + esc(String(f.remark)) : ""}${
-          f.consulta ? "<br><br>" + esc(String(f.consulta).slice(0, 180)) : ""}</p>`;
-    });
+    if (op.viva())
+      pintaFinBusqueda(cont, op, { estado:"fallaron", motivo:String((e && e.message) || e) },
+                       { km:radioKm, modo:modoBusca });
+  } finally {
+    cierraBusqueda(op);
   }
 }
 

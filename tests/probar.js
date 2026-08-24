@@ -1904,6 +1904,423 @@ async function nadaPrometeDeMas(){
   }
 }
 
+/* ---- 22. El motor de búsqueda: presupuesto y cancelación ----
+   Antes, una búsqueda podía tener a la persona esperando hasta noventa
+   segundos sin poder hacer nada. Ahora hay un plazo desde el toque y se
+   puede parar. Los plazos de prueba son de milisegundos: los de verdad
+   son de segundos y esperarlos haría la suite inservible. */
+/* Una petición que no responde nunca, pero que SÍ rechaza al abortarla,
+   igual que hace fetch de verdad. Sin eso el motor se quedaría esperando
+   una promesa que no se resuelve jamás, y la prueba también. */
+const cuelga = senal => new Promise((_, mal) => {
+  if (!senal) return;
+  senal.addEventListener("abort", () =>
+    mal(Object.assign(new Error("abortada"), { name:"AbortError" })), { once:true });
+});
+
+async function elMotorDeBusqueda(){
+  console.log(`\n${gris("──")} El motor de búsqueda: plazo y cancelación`);
+
+  // Asturias y sin fecha fija: el banco congela el reloj cuando se le da
+  // una, y con Date.now() parado el plazo nunca se agotaría.
+  const dom = abrir("asturias/index.html", { url:"https://x/asturias/", almacen:{}, conexion:true });
+  await esperar(400);
+  const w = dom.window;
+
+  const tresIntentos = [{ ms:5000 }, { ms:5000 }, { ms:5000 }];
+
+  // ── El primero responde: no se prueban los demás ──
+  {
+    let veces = 0;
+    const op = w.abreBusqueda(2000);
+    const r = await w.conPresupuesto(op, tresIntentos, async () => {
+      veces++; return { listo:true, valor:["algo"] };
+    });
+    w.cierraBusqueda(op);
+    comprobar("si el primer servidor responde, no se prueban los demás",
+              r.estado === "bien" && veces === 1, `estado ${r.estado}, ${veces} intentos`);
+  }
+
+  // ── El primero falla, responde el segundo ──
+  {
+    let veces = 0;
+    const op = w.abreBusqueda(2000);
+    const r = await w.conPresupuesto(op, tresIntentos, async n => {
+      veces++;
+      return n === 0 ? { motivo:"ocupado" } : { listo:true, valor:["del segundo"] };
+    });
+    w.cierraBusqueda(op);
+    comprobar("si el primero falla, se usa el segundo",
+              r.estado === "bien" && r.valor[0] === "del segundo" && veces === 2,
+              `estado ${r.estado}, ${veces} intentos`);
+  }
+
+  // ── El plazo NO se reinicia al cambiar de servidor ──
+  {
+    const t0 = Date.now();
+    const op = w.abreBusqueda(600);                 // plazo total
+    const r = await w.conPresupuesto(op, [{ ms:5000 }, { ms:5000 }, { ms:5000 }], (n, se) => cuelga(se));
+    const tardo = Date.now() - t0;
+    w.cierraBusqueda(op);
+    comprobar("el plazo total manda sobre el tope de cada intento",
+              r.estado === "tarde", `estado ${r.estado}`);
+    comprobar("y cambiar de servidor NO reinicia el reloj",
+              tardo < 1400, `tardó ${tardo} ms con un plazo de 600`);
+  }
+
+  // ── Todos cuelgan, pero da tiempo a probarlos: fallaron ──
+  {
+    let veces = 0;
+    const op = w.abreBusqueda(1200);
+    const r = await w.conPresupuesto(op, [{ ms:120 }, { ms:120 }, { ms:120 }], (n, se) => { veces++; return cuelga(se); });
+    w.cierraBusqueda(op);
+    comprobar("con los tres colgados se prueban los tres",
+              veces === 3, `${veces} intentos`);
+    comprobar("y se dice que fallaron, no que se acabó el tiempo",
+              r.estado === "fallaron", `estado ${r.estado}`);
+  }
+
+  // ── No se empieza un intento para el que no queda plazo ──
+  {
+    let veces = 0;
+    const op = w.abreBusqueda(500);
+    const r = await w.conPresupuesto(op, [{ ms:120 }, { ms:120 }, { ms:120 }], (n, se) => { veces++; return cuelga(se); });
+    w.cierraBusqueda(op);
+    comprobar("no se empieza un intento sin plazo para terminarlo",
+              veces < 3, `se empezaron ${veces}`);
+    comprobar("y se dice que se acabó el tiempo", r.estado === "tarde", `estado ${r.estado}`);
+  }
+
+  // ── Cancelar durante el primer servidor ──
+  {
+    let abortada = false;
+    const op = w.abreBusqueda(5000);
+    const p = w.conPresupuesto(op, tresIntentos, (n, senal) => new Promise((_, mal) => {
+      senal.addEventListener("abort", () => { abortada = true; mal(Object.assign(new Error("x"), { name:"AbortError" })); });
+    }));
+    await esperar(40);
+    const t0 = Date.now();
+    w.cancelaBusqueda();
+    const r = await p;
+    comprobar("cancelar durante el primer servidor corta al momento",
+              r.estado === "cancelada" && Date.now() - t0 < 400, `estado ${r.estado}`);
+    comprobar("y aborta la petición de verdad", abortada === true, "no se llamó a abort()");
+  }
+
+  // ── Cancelar durante un servidor alternativo ──
+  {
+    let intentos = 0, abortada = false;
+    const op = w.abreBusqueda(5000);
+    const p = w.conPresupuesto(op, tresIntentos, (n, senal) => {
+      intentos++;
+      if (n === 0) return Promise.resolve({ motivo:"ocupado" });
+      return new Promise((_, mal) => senal.addEventListener("abort", () => {
+        abortada = true; mal(Object.assign(new Error("x"), { name:"AbortError" }));
+      }));
+    });
+    await esperar(40);
+    w.cancelaBusqueda();
+    const r = await p;
+    comprobar("cancelar en el segundo servidor también corta",
+              r.estado === "cancelada", `estado ${r.estado}`);
+    comprobar("y aborta el intento en curso", abortada === true, "no se abortó");
+    comprobar("sin llegar al tercero", intentos === 2, `${intentos} intentos`);
+  }
+
+  // ── Un toque nuevo cancela el anterior: nunca dos en paralelo ──
+  {
+    let vivos = 0, maximo = 0;
+    const pide = (n, senal) => new Promise((_, mal) => {
+      vivos++; maximo = Math.max(maximo, vivos);
+      senal.addEventListener("abort", () => { vivos--; mal(Object.assign(new Error("x"), { name:"AbortError" })); });
+    });
+    const op1 = w.abreBusqueda(3000);
+    const p1 = w.conPresupuesto(op1, tresIntentos, pide);
+    await esperar(30);
+    const op2 = w.abreBusqueda(300);                // segundo toque
+    const p2 = w.conPresupuesto(op2, [{ ms:100 }], pide);
+    const r1 = await p1, r2 = await p2;
+    comprobar("un toque nuevo cancela el anterior",
+              r1.estado === "cancelada" || r1.estado === "reemplazada", `la vieja quedó ${r1.estado}`);
+    comprobar("y nunca hay dos peticiones en vuelo a la vez",
+              maximo === 1, `llegó a haber ${maximo}`);
+    comprobar("la vieja no puede repintar: su generación ya no vale",
+              !op1.viva(), "la vieja seguía viva");
+    w.cierraBusqueda(op2);
+  }
+
+  // ── Una respuesta que llega tarde no vale ──
+  {
+    const op = w.abreBusqueda(3000);
+    let suelta;
+    const p = w.conPresupuesto(op, tresIntentos, () => new Promise(ok => { suelta = ok; }));
+    await esperar(30);
+    w.abreBusqueda(3000);                            // llega otra búsqueda
+    suelta({ listo:true, valor:["tarde"] });         // y AHORA responde la vieja
+    const r = await p;
+    comprobar("una respuesta que llega tarde se descarta",
+              r.estado === "reemplazada", `estado ${r.estado}`);
+    w.cancelaBusqueda();
+  }
+}
+
+/* ---- 23. Buscar desde la pantalla: GPS, cancelar y concurrencia ---- */
+
+/* Deja la app con posición y con los chips de categoría a la vista, que es
+   como está cuando alguien va a buscar algo de verdad. */
+async function appConBusqueda(opciones = {}){
+  const dom = abrir("asturias/index.html",
+    { url:"https://x/asturias/", almacen:{}, conexion:true, ...opciones });
+  await esperar(400);
+  const d = dom.window.document, w = dom.window;
+
+  // Contador de peticiones de posición, y control de cuándo responde
+  const gps = { pedidas:0, sueltas:[], responde:true };
+  w.navigator.geolocation = { getCurrentPosition: (ok, mal) => {
+    gps.pedidas++;
+    const dar = () => ok({ coords:{ latitude:43.09, longitude:-6.25 } });
+    if (gps.responde) setTimeout(dar, 15); else gps.sueltas.push(dar);
+  } };
+
+  [...d.querySelectorAll("nav button")].find(b => b.dataset.v === "guia")?.click();
+  await esperar(200);
+  const situar = d.getElementById("btn-serv");
+  if (situar){ situar.click(); await esperar(200); }
+  return { dom, d, w, gps };
+}
+
+const respuestaOverpass = { elements: [
+  { lat:43.10, lon:-6.26, tags:{ name:"Gasolinera de prueba", amenity:"fuel" } }
+] };
+
+async function buscarDesdeLaPantalla(){
+  console.log(`\n${gris("──")} Buscar desde la pantalla`);
+
+  // ── «De camino hoy» pide UNA sola posición ──
+  {
+    const { d, w, gps } = await appConBusqueda();
+    let llamadas = 0;
+    w.fetch = async () => { llamadas++; return { ok:true, json: async () => respuestaOverpass }; };
+
+    const antes = gps.pedidas;
+    const ruta = [...d.querySelectorAll("[data-donde]")].find(b => b.dataset.donde === "ruta");
+    if (ruta){ ruta.click(); await esperar(120); }
+    const chip = d.querySelector("[data-cat]");
+    comprobar("hay chips de categoría para buscar", !!chip, "no aparecieron");
+    if (chip){
+      chip.click();
+      await esperar(700);
+      comprobar("«de camino hoy» pide la posición una sola vez",
+                gps.pedidas - antes === 1, `la pidió ${gps.pedidas - antes} veces`);
+    }
+  }
+
+  // ── Cancelar durante el GPS ──
+  {
+    const { d, w, gps } = await appConBusqueda();
+    gps.responde = false;                       // el GPS se queda pensando
+    w.fetch = async () => ({ ok:true, json: async () => respuestaOverpass });
+
+    const chip = d.querySelector("[data-cat]");
+    chip.click();
+    await esperar(120);
+    const cancelar = d.getElementById("busca-cancelar");
+    comprobar("mientras localiza se ofrece cancelar", !!cancelar, "no está el botón");
+    if (cancelar){
+      cancelar.click();
+      await esperar(120);
+      const txt = d.getElementById("res-serv").textContent;
+      comprobar("cancelar durante el GPS lo dice, y no como un fallo",
+                /cancelada/i.test(txt) && !/no se pudo|fall/i.test(txt), `dijo «${txt.trim().slice(0,80)}»`);
+
+      // Y ahora el GPS contesta tarde: no puede repintar nada
+      gps.sueltas.forEach(f => f());
+      await esperar(250);
+      const despues = d.getElementById("res-serv").textContent;
+      comprobar("un GPS que llega tarde no repinta la pantalla",
+                /cancelada/i.test(despues), `quedó «${despues.trim().slice(0,80)}»`);
+    }
+  }
+
+  // ── Cancelar durante Overpass ──
+  {
+    const { d, w } = await appConBusqueda();
+    let abortada = false;
+    w.fetch = (u, o) => new Promise((_, mal) => {
+      o.signal.addEventListener("abort", () => {
+        abortada = true; mal(Object.assign(new Error("x"), { name:"AbortError" }));
+      });
+    });
+    const chip = d.querySelector("[data-cat]");
+    chip.click();
+    await esperar(200);
+    const cancelar = d.getElementById("busca-cancelar");
+    comprobar("mientras busca se ofrece cancelar", !!cancelar, "no está el botón");
+    if (cancelar){
+      const t0 = Date.now();
+      cancelar.click();
+      await esperar(150);
+      comprobar("cancelar durante la búsqueda aborta la petición", abortada === true, "no se abortó");
+      comprobar("y corta al momento, sin esperar al plazo",
+                Date.now() - t0 < 800, `tardó ${Date.now() - t0} ms`);
+      const txt = d.getElementById("res-serv").textContent;
+      comprobar("y lo dice sin llamarlo error",
+                /cancelada/i.test(txt), `dijo «${txt.trim().slice(0,80)}»`);
+    }
+    comprobar("sin errores de JavaScript al cancelar",
+              (await appConBusqueda()).dom.errores.length === 0, "hubo errores");
+  }
+
+  // ── Dos toques seguidos: manda el último y el viejo no repinta ──
+  {
+    const { d, w } = await appConBusqueda();
+    let peticiones = 0;
+    w.fetch = async (u) => {
+      peticiones++;
+      const mio = peticiones;
+      await new Promise(r => setTimeout(r, mio === 1 ? 300 : 20));   // el primero, lento
+      return { ok:true, json: async () => ({ elements: [
+        { lat:43.10, lon:-6.26, tags:{ name: mio === 1 ? "VIEJO" : "NUEVO", amenity:"fuel" } }
+      ] }) };
+    };
+
+    const chips = [...d.querySelectorAll("[data-cat]")];
+    chips[0].click();
+    await esperar(60);
+    chips[1].click();                       // segundo toque antes de que llegue el primero
+    await esperar(700);
+
+    const txt = d.getElementById("res-serv").textContent;
+    comprobar("manda el último toque, no el primero",
+              /NUEVO/.test(txt) && !/VIEJO/.test(txt), `quedó «${txt.trim().slice(0,90)}»`);
+    comprobar("y el primero no repinta cuando llega tarde",
+              !/VIEJO/.test(d.getElementById("res-serv").textContent), "repintó el viejo");
+  }
+
+  // ── Sin cobertura se dice enseguida ──
+  {
+    const { d, w } = await appConBusqueda({ conexion:false });
+    w.fetch = () => Promise.reject(new TypeError("Failed to fetch"));
+    const chip = d.querySelector("[data-cat]");
+    if (chip){
+      const t0 = Date.now();
+      chip.click();
+      await esperar(500);
+      comprobar("sin cobertura se responde enseguida",
+                Date.now() - t0 < 1500, `tardó ${Date.now() - t0} ms`);
+      comprobar("y se dice que es por cobertura",
+                /cobertura|conexi[oó]n/i.test(d.getElementById("res-serv").textContent),
+                `dijo «${d.getElementById("res-serv").textContent.trim().slice(0,80)}»`);
+    }
+  }
+
+  // ── Respuesta vacía de verdad: no es un fallo ──
+  {
+    const { d, w } = await appConBusqueda();
+    w.fetch = async () => ({ ok:true, json: async () => ({ elements: [] }) });
+    const chip = d.querySelector("[data-cat]");
+    chip.click();
+    await esperar(500);
+    const txt = d.getElementById("res-serv").textContent;
+    comprobar("si no hay nada, se dice sin llamarlo fallo",
+              /Nada en/i.test(txt) && !/no se pudo|no responden|cancelada/i.test(txt),
+              `dijo «${txt.trim().slice(0,80)}»`);
+  }
+
+  // ── El visor, con su único servidor colgado ──
+  {
+    const conViaje = JSON.stringify([{ id:"p1", nombre:"Prueba", desde:"", hasta:"", salida:"",
+      dias:[{ t:"Día uno", dest:"Zagreb", xy:"45.81,15.98",
+              paradas:[{ h:"Tarde", txt:"Una parada", xy:"45.81,15.98" }] }] }]);
+    const dom = abrir("viaje/index.html", { url:"https://x/viaje/?id=p1",
+      almacen:{ viajes_propios: conViaje }, conexion:true, posicion:[45.81, 15.98] });
+    await esperar(400);
+    const d = dom.window.document, w = dom.window;
+
+    let abortada = false;
+    w.fetch = (u, o) => new Promise((_, mal) => {
+      o.signal.addEventListener("abort", () => {
+        abortada = true; mal(Object.assign(new Error("x"), { name:"AbortError" }));
+      });
+    });
+
+    [...d.querySelectorAll("nav button")].find(b => b.dataset.v === "cerca")?.click();
+    await esperar(250);
+    // En el visor el botón se llama «dar-pos», y hasta que no hay posición
+    // no se pintan los chips de categoría.
+    const situar = d.getElementById("dar-pos");
+    comprobar("el visor pide la ubicación antes de buscar", !!situar, "no está el botón");
+    if (situar){ situar.click(); await esperar(400); }
+
+    const chip = d.querySelector("[data-cat]");
+    comprobar("el visor ofrece buscar", !!chip, "no hay chips");
+    if (chip){
+      chip.click();
+      await esperar(200);
+      const cancelar = d.getElementById("busca-cancelar");
+      comprobar("el visor también deja cancelar, con su único servidor",
+                !!cancelar, "no está el botón");
+      if (cancelar){
+        cancelar.click();
+        await esperar(150);
+        comprobar("y aborta su petición de verdad", abortada === true, "no se abortó");
+        comprobar("y lo dice sin llamarlo error",
+                  /cancelada/i.test(d.getElementById("res-cerca").textContent),
+                  `dijo «${d.getElementById("res-cerca").textContent.trim().slice(0,80)}»`);
+      }
+    }
+    comprobar("el visor no dio errores al cancelar", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // ── Cancelar mientras se calculan los tiempos por carretera ──
+  {
+    const { d, w } = await appConBusqueda();
+    let osrmAbortada = false;
+    w.fetch = (u, o) => {
+      if (String(u).includes("router.project-osrm.org"))
+        return new Promise((_, mal) => o.signal.addEventListener("abort", () => {
+          osrmAbortada = true; mal(Object.assign(new Error("x"), { name:"AbortError" }));
+        }));
+      return Promise.resolve({ ok:true, json: async () => respuestaOverpass });
+    };
+    const chip = d.querySelector("[data-cat]");
+    chip.click();
+    await esperar(400);
+    const conResultados = d.getElementById("res-serv").textContent;
+    comprobar("los resultados se pintan antes de calcular los tiempos",
+              /Gasolinera de prueba/.test(conResultados), `quedó «${conResultados.trim().slice(0,80)}»`);
+
+    w.cancelaBusqueda();
+    await esperar(200);
+    comprobar("cancelar durante los tiempos por carretera los aborta",
+              osrmAbortada === true, "no se abortó OSRM");
+    const despues = d.getElementById("res-serv").textContent;
+    comprobar("y los resultados que ya estaban NO se borran",
+              /Gasolinera de prueba/.test(despues), `quedó «${despues.trim().slice(0,80)}»`);
+    comprobar("ni se sustituyen por un mensaje de cancelación",
+              !/cancelada/i.test(despues), `quedó «${despues.trim().slice(0,80)}»`);
+  }
+
+  // ── Los resultados sobreviven a que OSRM falle después ──
+  {
+    const { d, w } = await appConBusqueda();
+    w.fetch = async (u) => {
+      if (String(u).includes("router.project-osrm.org")) throw new Error("OSRM caído");
+      return { ok:true, json: async () => respuestaOverpass };
+    };
+    const chip = d.querySelector("[data-cat]");
+    chip.click();
+    await esperar(700);
+    const txt = d.getElementById("res-serv").textContent;
+    comprobar("si los tiempos por carretera fallan, los resultados siguen ahí",
+              /Gasolinera de prueba/.test(txt), `quedó «${txt.trim().slice(0,90)}»`);
+    comprobar("y no se sustituyen por un mensaje de error",
+              !/no se pudo|no responden/i.test(txt), `quedó «${txt.trim().slice(0,90)}»`);
+    comprobar("se explica que las distancias son en línea recta",
+              /l[ií]nea recta/i.test(txt), `quedó «${txt.trim().slice(0,120)}»`);
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -1944,6 +2361,8 @@ async function nadaPrometeDeMas(){
   await elCentroDeEstado();
   await entrarYSalirVigilados();
   await nadaPrometeDeMas();
+  await elMotorDeBusqueda();
+  await buscarDesdeLaPantalla();
   await traspasoComprobado();
   await elBorradoNoResucita();
 

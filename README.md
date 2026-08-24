@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               346 comprobaciones + fotografías de comportamiento
+/tests/               391 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 346 en verde
+node tests/probar.js   # las 391 en verde
 node tests/foto.js comparar
 ```
 
@@ -264,6 +264,21 @@ caché de cada app y que dentro está su página, buscando por prefijo porque lo
 nombres llevan versión. `caches` es por origen, así que la portada las ve las
 cinco. No promete que estén todas las fotos: eso solo se guarda al visitarlas.
 
+**Las búsquedas tienen plazo y se pueden parar.** Un solo plazo desde el toque
+—`PRESUPUESTO_BUSQUEDA`, 30 s— que cubre GPS y servidores de mapas hasta los
+primeros resultados. Cambiar de servidor **no reinicia el reloj**. Mientras
+busca hay un botón de **Cancelar** que aborta las peticiones de verdad.
+
+Los tiempos por carretera van **después y aparte**, con su propio límite corto:
+para entonces los resultados ya están en pantalla y ya sirven. Si fallan, si se
+cancelan o si tardan, la lista se queda como está y solo cambia la nota de
+abajo. Nunca se sustituyen resultados válidos por un mensaje de error.
+
+Además del `AbortController` hay una **generación** de búsqueda, porque hay cosas
+que no se pueden abortar: el GPS no tiene cancelación, y una respuesta vieja
+puede llegar cuando ya se ha pedido otra categoría. Comparando la generación se
+sabe si lo que llega sigue valiendo o hay que tirarlo.
+
 **Ningún botón puede quedarse esperando.** `conTope()` y `fetchConTope()` en
 `sync.js` ponen límite a todo lo que va por red, y `trabajando()` se encarga del
 botón: lo desactiva mientras trabaja, lo anuncia con `aria-busy`, y lo devuelve
@@ -306,7 +321,7 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 346 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 391 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que
