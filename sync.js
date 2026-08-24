@@ -1033,6 +1033,61 @@ const FOTOS = {
 
   async una(id){ return this._porId(id); },
 
+  /* ---- Para la copia de seguridad ---- */
+
+  /* Todo lo guardado aquí: fotos y documentos. Devuelve null si no se
+     puede leer la tienda, que no es lo mismo que «no hay nada». */
+  async todas(){
+    const t = await this._tienda("readonly");
+    if (!t) return null;
+    return new Promise(ok => {
+      const fuera = [];
+      const p = t.openCursor();
+      p.onsuccess = e => {
+        const c = e.target.result;
+        if (!c) return ok(fuera);
+        fuera.push(c.value);
+        c.continue();
+      };
+      p.onerror = () => ok(null);
+    });
+  },
+
+  /* Mete varias de una vez. Una transacción de IndexedDB sí es atómica
+     de verdad: o entran todas o no entra ninguna. Devuelve cuántas, o
+     null si no se pudo. */
+  async meterVarias(lista){
+    if (!lista || !lista.length) return 0;
+    const bd = await this.abrir();
+    if (!bd) return null;
+    return new Promise(ok => {
+      let t;
+      try { t = bd.transaction("fotos", "readwrite"); } catch { return ok(null); }
+      t.oncomplete = () => ok(lista.length);
+      t.onerror = () => ok(null);
+      t.onabort = () => ok(null);
+      const tienda = t.objectStore("fotos");
+      try { for (const f of lista) tienda.put(f); } catch { try { t.abort(); } catch {} ; ok(null); }
+    });
+  },
+
+  /* Quita varias por id. Solo se usa para deshacer una restauración a
+     medias: no marca nada como borrado en la nube. */
+  async quitarVarias(ids){
+    if (!ids || !ids.length) return true;
+    const bd = await this.abrir();
+    if (!bd) return false;
+    return new Promise(ok => {
+      let t;
+      try { t = bd.transaction("fotos", "readwrite"); } catch { return ok(false); }
+      t.oncomplete = () => ok(true);
+      t.onerror = () => ok(false);
+      t.onabort = () => ok(false);
+      const tienda = t.objectStore("fotos");
+      try { for (const id of ids) tienda.delete(id); } catch { try { t.abort(); } catch {} ; ok(false); }
+    });
+  },
+
   async borrar(id){
     const t = await this._tienda("readwrite");
     if (!t) return false;
@@ -1220,3 +1275,263 @@ window.addEventListener("online", () => {
   SYNC.sincronizar().catch(()=>{});
   FOTOS.pendientes().forEach(id => FOTOS.subir(id).catch(()=>{}));
 });
+
+/* ═══════════════════════════════════════════════════════════
+   Copia de seguridad manual
+
+   Un archivo, todo lo que este móvil guarda, y vuelta atrás sin
+   perder nada de lo que ya hay aquí.
+
+   La lista de claves es EXPLÍCITA a propósito. Volcar `localStorage`
+   entero sería más corto y metería en el archivo la sesión de
+   Supabase y la contraseña guardada de Eslovenia. Lo que no está en
+   esta lista no sale en la copia.
+   ═══════════════════════════════════════════════════════════ */
+
+const COPIA_ID = "viajes.dtabuyodesigner";
+const COPIA_FORMATO = 1;
+
+/* Preferencias que merece la pena conservar. Las de un solo uso no. */
+const COPIA_AJUSTES = ["tema_viajes",
+  "nav_app", "nav_via", "nav_avisar",
+  "ast_app", "ast_via", "ast_avisar", "ast_salida",
+  "gen_app", "gen_avisar"];
+
+/* Los viajes que pueden tener diario: los dos con app propia, y los
+   del móvil. No se enumera `localStorage`: el banco de pruebas no
+   puede, y una lista derivada de los datos es igual de completa. */
+function viajesConDiario(){
+  const ids = ["eslovenia", "asturias"];
+  for (const v of SYNC.locales()) if (v && v.id && !ids.includes(v.id)) ids.push(v.id);
+  return ids;
+}
+
+function clavesDeCopia(){
+  const claves = ["viajes_propios", "viajes_pendientes", "viajes_borrados", "fotos_pendientes",
+                  "eslo_hechas", "eslo_notas", "astu_hechas", "astu_notas"];
+  for (const id of viajesConDiario()){
+    claves.push(`diario_${id}`, `vp_${id}_hechas`, `vp_${id}_notas`);
+  }
+  return claves.concat(COPIA_AJUSTES);
+}
+
+const leeClave = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const leeJSON = (texto, def) => { try { const v = JSON.parse(texto); return v ?? def; } catch { return def; } };
+const listaDe = texto => { const v = leeJSON(texto, []); return Array.isArray(v) ? v : []; };
+
+/* La copia entera. Si las fotos no se pueden leer no se hace copia:
+   un archivo que dice tener cero fotos cuando hay cientos es peor que
+   no tener archivo. */
+async function copiaCompleta(){
+  const fotos = await FOTOS.todas();
+  if (fotos === null) return { error:"No se han podido leer las fotos guardadas en este móvil. La copia no estaría completa, así que no se ha hecho." };
+
+  const local = {};
+  for (const k of clavesDeCopia()){
+    const v = leeClave(k);
+    if (v !== null) local[k] = v;      // tal cual está: ni se interpreta ni se reescribe
+  }
+  return { copia: { app: COPIA_ID, formato: COPIA_FORMATO,
+                    creada: new Date().toISOString(), local, fotos } };
+}
+
+/* Qué lleva dentro, para enseñarlo antes de descargar */
+function resumenDeCopia(copia){
+  const local = copia.local || {};
+  const fotos = (copia.fotos || []).filter(f => !f.doc).length;
+  const docs  = (copia.fotos || []).filter(f => f.doc).length;
+
+  let diario = 0;
+  for (const k of Object.keys(local)){
+    if (!k.startsWith("diario_")) continue;
+    const d = leeJSON(local[k], {}) || {};
+    diario += Object.keys(d.hechas || {}).length
+            + Object.keys(d.notas || {}).length
+            + (d.visitas || []).length
+            + (d.pernoctas || []).length;
+  }
+  return {
+    viajes: listaDe(local.viajes_propios).length,
+    diario, fotos, documentos: docs,
+    pendientes: listaDe(local.viajes_pendientes).length + listaDe(local.fotos_pendientes).length,
+    borrados: listaDe(local.viajes_borrados).length
+  };
+}
+
+function nombreDeCopia(copia){
+  const f = String(copia.creada || "").slice(0, 10) || "sin-fecha";
+  return `viajes-copia-${f}.json`;
+}
+
+/* ---- Comprobar antes de tocar nada ----
+   Devuelve el motivo en castellano y no escribe en ningún almacén. */
+function validaCopia(texto){
+  if (typeof texto !== "string" || !texto.trim())
+    return { ok:false, motivo:"El archivo está vacío." };
+
+  let c;
+  try { c = JSON.parse(texto); }
+  catch { return { ok:false, motivo:"El archivo no es un JSON válido. ¿Seguro que es una copia de esta app?" }; }
+
+  if (!c || typeof c !== "object" || Array.isArray(c))
+    return { ok:false, motivo:"El archivo no tiene la forma de una copia." };
+  if (c.app !== COPIA_ID)
+    return { ok:false, motivo:"Este archivo no es una copia de las apps de viaje." };
+  if (c.formato !== COPIA_FORMATO)
+    return { ok:false, motivo:`La copia es del formato ${c.formato ?? "desconocido"} y esta versión entiende el ${COPIA_FORMATO}.` };
+  if (!c.local || typeof c.local !== "object" || Array.isArray(c.local))
+    return { ok:false, motivo:"A la copia le falta el bloque de datos." };
+  if (!Array.isArray(c.fotos))
+    return { ok:false, motivo:"A la copia le falta la lista de fotos." };
+
+  for (const [k, v] of Object.entries(c.local))
+    if (typeof v !== "string")
+      return { ok:false, motivo:`El bloque «${k}» de la copia está corrupto.` };
+
+  if ("viajes_propios" in c.local){
+    let v; try { v = JSON.parse(c.local.viajes_propios); } catch { v = null; }
+    if (!Array.isArray(v)) return { ok:false, motivo:"La lista de viajes de la copia está corrupta." };
+    if (v.some(x => !x || typeof x !== "object" || !x.id))
+      return { ok:false, motivo:"Hay viajes sin identificador en la copia." };
+  }
+
+  for (const f of c.fotos)
+    if (!f || typeof f !== "object" || typeof f.id !== "string" || typeof f.datos !== "string")
+      return { ok:false, motivo:"Hay fotos sin identificador o sin contenido: la copia está incompleta." };
+
+  return { ok:true, copia:c };
+}
+
+/* ---- Preparar la fusión ----
+   Calcula TODO lo que habría que escribir, y no escribe nada. La regla
+   es conservadora: lo que ya está en este móvil no se pierde nunca.
+
+     · viajes   — se añaden los que no están. Si está en los dos, gana
+                  el de `actualizado` más reciente; si empatan, el de aquí.
+     · lápidas  — se suman, pero una lápida de la copia se descarta si
+                  ese viaje está vivo aquí: borrar algo que existe por lo
+                  que diga un archivo viejo sería destruir datos.
+     · viajes de la copia con lápida aquí — NO vuelven.
+     · diario   — se funde con `DIARIO_SYNC.fundir`, que ya es lo que usa
+                  la sincronización entre dos móviles.
+     · fotos    — se añaden solo las que no están. Repetir la misma copia
+                  no duplica nada.
+     · ajustes  — solo se rellenan los que aquí no existen. Lo que hayas
+                  tocado en este móvil manda. */
+async function preparaRestauracion(copia){
+  const yaEstan = await FOTOS.todas();
+  if (yaEstan === null)
+    return { error:"No se han podido leer las fotos que ya hay en este móvil. No se ha cambiado nada." };
+
+  const deLaCopia = copia.local || {};
+  const claves = {};
+
+  const viajesAqui = listaDe(leeClave("viajes_propios"));
+  const viajesCopia = listaDe(deLaCopia.viajes_propios);
+  const lapidasAqui = listaDe(leeClave("viajes_borrados")).filter(x => typeof x === "string");
+  const lapidasCopia = listaDe(deLaCopia.viajes_borrados).filter(x => typeof x === "string");
+
+  const enterrado = new Set(lapidasAqui);
+  const porId = new Map(viajesAqui.filter(v => v && v.id).map(v => [v.id, v]));
+  let anadidos = 0, actualizados = 0, resucitados = 0;
+
+  for (const v of viajesCopia){
+    if (!v || !v.id) continue;
+    if (enterrado.has(v.id)){ resucitados++; continue; }   // borrado aquí: no vuelve
+    const mio = porId.get(v.id);
+    if (!mio){ porId.set(v.id, v); anadidos++; continue; }
+    if (String(v.actualizado || "") > String(mio.actualizado || "")){
+      porId.set(v.id, v); actualizados++;
+    }
+  }
+  const viajesFinal = [...porId.values()];
+  claves.viajes_propios = JSON.stringify(viajesFinal);
+
+  const vivos = new Set(viajesFinal.map(v => v.id));
+  const vivosAqui = new Set(viajesAqui.filter(v => v && v.id).map(v => v.id));
+  claves.viajes_borrados = JSON.stringify(
+    [...new Set([...lapidasAqui, ...lapidasCopia.filter(id => !vivosAqui.has(id))])]);
+
+  const enterradoFinal = new Set(leeJSON(claves.viajes_borrados, []));
+  claves.viajes_pendientes = JSON.stringify([...new Set([
+    ...listaDe(leeClave("viajes_pendientes")),
+    ...listaDe(deLaCopia.viajes_pendientes)
+  ])].filter(id => vivos.has(id) && !enterradoFinal.has(id)));
+
+  // Diario, viaje por viaje
+  const conDiario = new Set([...viajesConDiario(), ...viajesFinal.map(v => v.id)]);
+  for (const id of conDiario){
+    const k = `diario_${id}`;
+    if (!(k in deLaCopia)) continue;
+    const dCopia = leeJSON(deLaCopia[k], null);
+    if (!dCopia || typeof dCopia !== "object") continue;
+    claves[k] = JSON.stringify(DIARIO_SYNC.fundir(DIARIO_SYNC.local(id), dCopia));
+  }
+
+  // El diario de reserva y los ajustes: solo lo que aquí no existe
+  for (const k of ["eslo_hechas","eslo_notas","astu_hechas","astu_notas", ...COPIA_AJUSTES]){
+    if (k in deLaCopia && leeClave(k) === null) claves[k] = deLaCopia[k];
+  }
+  for (const k of Object.keys(deLaCopia)){
+    if (/^vp_.+_(hechas|notas)$/.test(k) && leeClave(k) === null) claves[k] = deLaCopia[k];
+  }
+
+  // Fotos y documentos: solo los que faltan
+  const idsAqui = new Set(yaEstan.map(f => f.id));
+  const fotosNuevas = (copia.fotos || []).filter(f => !idsAqui.has(f.id));
+  const idsFinal = new Set([...idsAqui, ...fotosNuevas.map(f => f.id)]);
+  claves.fotos_pendientes = JSON.stringify([...new Set([
+    ...listaDe(leeClave("fotos_pendientes")),
+    ...listaDe(deLaCopia.fotos_pendientes)
+  ])].filter(id => idsFinal.has(id)));
+
+  return { claves, fotosNuevas, resumen: {
+    viajesNuevos: anadidos, viajesActualizados: actualizados,
+    viajesQueSeQuedan: viajesFinal.length - anadidos,
+    viajesNoResucitados: resucitados,
+    fotosNuevas: fotosNuevas.filter(f => !f.doc).length,
+    documentosNuevos: fotosNuevas.filter(f => f.doc).length,
+    fotosQueYaEstaban: (copia.fotos || []).length - fotosNuevas.length,
+    diariosFundidos: Object.keys(claves).filter(k => k.startsWith("diario_")).length
+  } };
+}
+
+/* ---- Restaurar ----
+   Orden a propósito: primero IndexedDB, que sí tiene transacciones de
+   verdad, y después `localStorage`, que no las tiene y hay que deshacer
+   a mano. Si algo se tuerce se dice, incluida la parte que no se haya
+   podido devolver a su sitio. */
+async function restauraCopia(texto){
+  const v = validaCopia(texto);
+  if (!v.ok) return { ok:false, motivo:v.motivo };
+
+  const plan = await preparaRestauracion(v.copia);
+  if (plan.error) return { ok:false, motivo:plan.error };
+
+  if (plan.fotosNuevas.length){
+    const metidas = await FOTOS.meterVarias(plan.fotosNuevas);
+    if (metidas === null)
+      return { ok:false, motivo:"No se han podido guardar las fotos de la copia. No se ha cambiado nada." };
+  }
+
+  const antes = {};
+  for (const k of Object.keys(plan.claves)) antes[k] = leeClave(k);
+
+  const escritas = [];
+  try {
+    for (const [k, val] of Object.entries(plan.claves)){ localStorage.setItem(k, val); escritas.push(k); }
+  } catch (e) {
+    let deshecho = true;
+    for (const k of escritas){
+      try { antes[k] === null ? localStorage.removeItem(k) : localStorage.setItem(k, antes[k]); }
+      catch { deshecho = false; }
+    }
+    const fotosFuera = await FOTOS.quitarVarias(plan.fotosNuevas.map(f => f.id));
+    return { ok:false, revertido: deshecho && fotosFuera,
+      motivo: deshecho && fotosFuera
+        ? `No se pudo escribir «${escritas.length ? escritas[escritas.length-1] : "?"}»: ${e && e.message ? e.message : "el móvil no dejó guardar"}. Se ha dejado todo como estaba.`
+        : `No se pudo escribir y tampoco se ha podido deshacer del todo. Se escribieron ${escritas.length} bloques${fotosFuera ? "" : " y quedaron fotos metidas"}. Haz una copia ahora mismo antes de tocar nada más.` };
+  }
+
+  return { ok:true, ...plan.resumen };
+}
