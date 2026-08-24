@@ -167,7 +167,7 @@ después del punto anterior, no antes.**
 
 ---
 
-## 2c · Fiabilidad · A1, A2, A3 y A5 hechos; queda A4
+## 2c · Fiabilidad · A1 a A5 hechos
 
 **A1, hecho en `feature/fiabilidad-usabilidad-diseno`:** esperas finitas, doble
 pulsación y recuperación de botones.
@@ -261,9 +261,11 @@ pulsación y recuperación de botones.
   - `lanzarServicios` sigue duplicado casi letra por letra entre Eslovenia y
     Asturias. El motor común ya se llevó lo que importaba; el orquestador no.
 
-- **A4 · Doble pulsación en cámara y documentos.** `activaCamara` y
-  `enganchaDoc` admiten dos selecciones seguidas. Menos grave que las demás
-  porque exige dos interacciones deliberadas con el selector de archivos.
+- **A4 · Doble selección en cámara y documentos. HECHO.** `activaCamara` y
+  `enganchaDoc` procesaban dos tandas a la vez si se elegían archivos dos veces
+  seguidas, y guardaban lo mismo dos veces. Una bandera por control, activada al
+  empezar a procesar —no al abrir el selector, para que cancelarlo no bloquee
+  nada— y liberada en `finally`. El control se marca `aria-busy` mientras tanto.
 ---
 
 ## 6b · Cosas pequeñas encontradas y no arregladas

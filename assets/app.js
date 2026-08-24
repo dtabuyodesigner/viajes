@@ -314,23 +314,38 @@ function enganchaDoc(clave, titulo, pista){
 
   z.querySelectorAll(`[data-doc="${clave}"]`).forEach(inp => {
     if (inp.dataset.listo) return; inp.dataset.listo = "1";
+    // Una tanda cada vez, igual que en la cámara: dos selecciones seguidas
+    // guardaban el mismo documento dos veces.
+    let procesando = false;
     inp.addEventListener("change", async e => {
       const archivos = [...(e.target.files || [])];
-      if (!archivos.length) return;
-      const eti = inp.parentElement.querySelector("span");
+      if (!archivos.length) return;      // canceló el selector: nada que bloquear
+      if (procesando) return;
+      procesando = true;
+
+      const control = inp.parentElement;
+      const eti = control ? control.querySelector("span") : null;
       const antes = eti ? eti.textContent : "";
       if (eti) eti.textContent = archivos.length > 1 ? `Guardando ${archivos.length}…` : "Guardando…";
+      if (control) control.setAttribute("aria-busy", "true");
+
       let fallos = 0;
-      for (const f of archivos){
-        try {
-          // poca compresión: el código de barras tiene que poder leerse
-          const datos = await comprimirFoto(f, 1800, 0.92);
-          const id = await FOTOS.guardarDoc(VIAJE_ID, clave, datos, f.name);
-          if (!id) fallos++;
-        } catch { fallos++; }
+      try {
+        for (const f of archivos){
+          try {
+            // poca compresión: el código de barras tiene que poder leerse
+            const datos = await comprimirFoto(f, 1800, 0.92);
+            const id = await FOTOS.guardarDoc(VIAJE_ID, clave, datos, f.name);
+            if (!id) fallos++;
+          } catch { fallos++; }
+        }
+      } finally {
+        procesando = false;
+        if (eti) eti.textContent = antes;
+        if (control) control.removeAttribute("aria-busy");
+        inp.value = "";
       }
-      if (eti) eti.textContent = antes;
-      inp.value = "";
+
       if (fallos) alert(fallos === archivos.length
         ? "No se pudo guardar. ¿Queda sitio en el móvil?"
         : `${fallos} de ${archivos.length} no se pudieron guardar.`);
@@ -1280,22 +1295,38 @@ function activaCamara(i, ctx = "hoy"){
   document.querySelectorAll(`[data-camara="${ctx}:${i}"], [data-carrete="${ctx}:${i}"]`).forEach(inp => {
     if (inp.dataset.listo) return;
     inp.dataset.listo = "1";
+    // Una tanda cada vez. Comprimir y guardar tarda, y una segunda
+    // selección mientras tanto guardaba las mismas fotos dos veces.
+    let procesando = false;
     inp.addEventListener("change", async e => {
       const archivos = [...(e.target.files || [])];
-      if (!archivos.length) return;
-      const eti = inp.parentElement.querySelector("span");
+      if (!archivos.length) return;      // canceló el selector: nada que bloquear
+      if (procesando) return;            // ya hay una tanda en marcha
+      procesando = true;
+
+      const control = inp.parentElement;
+      const eti = control ? control.querySelector("span") : null;
       const original = eti ? eti.textContent : "";
       if (eti) eti.textContent = archivos.length > 1 ? `Guardando ${archivos.length}…` : "Guardando…";
+      if (control) control.setAttribute("aria-busy", "true");
+
       let fallos = 0;
-      for (const a of archivos){
-        try {
-          const datos = await comprimirFoto(a);
-          const id = await FOTOS.guardar(VIAJE_ID, i, datos);
-          if (!id) fallos++;
-        } catch { fallos++; }
+      try {
+        for (const a of archivos){
+          try {
+            const datos = await comprimirFoto(a);
+            const id = await FOTOS.guardar(VIAJE_ID, i, datos);
+            if (!id) fallos++;
+          } catch { fallos++; }
+        }
+      } finally {
+        // Pase lo que pase, el control vuelve a estar disponible
+        procesando = false;
+        if (eti) eti.textContent = original;
+        if (control) control.removeAttribute("aria-busy");
+        inp.value = "";
       }
-      if (eti) eti.textContent = original;
-      inp.value = "";
+
       if (fallos) alert(fallos === archivos.length
         ? "No se pudieron guardar las fotos en este móvil."
         : `${fallos} de ${archivos.length} no se pudieron guardar.`);
