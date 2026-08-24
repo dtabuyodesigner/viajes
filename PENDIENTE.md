@@ -321,6 +321,25 @@ Ninguna bloquea. Anotadas para no volver a descubrirlas:
   lo primero que llama a `history.pushState`, para que el botón Atrás lo cierre
   en vez de sacar de la app. Si algún día se añade otra pantalla superpuesta,
   conviene que use el mismo patrón y no dos historiales compitiendo.
+- **La copia se hace en memoria de una vez.** Con muchas fotos, el archivo son
+  decenas de MB y hay un momento en que están el JSON y el Blob a la vez. En un
+  iPhone con poca memoria libre eso puede fallar. Se enseña el tamaño antes de
+  descargar para que se vea venir, pero no se trocea. Si algún día pasa de verdad,
+  la salida sería una copia por partes, no un archivo más listo.
+- **La copia no lleva las fotos que solo están en la nube.** Se copia lo que hay
+  en este móvil. Si una foto se subió desde el otro y aquí nunca se bajó, no
+  entra. Es coherente con lo que promete —«todo lo de este móvil»— pero conviene
+  no confundirlo con una copia de la cuenta entera.
+- **`clavesDeCopia()` es una lista escrita a mano.** Es lo que impide que la
+  sesión y la contraseña se cuelen, así que la lista es la parte buena. Pero si
+  algún día se añade una preferencia nueva, hay que acordarse de meterla ahí o
+  no se guardará. No hay prueba que lo cace: una clave nueva que nadie añada
+  simplemente no sale en la copia, y eso no rompe nada visible.
+- **Restaurar no avisa a la sincronización.** Los viajes restaurados no quedan
+  marcados como pendientes de subir: solo lo estarán los que ya lo estuvieran en
+  la copia. Al entrar en la nube, la sincronización normal los fundirá. Marcar
+  todo lo restaurado como pendiente sería tocar el modelo de sincronización, que
+  queda fuera de este bloque.
 
 ---
 
@@ -428,6 +447,7 @@ Para no volver a proponerlo:
 | Guardar las tarjetas de embarque en el móvil | v93 |
 | El mapa se sitúa al momento, sin esperar al GPS | v91 |
 | Modo conducción: una parada, letra grande y un botón | v106 |
+| Copia de seguridad manual: un archivo y vuelta atrás fundiendo | v105 portada |
 
 ---
 

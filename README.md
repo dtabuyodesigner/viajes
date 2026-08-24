@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               467 comprobaciones + fotografías de comportamiento
+/tests/               529 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 467 en verde
+node tests/probar.js   # las 529 en verde
 node tests/foto.js comparar
 ```
 
@@ -156,6 +156,41 @@ seguidos caen en el mismo milisegundo y el segundo pisaba al primero.
 
 **Ojo con iOS:** cada app de la pantalla de inicio tiene su propio almacén. Hay
 que iniciar sesión en cada una.
+
+### Copia de seguridad manual
+
+En la portada. Un archivo JSON con todo lo local, y vuelta atrás fundiendo. El
+motor está en `sync.js`; la portada solo pone la pantalla.
+
+| Función | Qué hace | Escribe |
+|---|---|---|
+| `copiaCompleta()` | reúne las claves de `clavesDeCopia()` y toda la tienda de fotos | no |
+| `resumenDeCopia(c)` | viajes, entradas de diario, fotos, documentos, pendientes | no |
+| `validaCopia(texto)` | identidad, formato, estructura mínima | **no** |
+| `preparaRestauracion(c)` | calcula la fusión entera | **no** |
+| `restauraCopia(texto)` | valida, prepara, escribe, y deshace si falla | sí |
+
+**La lista de claves es explícita.** Volcar `localStorage` entero sería más
+corto y metería en el archivo la sesión de Supabase y la contraseña guardada de
+Eslovenia. Lo que no está en `clavesDeCopia()` no sale en la copia. Fuera
+quedan, a propósito: la sesión, `eslovenia26_pw`, `traspaso_viaje` y
+`traspaso_ok`.
+
+**La regla de fusión, conservadora:** lo que ya hay en el móvil no se pierde.
+Viaje que está en los dos, gana el de `actualizado` más reciente y los empates
+los gana el local. El diario pasa por `DIARIO_SYNC.fundir`, la misma función que
+usa la sincronización entre dos móviles. Las fotos se añaden solo si su id no
+está, así que restaurar dos veces no duplica. Los ajustes solo se rellenan si
+faltan. Un viaje con lápida local no resucita; una lápida de la copia que apunte
+a un viaje vivo aquí se descarta, porque borrar algo que existe por lo que diga
+un archivo viejo sería destruir datos.
+
+**Hasta dónde llega lo transaccional.** IndexedDB sí lo es: `FOTOS.meterVarias`
+usa una transacción y o entran todas o ninguna. `localStorage` no lo es, así que
+se guarda el valor anterior de cada clave y se deshace a mano. Por eso las fotos
+van primero: si el `localStorage` falla, se revierte y además se sacan las fotos
+metidas. Si ni eso se puede, la app lo dice — no se finge una reversión que no
+ha ocurrido.
 
 ### En Supabase (`cmkzcvfjgrgxwqjimtxa`)
 
@@ -331,14 +366,18 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 467 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 529 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que
 **abrir y guardar en el editor conserva el viaje entero**, y que Eslovenia y
 Asturias se pueden editar sin perder su guía. El modo conducción tiene las
 suyas: que empieza en la parada correcta, que `Siguiente` no escribe nada, que
-no pide ubicación y que una parada sin sitio no genera un enlace inventado.
+no pide ubicación y que una parada sin sitio no genera un enlace inventado. Y la
+copia de seguridad: que lleva todos los tipos de datos, que **no** lleva la
+sesión ni la contraseña, que once clases de archivo malo se rechazan sin tocar
+ningún almacén, que restaurar funde en vez de pisar y que un fallo al escribir
+se deshace.
 
 **`node tests/foto.js`** — guarda el HTML de 51 vistas y lo compara después de
 mover código. Es lo que hace seguro refactorizar.

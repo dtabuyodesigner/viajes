@@ -181,6 +181,8 @@ Están aquí para que no se repitan:
 | Una prueba con el fallo puesto no saltaba, y la prueba estaba bien | El fallo se inyectó en una línea a la que no se llega en ese caso: el código salía antes | Al verificar en los dos sentidos, comprobar que el fallo inyectado **se ejecuta**, no solo que está escrito |
 | Las pruebas del traspaso al editor daban verde en falso | Compartían un solo `localStorage` simulado, así que nunca podían reproducir el caso que importaba | Cuando dos páginas pueden estar en almacenes distintos, la prueba tiene que darles almacenes distintos |
 | Un reemplazo se llevó cuatro funciones por delante | Se sustituyó por rango entre dos anclas y en medio había más código del que se creía | Después de reemplazar por rango, comprobar qué funciones siguen definidas, no solo `node --check` |
+| Una prueba de rechazo que habría pasado con la comprobación quitada | El archivo malo que se le daba no llevaba datos: aunque se hubiera colado, no habría cambiado nada visible, así que el «no cambió ningún almacén» daba verde igual | Una prueba de rechazo se hace con una carga que **haría daño de verdad** si pasara. Si no, no prueba la comprobación: prueba que un archivo vacío no hace nada |
+| Volcar un almacén entero para copiarlo mete secretos dentro | `localStorage` guarda también la sesión de Supabase y la contraseña de Eslovenia. Una copia hecha con `Object.keys(localStorage)` se los habría llevado al archivo | La copia lleva una **lista explícita** de claves. Es más larga de mantener, pero lo que no está en la lista no puede colarse |
 | Un lector de estado que devolvía `false` cuando no podía leer | El modo conducción pregunta qué paradas están hechas. Si el diario no se puede consultar, «ninguna hecha» y «no se sabe» llevan a sitios distintos: la primera respuesta haría empezar por una parada que igual ya está hecha | Cuando el que pregunta tiene que actuar distinto sin dato, el lector devuelve `null`, no el valor por defecto. `marcasDeParadas()` lo hace así |
 | `.focus()` en un elemento que aún no estaba en la página | El panel se pintaba y se enfocaba antes del `appendChild`. No daba error: el foco simplemente no se movía, y con teclado no se llegaba a nada | Meter en el DOM primero y pintar después. Un `focus()` que falla no avisa |
 | Las pestañas Info y Reservas reventaban con un viaje editado | Un viaje creado en el editor no trae `info`, ni `vuelos`, ni `seguros`. El código los daba por seguros | Todo bloque que no tengan los dos viajes es opcional: `(VIAJE.x \|\| [])`, y el bloque vacío no se pinta |
@@ -197,7 +199,7 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 ## Cómo se publica
 
 ```bash
-node tests/probar.js              # las 467 en verde, y LEER el resultado
+node tests/probar.js              # las 529 en verde, y LEER el resultado
 node tests/foto.js comparar       # si has movido código
 # subir VERSION, y el CACHE del sw.js de cada app que toques
 #   (el código común va SIN ?v=: la versión la lleva el service worker)
