@@ -3048,6 +3048,53 @@ async function laCopiaDeSeguridad(){
               (await fotosDe(w)).length === 0, "quedaron fotos dentro");
     comprobar("y dice que ha podido deshacerlo del todo", res.revertido === true, res.revertido);
   }
+
+  /* ---- 8 · Si no se puede leer el móvil, no hay copia ----
+     Una lectura que falla y se toma por «no hay nada» daría un archivo
+     sin viajes con toda la pinta de estar bien. Es el mismo riesgo que
+     ya se evita cuando no se puede leer la tienda de fotos. */
+  {
+    // a) Falla una sola clave, la de los viajes
+    const uno = await abrePortada(almacenLleno(), [FOTO_A, DOC_A]);
+    const buenoUno = uno.w.localStorage.getItem;
+    uno.w.localStorage.getItem = k => {
+      if (k === "viajes_propios") throw new Error("SecurityError");
+      return buenoUno(k);
+    };
+    const r1 = await uno.w.eval("copiaCompleta()");
+    uno.w.localStorage.getItem = buenoUno;
+
+    comprobar("si no se puede leer una clave, no se hace copia",
+              !!r1.error && !r1.copia, JSON.stringify(r1).slice(0, 160));
+    comprobar("y dice cuál no ha podido leer",
+              /viajes_propios/.test(r1.error || ""), r1.error);
+    comprobar("no devuelve una copia a medias",
+              r1.copia === undefined, "devolvió copia");
+
+    // b) Falla todo el almacén, como en el modo privado de iOS
+    const todo = await abrePortada(almacenLleno(), [FOTO_A, DOC_A]);
+    const buenoTodo = todo.w.localStorage.getItem;
+    todo.w.localStorage.getItem = () => { throw new Error("SecurityError"); };
+
+    const r2 = await todo.w.eval("copiaCompleta()");
+    comprobar("si el almacén entero falla, tampoco se hace copia",
+              !!r2.error && !r2.copia, JSON.stringify(r2).slice(0, 160));
+
+    // Y lo que se ve en la portada
+    todo.d.getElementById("btn-copia").click();
+    await esperar(200);
+    const zona = todo.d.getElementById("zona-copia");
+    todo.w.localStorage.getItem = buenoTodo;
+
+    comprobar("la portada lo explica en vez de ofrecer el archivo",
+              /No se ha podido leer/.test(zona.textContent) &&
+              !/Esto es lo que llevaría/.test(zona.textContent),
+              zona.textContent.slice(0, 120));
+    comprobar("y no aparece ningún botón de guardar el archivo",
+              zona.querySelectorAll("a[download]").length === 0);
+    comprobar("no deja errores de JavaScript por el camino",
+              todo.dom.errores.length === 0, todo.dom.errores[0]);
+  }
 }
 
 /* ═══ Ejecutar ═══ */

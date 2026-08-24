@@ -199,7 +199,7 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 ## Cómo se publica
 
 ```bash
-node tests/probar.js              # las 529 en verde, y LEER el resultado
+node tests/probar.js              # las 536 en verde, y LEER el resultado
 node tests/foto.js comparar       # si has movido código
 # subir VERSION, y el CACHE del sw.js de cada app que toques
 #   (el código común va SIN ?v=: la versión la lleva el service worker)

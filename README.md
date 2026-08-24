@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               529 comprobaciones + fotografías de comportamiento
+/tests/               536 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 529 en verde
+node tests/probar.js   # las 536 en verde
 node tests/foto.js comparar
 ```
 
@@ -165,6 +165,7 @@ motor está en `sync.js`; la portada solo pone la pantalla.
 | Función | Qué hace | Escribe |
 |---|---|---|
 | `copiaCompleta()` | reúne las claves de `clavesDeCopia()` y toda la tienda de fotos | no |
+| `leeClaveParaCopia(k)` | distingue clave ausente de `localStorage` que no deja leer | no |
 | `resumenDeCopia(c)` | viajes, entradas de diario, fotos, documentos, pendientes | no |
 | `validaCopia(texto)` | identidad, formato, estructura mínima | **no** |
 | `preparaRestauracion(c)` | calcula la fusión entera | **no** |
@@ -184,6 +185,14 @@ está, así que restaurar dos veces no duplica. Los ajustes solo se rellenan si
 faltan. Un viaje con lápida local no resucita; una lápida de la copia que apunte
 a un viaje vivo aquí se descarta, porque borrar algo que existe por lo que diga
 un archivo viejo sería destruir datos.
+
+**Si algo no se puede leer, no hay copia.** Ni las fotos ni una sola clave de
+`localStorage`. `leeClave` devuelve `null` tanto si la clave no está como si no
+se pudo leer, y para restaurar da igual —«no está» y «no se sabe» llevan a lo
+mismo: rellenar solo lo que falte—, pero al hacer la copia no: una lectura que
+falla tomada por «no hay nada» produce un archivo sin viajes que parece
+correcto. Por eso la copia usa `leeClaveParaCopia()`, que distingue los dos
+casos, y se detiene diciendo qué clave no pudo leer.
 
 **Hasta dónde llega lo transaccional.** IndexedDB sí lo es: `FOTOS.meterVarias`
 usa una transacción y o entran todas o ninguna. `localStorage` no lo es, así que
@@ -366,7 +375,7 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 529 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 536 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que

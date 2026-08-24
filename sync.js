@@ -1319,17 +1319,30 @@ const leeClave = k => { try { return localStorage.getItem(k); } catch { return n
 const leeJSON = (texto, def) => { try { const v = JSON.parse(texto); return v ?? def; } catch { return def; } };
 const listaDe = texto => { const v = leeJSON(texto, []); return Array.isArray(v) ? v : []; };
 
-/* La copia entera. Si las fotos no se pueden leer no se hace copia:
-   un archivo que dice tener cero fotos cuando hay cientos es peor que
-   no tener archivo. */
+/* Para la copia hace falta distinguir tres cosas, no dos: que la clave
+   no esté, que esté con un valor, y que `localStorage` no haya dejado
+   leerla. `leeClave` mezcla la primera y la tercera —y para restaurar
+   está bien así, porque «no está» y «no se sabe» llevan a lo mismo:
+   rellenar solo lo que falte—, pero al hacer la copia no: una lectura
+   que falla y se toma por «no hay nada» produce un archivo sin viajes
+   que parece correcto. */
+function leeClaveParaCopia(k){
+  try { return { ok:true, valor: localStorage.getItem(k) }; }
+  catch { return { ok:false }; }
+}
+
+/* La copia entera. Si algo no se puede leer no se hace copia: un
+   archivo que dice tener cero fotos cuando hay cientos, o ningún viaje
+   cuando hay diez, es peor que no tener archivo. */
 async function copiaCompleta(){
   const fotos = await FOTOS.todas();
   if (fotos === null) return { error:"No se han podido leer las fotos guardadas en este móvil. La copia no estaría completa, así que no se ha hecho." };
 
   const local = {};
   for (const k of clavesDeCopia()){
-    const v = leeClave(k);
-    if (v !== null) local[k] = v;      // tal cual está: ni se interpreta ni se reescribe
+    const r = leeClaveParaCopia(k);
+    if (!r.ok) return { error:`No se ha podido leer «${k}» del almacenamiento de este móvil. La copia no estaría completa, así que no se ha hecho.` };
+    if (r.valor !== null) local[k] = r.valor;   // tal cual está: ni se interpreta ni se reescribe
   }
   return { copia: { app: COPIA_ID, formato: COPIA_FORMATO,
                     creada: new Date().toISOString(), local, fotos } };
