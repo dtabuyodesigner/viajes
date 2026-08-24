@@ -413,6 +413,7 @@ header{position:relative}
   padding:4px 0;font-size:12.5px;align-items:baseline}
 .est-detalle .k{color:var(--papel-dim);flex:0 0 auto}
 .est-detalle .v{text-align:right}
+.btn.parar{border-color:var(--aviso-txt);color:var(--aviso-txt)}
 </style>
 </head>
 <body>
@@ -489,7 +490,7 @@ if (window.matchMedia)
    ========================================================= */
 const DIAS_SEM = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-const VERSION = "v103 · 23/08 16:11";
+const VERSION = "v104 · 24/08 15:29";
 const VIAJE_ID = "asturias";
 const VIAJE = viajeEnUso(VIAJE_ID, VIAJE_ORIGINAL);
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -1194,25 +1195,41 @@ function bloqueServicios(){
   </div>`;
 }
 
-async function lanzarServicios(){
-  const cont = document.getElementById("res-serv");
+async function lanzarServicios(presupuesto){
+  let cont = document.getElementById("res-serv");
   const cat = CATEGORIAS.find(c => c.id === catActiva);
   if (!cont || !cat) return;
-  cont.innerHTML = `<p class="note">${modoBusca === "ruta"
-    ? `Localizando y buscando ${cat.n.toLowerCase()} por delante…`
-    : `Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`}</p>`;
+  const op = abreBusqueda(presupuesto);
+  pintaBuscando(cont, "Localizando…");
   try {
-    // dónde estamos AHORA, no donde estábamos hace dos horas
-    if (typeof ubicacionFresca === "function") await ubicacionFresca();
-    let r = null;
+    // El GPS se pide UNA vez, aquí. Antes lo pedía también buscarEnRuta por
+    // dentro, y «de camino hoy» esperaba dos veces, diez segundos cada una.
+    const aqui = await ubicacionDeBusqueda(op);
+    if (!op.viva()){ pintaFinBusqueda(cont, op, { estado:"cancelada" }, { km:radioKm, modo:modoBusca }); return; }
+
+    const avisa = n => progresoBusqueda(n === 0
+      ? (modoBusca === "ruta" ? `Buscando ${cat.n.toLowerCase()} por delante…`
+                              : `Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`)
+      : "Sigue buscando, probando otro servidor…");
+    avisa(0);
+
+    let res = null;
     if (modoBusca === "ruta"){
-      r = await buscarEnRuta(cat, indiceHoy(), radioKm);
-      if (r === null){            // el día no tiene ruta: se busca alrededor
+      res = await buscarEnRuta(cat, indiceHoy(), radioKm, aqui, op, avisa);
+      // El día sin ruta cae a la búsqueda de alrededor, con el MISMO plazo:
+      // el reloj no se reinicia por cambiar de estrategia.
+      if (res === null){
         modoBusca = "cerca"; vistaGuia();
-        r = await buscarServicios(cat, MIPOS, radioKm);
+        pintaBuscando(document.getElementById("res-serv") || cont, `Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`);
+        res = await buscarServicios(cat, MIPOS, radioKm, op, avisa);
       }
-    } else r = await buscarServicios(cat, MIPOS, radioKm);
-    if (!r.length){ cont.innerHTML = `<p class="note">Nada en ${radioKm} km. Prueba a ampliar el radio.</p>`; return; }
+    } else res = await buscarServicios(cat, MIPOS, radioKm, op, avisa);
+
+    const donde = document.getElementById("res-serv") || cont;
+    if (res.estado === "reemplazada") return;
+    if (res.estado !== "bien"){ pintaFinBusqueda(donde, op, res, { km:radioKm, modo:modoBusca }); return; }
+    const r = res.valor;
+    cont = donde;
     cont.innerHTML = `<ul class="plain">${r.map((x, i) => `
       <li><div class="serv-fila">
         <div><b>${esc(x.nombre)}</b>${x.detalle ? `<small>${esc(x.detalle)}</small>` : ""}</div>
@@ -1223,7 +1240,7 @@ async function lanzarServicios(){
         <a class="btn" href="${mapaXY(x.xy[0], x.xy[1])}" target="_blank" rel="noopener">Ver</a>
       </div></li>`).join("")}</ul>
       <p class="note" id="nota-serv">Calculando el tiempo por carretera…</p>`;
-    const t = await porCarretera(MIPOS, r.map(x => x.xy));
+    const t = await porCarreteraDeBusqueda(op, MIPOS, r.map(x => x.xy));
     const ns = document.getElementById("nota-serv");
     if (t){
       // con los tiempos reales hay que reordenar: el orden por línea recta no vale
@@ -1252,25 +1269,11 @@ async function lanzarServicios(){
         : "<b>Distancias en línea recta.</b> Datos de OpenStreetMap.";
     }
   } catch (e) {
-    const motivo = String(e?.message || "");
-    cont.innerHTML = `<p class="note">${
-      motivo === "ocupado" ? "El servidor de mapas está saturado ahora mismo. Prueba en un minuto."
-      : motivo === "lento" || /abort/i.test(motivo)
-        ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
-            ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
-      : !navigator.onLine ? "Sin conexión. Esto necesita red."
-      : `No se pudo consultar${modoBusca === "ruta" ? " por el camino" : ""}.
-          <button class="lnk" id="ver-motivo">ver por qué</button>`}</p>
-      <div id="detalle-fallo"></div>`;
-    const vm = document.getElementById("ver-motivo");
-    if (vm) vm.addEventListener("click", () => {
-      const f = (typeof ULTIMO_FALLO !== "undefined" && ULTIMO_FALLO) || {};
-      document.getElementById("detalle-fallo").innerHTML =
-        `<p class="motivo">${esc(motivo)}${f.servidor ? " · " + esc(f.servidor.replace("https://","").split("/")[0]) : ""}${
-          f.estado ? " · " + f.estado : ""}${f.detalle ? "<br>" + esc(f.detalle) : ""}${
-          f.remark ? "<br>" + esc(String(f.remark)) : ""}${
-          f.consulta ? "<br><br>" + esc(String(f.consulta).slice(0, 180)) : ""}</p>`;
-    });
+    if (op.viva())
+      pintaFinBusqueda(document.getElementById("res-serv") || cont, op,
+        { estado:"fallaron", motivo:String((e && e.message) || e) }, { km:radioKm, modo:modoBusca });
+  } finally {
+    cierraBusqueda(op);
   }
 }
 
