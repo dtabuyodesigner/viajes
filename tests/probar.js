@@ -2762,6 +2762,341 @@ async function elModoConduccion(){
   }
 }
 
+/* ═══ Copia de seguridad ═══
+   Lo que se prueba aquí no es que el archivo se genere, es que un
+   archivo malo no toque ni un dato, y que uno bueno no pise lo que ya
+   hay en el móvil. */
+
+const FOTO_A = { id:"p1:0:111aaaa", viaje:"p1", dia:0, datos:"data:image/jpeg;base64,AAAA",
+                 xy:"43.1,-6.2", cuando:111 };
+const DOC_A  = { id:"doc:p1:tarjeta:zz9", viaje:"p1", dia:-1, doc:"tarjeta",
+                 nombre:"Vuelo ida", datos:"data:image/jpeg;base64,BBBB", cuando:222 };
+
+const VIAJE_A = { id:"p1", nombre:"Eslovenia a medida", desde:"2026-07-18", hasta:"2026-07-28",
+                  actualizado:"2026-08-01T10:00:00.000Z",
+                  dias:[{ t:"Día uno", dest:"Bled", paradas:[{ txt:"Una parada", mapa:"Bled" }] }] };
+
+const DIARIO_A = { hechas:{ "0:0":1000 }, desmarcadas:{}, notas:{ "0":{ t:"Qué día", ts:1000 } },
+                   posiciones:{}, visitas:[{ id:"v1", dia:0, xy:"46,14", ts:900, txt:"Aquí" }],
+                   pernoctas:[], portadas:{} };
+
+/* Un móvil con datos de todos los tipos del inventario */
+function almacenLleno(){
+  return {
+    viajes_propios: JSON.stringify([VIAJE_A]),
+    viajes_pendientes: JSON.stringify(["p1"]),
+    viajes_borrados: JSON.stringify(["fantasma"]),
+    fotos_pendientes: JSON.stringify([FOTO_A.id]),
+    diario_p1: JSON.stringify(DIARIO_A),
+    diario_eslovenia: JSON.stringify({ hechas:{ "7:0":500 }, desmarcadas:{}, notas:{} }),
+    ast_salida: "2026-09-01",
+    tema_viajes: "oscuro",
+    nav_app: "maps",
+    // Lo que NO puede salir en la copia
+    "sb-cmkzcvfjgrgxwqjimtxa-auth-token": JSON.stringify({ access_token:"TOKEN-SECRETO-123" }),
+    eslovenia26_pw: "la-contrasena-de-eslovenia",
+    traspaso_viaje: JSON.stringify({ vale:"x", id:"p1", viaje:VIAJE_A }),
+    traspaso_ok: "1"
+  };
+}
+
+/* Abre la portada con IndexedDB de verdad y le mete las fotos que se le digan */
+async function abrePortada(almacen, fotos = [], extra = {}){
+  const dom = abrir("index.html", { url:"https://x/", almacen, conFotos:true, ...extra });
+  await esperar(500);
+  const w = dom.window;
+  if (fotos.length) await w.eval(`FOTOS.meterVarias(${JSON.stringify(fotos)})`);
+  return { dom, w, d:w.document, almacen };
+}
+
+const fotosDe = w => w.eval("FOTOS.todas()");
+
+async function laCopiaDeSeguridad(){
+  console.log(`\n${gris("──")} Copia de seguridad`);
+
+  /* ---- 1 · La sección está en la portada ---- */
+  {
+    const { d, dom } = await abrePortada({});
+    const zona = [...d.querySelectorAll(".mantenimiento")]
+      .find(z => /Copia de seguridad/.test(z.textContent));
+    comprobar("la portada tiene una sección «Copia de seguridad»", !!zona);
+    comprobar("con botón para descargar", !!d.getElementById("btn-copia"));
+    comprobar("y botón para restaurar", !!d.getElementById("btn-restaurar"));
+    comprobar("la portada sigue cargando sin errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  /* ---- 2 · Lo que lleva la copia ---- */
+  {
+    const { w } = await abrePortada(almacenLleno(), [FOTO_A, DOC_A], { conexion:false });
+    const r = await w.eval("copiaCompleta()");
+    comprobar("sin cobertura la copia se hace igual", !r.error && !!r.copia, r.error);
+    const c = r.copia;
+
+    comprobar("la copia dice a qué app pertenece",
+              c.app === "viajes.dtabuyodesigner", c.app);
+    comprobar("y lleva versión de formato y fecha",
+              c.formato === 1 && /^\d{4}-\d{2}-\d{2}T/.test(c.creada || ""),
+              `${c.formato} · ${c.creada}`);
+
+    const debe = ["viajes_propios","viajes_pendientes","viajes_borrados","fotos_pendientes",
+                  "diario_p1","diario_eslovenia","ast_salida","tema_viajes","nav_app"];
+    const faltan = debe.filter(k => !(k in c.local));
+    comprobar("la copia lleva todos los tipos de datos del inventario",
+              faltan.length === 0, "faltan: " + faltan.join(", "));
+
+    comprobar("lleva las fotos y los documentos",
+              c.fotos.length === 2 &&
+              c.fotos.some(f => f.id === FOTO_A.id) && c.fotos.some(f => f.id === DOC_A.id),
+              `${c.fotos.length} elementos`);
+
+    // Nada de credenciales
+    const prohibidas = ["sb-cmkzcvfjgrgxwqjimtxa-auth-token","eslovenia26_pw",
+                        "traspaso_viaje","traspaso_ok"];
+    const coladas = prohibidas.filter(k => k in c.local);
+    comprobar("no se lleva la sesión, la contraseña ni el traspaso",
+              coladas.length === 0, "se coló: " + coladas.join(", "));
+    const texto = JSON.stringify(c);
+    comprobar("y el archivo no contiene el token ni la contraseña en ningún sitio",
+              !texto.includes("TOKEN-SECRETO-123") && !texto.includes("la-contrasena-de-eslovenia"));
+
+    const n = w.eval(`resumenDeCopia(${JSON.stringify(c)})`);
+    comprobar("el resumen cuenta lo que hay de verdad",
+              n.viajes === 1 && n.fotos === 1 && n.documentos === 1 && n.diario === 4,
+              JSON.stringify(n));
+    comprobar("el nombre del archivo lleva la fecha",
+              w.eval(`nombreDeCopia(${JSON.stringify(c)})`) ===
+              `viajes-copia-${c.creada.slice(0,10)}.json`);
+  }
+
+  /* ---- 3 · Un archivo malo no toca nada ---- */
+  {
+    // Los rechazos se prueban con una carga que SÍ haría daño si pasara:
+    // un archivo inofensivo podría dar verde aunque la comprobación no
+    // existiera, porque no habría nada que ver cambiar.
+    const DANINO = {
+      local:{ viajes_propios: JSON.stringify([{ id:"intruso", nombre:"Intruso", dias:[] }]),
+              gen_app:"maps" },
+      fotos:[{ id:"intruso:0:1", viaje:"intruso", dia:0,
+               datos:"data:image/jpeg;base64,ZZZZ", cuando:1 }]
+    };
+
+    const malos = [
+      ["un archivo que no es JSON", "esto no es json {{{"],
+      ["un archivo vacío", "   "],
+      ["un JSON que no es un objeto", "[1,2,3]"],
+      ["una copia de otra aplicación", JSON.stringify({ app:"otra.cosa", formato:1, ...DANINO })],
+      ["una copia sin identidad", JSON.stringify({ formato:1, ...DANINO })],
+      ["una copia de otro formato", JSON.stringify({ app:"viajes.dtabuyodesigner", formato:9, ...DANINO })],
+      ["una copia sin el bloque de datos", JSON.stringify({ app:"viajes.dtabuyodesigner", formato:1, fotos:[] })],
+      ["una copia sin la lista de fotos", JSON.stringify({ app:"viajes.dtabuyodesigner", formato:1, local:{} })],
+      ["una copia con una foto sin contenido", JSON.stringify({ app:"viajes.dtabuyodesigner", formato:1,
+        local:{}, fotos:[{ id:"x" }] })],
+      ["una copia con un viaje sin identificador", JSON.stringify({ app:"viajes.dtabuyodesigner", formato:1,
+        local:{ viajes_propios: JSON.stringify([{ nombre:"Sin id" }]) }, fotos:[] })],
+      ["una copia con un bloque corrupto", JSON.stringify({ app:"viajes.dtabuyodesigner", formato:1,
+        local:{ viajes_propios: 42 }, fotos:[] })]
+    ];
+
+    for (const [que, texto] of malos){
+      const { w, almacen } = await abrePortada(almacenLleno(), [FOTO_A, DOC_A]);
+      const antes = JSON.stringify(almacen);
+      const fotosAntes = JSON.stringify(await fotosDe(w));
+
+      const res = await w.eval(`restauraCopia(${JSON.stringify(texto)})`);
+      comprobar(`se rechaza ${que}`, res.ok === false && !!res.motivo, JSON.stringify(res));
+      comprobar(`  …y no cambia ni un dato guardado`,
+                JSON.stringify(almacen) === antes &&
+                JSON.stringify(await fotosDe(w)) === fotosAntes,
+                "algún almacén cambió");
+    }
+  }
+
+  /* ---- 4 · Exportar y volver a poner en otro móvil ---- */
+  {
+    const origen = await abrePortada(almacenLleno(), [FOTO_A, DOC_A]);
+    const texto = JSON.stringify((await origen.w.eval("copiaCompleta()")).copia);
+
+    const destino = await abrePortada({}, []);
+    const res = await destino.w.eval(`restauraCopia(${JSON.stringify(texto)})`);
+    comprobar("una copia exportada se puede restaurar en un móvil vacío", res.ok === true,
+              res.motivo);
+
+    const viajes = JSON.parse(destino.almacen.viajes_propios || "[]");
+    comprobar("vuelve el viaje", viajes.length === 1 && viajes[0].id === "p1");
+    const diario = JSON.parse(destino.almacen.diario_p1 || "{}");
+    comprobar("vuelve el diario con sus marcas, notas y visitas",
+              diario.hechas["0:0"] === 1000 && diario.notas["0"].t === "Qué día" &&
+              diario.visitas.length === 1);
+    comprobar("vuelven las operaciones pendientes",
+              JSON.parse(destino.almacen.viajes_pendientes || "[]").includes("p1") &&
+              JSON.parse(destino.almacen.fotos_pendientes || "[]").includes(FOTO_A.id));
+    comprobar("vuelve la lápida del viaje borrado",
+              JSON.parse(destino.almacen.viajes_borrados || "[]").includes("fantasma"));
+    comprobar("vuelven los ajustes que importan",
+              destino.almacen.ast_salida === "2026-09-01" && destino.almacen.nav_app === "maps");
+
+    const fotos = await fotosDe(destino.w);
+    const foto = fotos.find(f => f.id === FOTO_A.id), doc = fotos.find(f => f.id === DOC_A.id);
+    comprobar("vuelven la foto y el documento", !!foto && !!doc, `${fotos.length} elementos`);
+    comprobar("la foto conserva exactamente su contenido",
+              foto && foto.datos === FOTO_A.datos && foto.xy === FOTO_A.xy && foto.cuando === FOTO_A.cuando);
+    comprobar("el documento conserva su contenido y su nombre",
+              doc && doc.datos === DOC_A.datos && doc.nombre === DOC_A.nombre && doc.doc === "tarjeta");
+
+    // Restaurar dos veces no duplica
+    const otraVez = await destino.w.eval(`restauraCopia(${JSON.stringify(texto)})`);
+    comprobar("restaurar la misma copia otra vez sale bien", otraVez.ok === true, otraVez.motivo);
+    comprobar("y no duplica nada",
+              JSON.parse(destino.almacen.viajes_propios).length === 1 &&
+              (await fotosDe(destino.w)).length === 2 &&
+              otraVez.viajesNuevos === 0 && otraVez.fotosNuevas === 0);
+  }
+
+  /* ---- 5 · Lo de aquí no se pierde ---- */
+  {
+    const copia = JSON.stringify({
+      app:"viajes.dtabuyodesigner", formato:1, creada:"2026-01-01T00:00:00.000Z",
+      local:{
+        viajes_propios: JSON.stringify([{ ...VIAJE_A, nombre:"Nombre viejo",
+                                          actualizado:"2026-01-01T00:00:00.000Z" }]),
+        diario_p1: JSON.stringify({ hechas:{ "0:1":50 }, desmarcadas:{}, notas:{} }),
+        tema_viajes: "claro", nav_app: "waze"
+      },
+      fotos: []
+    });
+
+    const { w, almacen } = await abrePortada({
+      viajes_propios: JSON.stringify([{ ...VIAJE_A, nombre:"Nombre nuevo",
+                                        actualizado:"2026-08-20T00:00:00.000Z" }]),
+      diario_p1: JSON.stringify(DIARIO_A),
+      tema_viajes: "oscuro", nav_app: "maps"
+    }, []);
+
+    const res = await w.eval(`restauraCopia(${JSON.stringify(copia)})`);
+    comprobar("restaurar una copia vieja sale bien", res.ok === true, res.motivo);
+    comprobar("un viaje más nuevo aquí no lo pisa la copia vieja",
+              JSON.parse(almacen.viajes_propios)[0].nombre === "Nombre nuevo",
+              JSON.parse(almacen.viajes_propios)[0].nombre);
+    const diario = JSON.parse(almacen.diario_p1);
+    comprobar("el diario se funde: se queda lo de aquí y se suma lo de la copia",
+              diario.hechas["0:0"] === 1000 && diario.hechas["0:1"] === 50 &&
+              diario.notas["0"].t === "Qué día" && diario.visitas.length === 1,
+              JSON.stringify(diario.hechas));
+    comprobar("los ajustes de este móvil no se cambian",
+              almacen.tema_viajes === "oscuro" && almacen.nav_app === "maps",
+              `${almacen.tema_viajes} · ${almacen.nav_app}`);
+  }
+
+  /* ---- 6 · Las lápidas mandan ---- */
+  {
+    // Un viaje borrado aquí no vuelve porque esté en la copia
+    const copia = JSON.stringify({
+      app:"viajes.dtabuyodesigner", formato:1, creada:"2026-01-01T00:00:00.000Z",
+      local:{ viajes_propios: JSON.stringify([VIAJE_A, { id:"vivo", nombre:"Vivo", dias:[] }]),
+              viajes_borrados: JSON.stringify(["vivo"]) },
+      fotos: []
+    });
+    const { w, almacen } = await abrePortada({
+      viajes_propios: JSON.stringify([{ id:"vivo", nombre:"Vivo aquí", dias:[] }]),
+      viajes_borrados: JSON.stringify(["p1"])
+    }, []);
+
+    const res = await w.eval(`restauraCopia(${JSON.stringify(copia)})`);
+    comprobar("restaurar con lápidas sale bien", res.ok === true, res.motivo);
+    const ids = JSON.parse(almacen.viajes_propios).map(v => v.id);
+    comprobar("un viaje borrado aquí no resucita al restaurar",
+              !ids.includes("p1"), ids.join(", "));
+    comprobar("y la restauración lo dice", res.viajesNoResucitados === 1, res.viajesNoResucitados);
+    comprobar("un viaje vivo aquí no lo mata una lápida de la copia",
+              ids.includes("vivo"), ids.join(", "));
+    comprobar("esa lápida de la copia se descarta",
+              !JSON.parse(almacen.viajes_borrados).includes("vivo"),
+              almacen.viajes_borrados);
+    comprobar("la lápida de aquí se conserva",
+              JSON.parse(almacen.viajes_borrados).includes("p1"), almacen.viajes_borrados);
+    comprobar("un pendiente de un viaje que no está no se queda colgado",
+              !JSON.parse(almacen.viajes_pendientes || "[]").includes("p1"));
+  }
+
+  /* ---- 7 · Si falla al escribir, se deshace ---- */
+  {
+    const origen = await abrePortada(almacenLleno(), [FOTO_A, DOC_A]);
+    const texto = JSON.stringify((await origen.w.eval("copiaCompleta()")).copia);
+
+    const { w, almacen } = await abrePortada({ tema_viajes:"oscuro" }, []);
+    const antes = JSON.stringify(almacen);
+
+    // El móvil deja escribir dos bloques y luego se queda sin sitio.
+    // Es lo que hace iOS cuando el almacén se llena a mitad.
+    let quedan = 2;
+    const bueno = w.localStorage.setItem;
+    w.localStorage.setItem = (k, v) => {
+      if (quedan-- <= 0) throw new Error("QuotaExceededError");
+      return bueno(k, v);
+    };
+
+    const res = await w.eval(`restauraCopia(${JSON.stringify(texto)})`);
+    w.localStorage.setItem = bueno;
+
+    comprobar("si el móvil no deja escribir, la restauración falla",
+              res.ok === false, JSON.stringify(res));
+    comprobar("y lo dice sin quedarse a medias en silencio",
+              /no se pudo escribir/i.test(res.motivo || ""), res.motivo);
+    comprobar("se deshace todo lo escrito", JSON.stringify(almacen) === antes,
+              "quedó: " + JSON.stringify(almacen).slice(0, 120));
+    comprobar("y se sacan las fotos que había metido",
+              (await fotosDe(w)).length === 0, "quedaron fotos dentro");
+    comprobar("y dice que ha podido deshacerlo del todo", res.revertido === true, res.revertido);
+  }
+
+  /* ---- 8 · Si no se puede leer el móvil, no hay copia ----
+     Una lectura que falla y se toma por «no hay nada» daría un archivo
+     sin viajes con toda la pinta de estar bien. Es el mismo riesgo que
+     ya se evita cuando no se puede leer la tienda de fotos. */
+  {
+    // a) Falla una sola clave, la de los viajes
+    const uno = await abrePortada(almacenLleno(), [FOTO_A, DOC_A]);
+    const buenoUno = uno.w.localStorage.getItem;
+    uno.w.localStorage.getItem = k => {
+      if (k === "viajes_propios") throw new Error("SecurityError");
+      return buenoUno(k);
+    };
+    const r1 = await uno.w.eval("copiaCompleta()");
+    uno.w.localStorage.getItem = buenoUno;
+
+    comprobar("si no se puede leer una clave, no se hace copia",
+              !!r1.error && !r1.copia, JSON.stringify(r1).slice(0, 160));
+    comprobar("y dice cuál no ha podido leer",
+              /viajes_propios/.test(r1.error || ""), r1.error);
+    comprobar("no devuelve una copia a medias",
+              r1.copia === undefined, "devolvió copia");
+
+    // b) Falla todo el almacén, como en el modo privado de iOS
+    const todo = await abrePortada(almacenLleno(), [FOTO_A, DOC_A]);
+    const buenoTodo = todo.w.localStorage.getItem;
+    todo.w.localStorage.getItem = () => { throw new Error("SecurityError"); };
+
+    const r2 = await todo.w.eval("copiaCompleta()");
+    comprobar("si el almacén entero falla, tampoco se hace copia",
+              !!r2.error && !r2.copia, JSON.stringify(r2).slice(0, 160));
+
+    // Y lo que se ve en la portada
+    todo.d.getElementById("btn-copia").click();
+    await esperar(200);
+    const zona = todo.d.getElementById("zona-copia");
+    todo.w.localStorage.getItem = buenoTodo;
+
+    comprobar("la portada lo explica en vez de ofrecer el archivo",
+              /No se ha podido leer/.test(zona.textContent) &&
+              !/Esto es lo que llevaría/.test(zona.textContent),
+              zona.textContent.slice(0, 120));
+    comprobar("y no aparece ningún botón de guardar el archivo",
+              zona.querySelectorAll("a[download]").length === 0);
+    comprobar("no deja errores de JavaScript por el camino",
+              todo.dom.errores.length === 0, todo.dom.errores[0]);
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -2808,6 +3143,7 @@ async function elModoConduccion(){
   await traspasoComprobado();
   await elBorradoNoResucita();
   await elModoConduccion();
+  await laCopiaDeSeguridad();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);

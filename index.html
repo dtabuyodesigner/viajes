@@ -58,6 +58,17 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .btn-act.ligero{background:transparent;color:var(--tinta);border:1px solid var(--linea);
   font-weight:600;margin-top:8px}
 .mantenimiento .nota{margin:0}
+.copia{margin-top:14px}
+.copia .btn-act{margin-top:8px}
+.copia-caja{margin-top:12px;border-top:1px solid var(--linea);padding-top:11px}
+.copia-caja .row{display:flex;justify-content:space-between;gap:12px;
+  padding:4px 0;font-size:12.5px;align-items:baseline}
+.copia-caja .k{color:var(--tinta-dim);flex:0 0 auto}
+.copia-caja .v{text-align:right}
+.copia-caja h3{margin:0 0 8px;font-size:14.5px}
+.copia-caja p{margin:0 0 8px;font-size:12.5px;line-height:1.5;color:var(--tinta-dim)}
+.copia-caja p.mal{color:var(--rojo-txt)}
+.copia-caja p.bien{color:var(--ok-txt)}
 .ops{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
 .op{flex:1 1 92px;text-align:left;padding:10px 11px;border-radius:11px;cursor:pointer;
   background:transparent;border:1px solid var(--linea);color:var(--tinta);font:inherit}
@@ -192,7 +203,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v104 · 24/08 15:29";
+const VERSION = "v105 · 24/08 20:10";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -271,6 +282,16 @@ function pintaPie(){
       <div id="cuenta"></div>
 
     </div>
+    <div class="mantenimiento copia">
+      <p class="ver">Copia de seguridad</p>
+      <button class="btn-act ligero" id="btn-copia">Descargar copia</button>
+      <button class="btn-act ligero" id="btn-restaurar">Restaurar copia</button>
+      <input type="file" id="archivo-copia" accept="application/json,.json" hidden>
+      <div id="zona-copia" aria-live="polite"></div>
+      <p class="nota" style="margin-top:10px">Un archivo con los viajes, el diario, las fotos y los
+      documentos de este móvil. Se descarga y se restaura sin cobertura. No lleva la contraseña ni la
+      sesión: para volver a la nube hay que entrar otra vez.</p>
+    </div>
     <p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera a la pantalla de inicio por separado.</p>`;
 
   ponEstado(ultimoEstado);
@@ -286,6 +307,8 @@ function pintaPie(){
     } catch {}
     setTimeout(() => { b.textContent = "Compartir la app"; }, 2500);
   });
+
+  activaCopiaDeSeguridad();
 
 /* Limpiar puede colgarse: si el service worker no contesta, sin tope el
    botón se queda en «Limpiando…» para siempre. Y es justo el botón que se
@@ -500,6 +523,118 @@ if ("serviceWorker" in navigator){
     });
     document.body.appendChild(b);
   }
+}
+/* ═══ Copia de seguridad ═══
+   El motor está en sync.js. Aquí solo va la pantalla: enseñar qué lleva
+   antes de descargar, y qué va a pasar antes de restaurar. */
+
+function activaCopiaDeSeguridad(){
+  const zona = document.getElementById("zona-copia");
+  const entrada = document.getElementById("archivo-copia");
+  if (!zona || !entrada) return;
+
+  const caja = html => { zona.innerHTML = `<div class="copia-caja">${html}</div>`; };
+  const fila = (k, v) => `<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  const trabajando = t => caja(`<p>${t}</p>`);
+
+  /* ---- Descargar ---- */
+  document.getElementById("btn-copia").addEventListener("click", async () => {
+    trabajando("Reuniendo lo que hay en este móvil…");
+    let r;
+    try { r = await copiaCompleta(); }
+    catch (e) { return caja(`<p class="mal">No se ha podido hacer la copia: ${escapaTexto(e && e.message || "fallo desconocido")}</p>`); }
+    if (r.error) return caja(`<p class="mal">${escapaTexto(r.error)}</p>`);
+
+    const texto = JSON.stringify(r.copia);
+    const n = resumenDeCopia(r.copia);
+    const mb = (texto.length / 1048576).toFixed(1);
+
+    caja(`<h3>Esto es lo que llevaría</h3>
+      ${fila("Viajes", n.viajes)}
+      ${fila("Entradas del diario", n.diario)}
+      ${fila("Fotos", n.fotos)}
+      ${fila("Documentos", n.documentos)}
+      ${fila("Pendientes de subir", n.pendientes)}
+      ${fila("Viajes borrados sin aplicar", n.borrados)}
+      ${fila("Tamaño del archivo", mb + " MB")}
+      <p style="margin-top:9px">Las entradas del diario son las paradas tachadas, las notas y los
+      sitios apuntados. No lleva la contraseña ni la sesión de la nube.</p>
+      <div id="zona-descarga"></div>`);
+
+    const a = document.createElement("a");
+    a.className = "btn-act";
+    a.style.display = "block";
+    a.style.textAlign = "center";
+    a.style.textDecoration = "none";
+    a.download = nombreDeCopia(r.copia);
+    a.textContent = "Guardar el archivo";
+    try {
+      a.href = URL.createObjectURL(new Blob([texto], { type:"application/json" }));
+    } catch {
+      a.href = "data:application/json;charset=utf-8," + encodeURIComponent(texto);
+    }
+    document.getElementById("zona-descarga").appendChild(a);
+  });
+
+  /* ---- Restaurar ---- */
+  document.getElementById("btn-restaurar").addEventListener("click", () => entrada.click());
+
+  entrada.addEventListener("change", e => {
+    const archivo = (e.target.files || [])[0];
+    entrada.value = "";
+    if (!archivo) return;
+    trabajando("Leyendo el archivo…");
+
+    const lector = new FileReader();
+    lector.onerror = () => caja(`<p class="mal">No se ha podido leer el archivo. No se ha cambiado nada.</p>`);
+    lector.onload = async () => {
+      const texto = String(lector.result || "");
+      const v = validaCopia(texto);
+      if (!v.ok) return caja(`<p class="mal">${escapaTexto(v.motivo)}</p>
+        <p>No se ha tocado ningún dato de este móvil.</p>`);
+
+      const plan = await preparaRestauracion(v.copia);
+      if (plan.error) return caja(`<p class="mal">${escapaTexto(plan.error)}</p>`);
+      const r = plan.resumen;
+
+      caja(`<h3>Se va a fundir, no a sustituir</h3>
+        <p>Copia del ${escapaTexto(String(v.copia.creada || "").slice(0, 10))}. Lo que ya hay en este
+        móvil no se borra: solo se añade lo que falta, y en el diario gana lo más reciente.</p>
+        ${fila("Viajes nuevos", r.viajesNuevos)}
+        ${fila("Viajes que se actualizan", r.viajesActualizados)}
+        ${fila("Viajes que se quedan como están", r.viajesQueSeQuedan)}
+        ${r.viajesNoResucitados ? fila("Viajes borrados que NO vuelven", r.viajesNoResucitados) : ""}
+        ${fila("Fotos nuevas", r.fotosNuevas)}
+        ${fila("Documentos nuevos", r.documentosNuevos)}
+        ${fila("Fotos que ya estaban", r.fotosQueYaEstaban)}
+        ${fila("Diarios que se funden", r.diariosFundidos)}
+        <div style="margin-top:10px">
+          <button class="btn-act" id="copia-si">Restaurar</button>
+          <button class="btn-act ligero" id="copia-no">Dejarlo</button>
+        </div>`);
+
+      document.getElementById("copia-no").addEventListener("click", () => { zona.innerHTML = ""; });
+      document.getElementById("copia-si").addEventListener("click", async () => {
+        trabajando("Restaurando…");
+        const res = await restauraCopia(texto);
+        if (!res.ok){
+          return caja(`<p class="mal">${escapaTexto(res.motivo)}</p>` +
+            (res.revertido === false
+              ? `<p class="mal">No se puede garantizar que todo haya vuelto a su sitio.</p>` : ""));
+        }
+        caja(`<p class="bien">Restaurado.</p>
+          ${fila("Viajes nuevos", res.viajesNuevos)}
+          ${fila("Viajes actualizados", res.viajesActualizados)}
+          ${fila("Fotos nuevas", res.fotosNuevas)}
+          ${fila("Documentos nuevos", res.documentosNuevos)}
+          <p style="margin-top:9px">Hay que recargar la app para verlo.</p>
+          <button class="btn-act" id="copia-recargar">Recargar ahora</button>`);
+        document.getElementById("copia-recargar")
+          .addEventListener("click", () => location.reload());
+      });
+    };
+    lector.readAsText(archivo);
+  });
 }
 </script>
 </body>

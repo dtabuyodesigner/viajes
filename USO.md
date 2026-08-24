@@ -195,6 +195,57 @@ no tiene.
 
 ---
 
+## Copia de seguridad
+
+En la portada, abajo del todo, en su propio recuadro. Dos botones.
+
+**Descargar copia.** Antes de bajar nada te enseña qué lleva: cuántos viajes,
+cuántas entradas de diario, cuántas fotos, cuántos documentos, qué queda por
+subir y cuánto ocupa el archivo. Si te cuadra, *Guardar el archivo* baja un
+único `.json` con la fecha en el nombre, del tipo
+`viajes-copia-2026-08-24.json`. Funciona sin cobertura: todo sale de este móvil.
+
+Dentro va lo que has ido creando: los viajes, el diario entero —paradas
+tachadas, notas, sitios apuntados y dónde dormisteis—, las fotos y los
+documentos tal cual están, sin recomprimir, lo que quedaba por subir y los
+viajes borrados que aún no se han aplicado en la nube. También los ajustes que
+cuestan de volver a poner, como el día de salida de Asturias.
+
+**Lo que no lleva, a propósito:** la sesión de la nube, la contraseña guardada
+de Eslovenia y el traspaso al editor. Quien tuviera el archivo no puede entrar
+en vuestra cuenta con él. Para volver a la nube hay que entrar otra vez.
+
+Guárdalo donde quieras: Archivos, Drive, el correo. Es un archivo normal.
+
+**Restaurar copia.** Elige el archivo y **no toca nada todavía**: primero lo
+comprueba y luego te dice exactamente qué va a pasar — cuántos viajes nuevos
+entran, cuántos se actualizan, cuántos se quedan como están, cuántas fotos
+faltan. Solo entonces aparece el botón de *Restaurar*.
+
+**Funde, no sustituye.** Lo que ya hay en este móvil no se borra:
+
+- Un viaje que está en los dos sitios se queda con la versión más reciente. Si
+  empatan, gana la de este móvil.
+- El diario se funde marca a marca y nota a nota, igual que cuando se
+  sincronizan dos móviles: gana lo más nuevo de cada cosa, no se pierde ninguna.
+- Las fotos y los documentos que ya están no se tocan. Restaurar dos veces la
+  misma copia no duplica nada.
+- Los ajustes solo se rellenan si aquí no los tienes puestos.
+- **Un viaje que borraste no vuelve** porque salga en la copia. Y al revés: un
+  viaje que tienes vivo aquí no se borra porque la copia diga que estaba
+  borrado.
+
+Si el archivo no es un JSON, no es de esta app, es de otro formato o le falta
+algo, se rechaza y te dice por qué **sin haber cambiado ni un dato**.
+
+Si el móvil se queda sin sitio a mitad de escribir, se deshace lo escrito y se
+vuelve a como estaba. Si por lo que sea no se pudiera deshacer del todo, la app
+lo dice claramente en vez de dejarlo a medias en silencio.
+
+Cuando termina hay que recargar para verlo, y hay un botón para hacerlo.
+
+---
+
 ## Saber cómo va todo
 
 En la portada, debajo de la versión, hay una línea que lo dice: **«Viajes y fotos

@@ -1,6 +1,6 @@
 /* Portada de viajes — funcionamiento sin cobertura */
 
-const CACHE = "portada-v16";
+const CACHE = "portada-v17";
 const ARCHIVOS = ["./", "./index.html", "./sync.js", "./img/eslovenia-portada.svg"];
 
 self.addEventListener("install", e => {

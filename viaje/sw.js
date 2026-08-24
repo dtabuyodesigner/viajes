@@ -1,6 +1,6 @@
 /* Visor de viajes propios — funcionamiento sin cobertura */
 
-const CACHE = "generico-v14";
+const CACHE = "generico-v15";
 const ARCHIVOS = ["./", "./index.html", "../sync.js", "../assets/app.js"];
 
 self.addEventListener("install", e => {
