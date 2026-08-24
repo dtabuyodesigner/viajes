@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               412 comprobaciones + fotografías de comportamiento
+/tests/               467 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 412 en verde
+node tests/probar.js   # las 467 en verde
 node tests/foto.js comparar
 ```
 
@@ -118,9 +118,19 @@ node tests/foto.js comparar
   queda como está en el archivo
 - **Llevar el viaje al editor**: `dejaTraspaso` lo deja para la otra app y el
   editor deja acuse de recibo; `traspasoSinRecoger` detecta que no llegó
+- **Modo conducción**: `botonModoConduccion` pinta la entrada en Hoy,
+  `activaModoConduccion` la engancha y `abreModoConduccion` lleva la pantalla.
+  `marcasDeParadas` dice qué paradas están hechas —o `null` si el diario no se
+  puede leer, que no es lo mismo que «ninguna»— y `destinoDeParada` decide si
+  hay a dónde ir
 
 Las apps aportan sus datos y sus piezas propias. Eslovenia tiene vuelos, seguros
 y tarjetas de embarque; Asturias, park4night; el visor, el editor detrás.
+
+Lo único que el modo conducción no pudo unificar es dónde vive el diario:
+Eslovenia y Asturias tienen `DIARIO`, el visor usa `P`. `marcasDeParadas` mira
+cuál de los dos existe. Es una adaptación de tres líneas, no un modelo de datos
+nuevo.
 
 **Señal de que te estás pasando al unificar:** si hace falta un `if` con el
 nombre del viaje dentro del motor, ese trozo no era común.
@@ -321,12 +331,14 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 412 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 467 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que
 **abrir y guardar en el editor conserva el viaje entero**, y que Eslovenia y
-Asturias se pueden editar sin perder su guía.
+Asturias se pueden editar sin perder su guía. El modo conducción tiene las
+suyas: que empieza en la parada correcta, que `Siguiente` no escribe nada, que
+no pide ubicación y que una parada sin sitio no genera un enlace inventado.
 
 **`node tests/foto.js`** — guarda el HTML de 51 vistas y lo compara después de
 mover código. Es lo que hace seguro refactorizar.

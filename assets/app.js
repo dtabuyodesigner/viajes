@@ -1543,3 +1543,134 @@ async function pintaTiempo(xy, donde){
   </div>`;
 }
 
+
+/* ═══ Modo conducción ═══════════════════════════════════════
+   Una parada cada vez, letra grande y un solo botón. Se usa al
+   volante: no pide ubicación, no reordena nada por distancia y
+   no escribe en el diario. Solo lee lo que ya hay.
+
+   Cada app aporta lo suyo con el mismo nombre: indiceHoy(),
+   navegar(), navegarXY(), comoNavego() y esc(). Lo único que
+   cambia de verdad es dónde vive el diario: Eslovenia y Asturias
+   tienen DIARIO, el visor usa P. De ahí la adaptación de abajo.
+   ═══════════════════════════════════════════════════════════ */
+
+function botonModoConduccion(){
+  return `<div class="btns" style="margin:14px 0 0">
+    <button class="btn solid" id="abrir-conduccion">Modo conducción</button>
+  </div>`;
+}
+
+/* Qué paradas del día están hechas.
+   Devuelve null —no una lista de falsos— cuando el diario no se
+   puede consultar: no es lo mismo «ninguna hecha» que «no se sabe»,
+   y en el segundo caso hay que empezar por la primera parada. */
+function marcasDeParadas(iDia, cuantas){
+  const diario =
+    (typeof DIARIO !== "undefined" && DIARIO && typeof DIARIO.esta === "function") ? DIARIO :
+    (typeof P !== "undefined" && P && typeof P.esta === "function") ? P : null;
+  if (!diario) return null;
+  try {
+    const m = [];
+    for (let k = 0; k < cuantas; k++) m.push(!!diario.esta(`${iDia}:${k}`));
+    return m;
+  } catch(e){ return null; }
+}
+
+/* Adónde lleva «Ir». Primero el destino escrito en los datos —el
+   mismo orden que ya usan los chips de ruta, con el aparcamiento
+   por delante del sitio— y solo si no hay ninguno, las coordenadas.
+   Si no hay ni una cosa ni la otra devuelve null: una parada sin
+   ubicación no puede inventarse una. */
+function destinoDeParada(p){
+  const texto = String((p.park && p.park.w) || p.w || p.mapa || "").trim();
+  if (texto) return { url: navegar(texto), donde: texto };
+  const par = comoPar(xyDeParada(p));
+  if (par) return { url: navegarXY(par[0], par[1]), donde: `${par[0]}, ${par[1]}` };
+  return null;
+}
+
+function activaModoConduccion(i){
+  const boton = document.getElementById("abrir-conduccion");
+  if (boton) boton.addEventListener("click", () => abreModoConduccion(i, boton));
+}
+
+function abreModoConduccion(i, boton){
+  const dia = VIAJE && VIAJE.dias && VIAJE.dias[i];
+  if (!dia) return;
+  const paradas = dia.paradas || [];
+  const cabecera = String(dia.t || dia.dest || `Día ${i + 1}`);
+
+  // Dónde empezar: la primera que no esté hecha. Si el diario no se
+  // puede leer, la primera de todas.
+  const marcas = marcasDeParadas(i, paradas.length);
+  let n = 0;
+  if (marcas) while (n < paradas.length && marcas[n]) n++;
+
+  const v = document.createElement("div");
+  v.className = "conduce";
+  v.setAttribute("role", "dialog");
+  v.setAttribute("aria-modal", "true");
+  v.setAttribute("aria-label", "Modo conducción");
+  v.tabIndex = -1;
+
+  let conHistorial = false;
+  const alTeclado = e => { if (e.key === "Escape"){ e.preventDefault(); cierra(); } };
+  const alVolver  = () => { conHistorial = false; cierra(); };
+
+  function cierra(){
+    document.removeEventListener("keydown", alTeclado);
+    window.removeEventListener("popstate", alVolver);
+    v.remove();
+    // Deshacer la entrada del historial que se puso al abrir, para que
+    // el botón Atrás no deje a nadie dando vueltas en una pantalla vacía.
+    if (conHistorial){ conHistorial = false; try { history.back(); } catch(e){} }
+    if (boton && document.body.contains(boton)) boton.focus();
+  }
+
+  function pinta(foco){
+    const p = paradas[n];
+    if (!p){
+      v.innerHTML = `<div class="cd-texto">
+          <p class="cd-cab">${esc(cabecera)}</p>
+          <h1>No quedan más paradas para hoy</h1>
+        </div>
+        <div class="cd-acciones">
+          <button class="cd-btn" id="cd-salir">Salir del modo conducción</button>
+        </div>`;
+    } else {
+      const destino = destinoDeParada(p);
+      v.innerHTML = `<div class="cd-texto">
+          <p class="cd-cab">${esc(cabecera)} · parada ${n + 1} de ${paradas.length}</p>
+          ${p.h ? `<p class="cd-hora">${esc(p.h)}</p>` : ""}
+          <h1>${esc(p.txt || p.c || `Parada ${n + 1}`)}</h1>
+          ${p.n ? `<p class="cd-nota">${esc(p.n)}</p>` : ""}
+        </div>
+        <div class="cd-acciones">
+          ${destino
+            ? `<a class="cd-btn cd-ir" href="${destino.url}" target="_blank" rel="noopener"
+                  aria-label="Ir a ${esc(destino.donde)} con ${esc(comoNavego())}">Ir</a>`
+            : `<p class="cd-sin">Esta parada no tiene ubicación</p>`}
+          <button class="cd-btn" id="cd-sig">Siguiente</button>
+          <button class="cd-btn" id="cd-salir">Salir del modo conducción</button>
+        </div>`;
+    }
+
+    const sig = v.querySelector("#cd-sig");
+    // «Siguiente» solo mueve el sitio donde estamos mirando: no marca
+    // la parada, no toca el diario y no guarda nada.
+    if (sig) sig.addEventListener("click", () => { n++; pinta("sig"); });
+    v.querySelector("#cd-salir").addEventListener("click", cierra);
+
+    const aFoco = foco === "sig" ? (sig || v) : v;
+    try { aFoco.focus(); } catch(e){}
+  }
+
+  // Al DOM antes de pintar: si no, el foco inicial cae en un elemento
+  // que todavía no está en la página y no se mueve nada.
+  document.body.appendChild(v);
+  pinta();
+  document.addEventListener("keydown", alTeclado);
+  try { history.pushState({ conduce: true }, ""); conHistorial = true; } catch(e){}
+  window.addEventListener("popstate", alVolver);
+}
