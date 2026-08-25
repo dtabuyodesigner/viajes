@@ -3097,6 +3097,184 @@ async function laCopiaDeSeguridad(){
   }
 }
 
+/* ═══ Las decisiones visuales ═══
+   No se comprueba cada propiedad: se comprueban las decisiones que se
+   tomaron y por qué. Y sobre elementos de verdad, leyendo el estilo que
+   les aplica el navegador simulado, no buscando texto en el CSS. */
+
+const APPS_VIAJE = [
+  { nombre:"Eslovenia", ruta:"eslovenia/index.html", url:"https://x/eslovenia/",
+    opciones:{ fecha:"2026-07-25T12:00:00" }, diario:"diario_eslovenia" },
+  { nombre:"Asturias",  ruta:"asturias/index.html",  url:"https://x/asturias/",
+    opciones:{}, diario:"diario_asturias" },
+  { nombre:"visor",     ruta:"viaje/index.html",     url:"https://x/viaje/?id=p1",
+    opciones:{}, diario:"diario_p1" }
+];
+
+/* Marca la primera parada de cualquier día: cada app elige el suyo */
+const diarioConPrimeras = () => JSON.stringify({
+  hechas: Object.fromEntries(Array.from({length:14}, (_, i) => [`${i}:0`, 1000])),
+  desmarcadas:{}, notas:{}
+});
+
+/* El visor necesita un viaje con coordenadas: sin ellas no dibuja el mapa
+   del día, y con él se va «situarme», que es una de las acciones a vigilar. */
+const VIAJE_VISUAL = JSON.stringify([{ id:"p1", nombre:"Prueba", desde:"", hasta:"",
+  dias:[{ t:"Día uno", dest:"Zagreb", paradas:[
+    { h:"Mañana", txt:"Primera parada", n:"Con nota", mapa:"Zagreb", xy:"45.81,15.98" },
+    { txt:"Segunda sin sitio" },
+    { h:"Tarde", txt:"Tercera parada", mapa:"Split", xy:"43.51,16.44" }
+  ] }] }]);
+
+async function abreViaje(app, almacen = {}){
+  if (app.diario === "diario_p1") almacen.viajes_propios = almacen.viajes_propios || VIAJE_VISUAL;
+  const dom = abrir(app.ruta, { url:app.url, almacen, ...app.opciones });
+  await esperar(700);
+  return { dom, w:dom.window, d:dom.window.document, almacen };
+}
+
+/* La regla que el navegador tiene cargada, no el texto del archivo */
+function reglaCSS(w, selector){
+  for (const hoja of [...w.document.styleSheets]){
+    let reglas = [];
+    try { reglas = [...hoja.cssRules]; } catch { continue; }
+    for (const r of reglas) if (r.selectorText === selector) return r.style;
+  }
+  return null;
+}
+
+const alto = (w, el) => w.getComputedStyle(el).minHeight;
+
+async function lasDecisionesVisuales(){
+  console.log(`\n${gris("──")} Cómo se ven las tres apps de viaje`);
+
+  for (const app of APPS_VIAJE){
+    // ---- Zona pulsable de los controles principales ----
+    {
+      const { d, w, dom } = await abreViaje(app);
+
+      const btn = d.querySelector("#v-hoy .btn") || d.querySelector(".btn");
+      comprobar(`${app.nombre}: los botones tienen 44 px de alto`,
+                !!btn && alto(w, btn) === "44px", btn && alto(w, btn));
+
+      const wz = d.querySelector("#v-hoy .wz");
+      comprobar(`${app.nombre}: los chips de navegación llegan a 44 px`,
+                !!wz && alto(w, wz) === "44px", wz && alto(w, wz));
+
+      const alt = d.querySelector("#v-hoy .wz-alt");
+      comprobar(`${app.nombre}: el atajo «ver» del chip es pulsable, no un adorno`,
+                !!alt && alto(w, alt) === "44px" &&
+                parseFloat(w.getComputedStyle(alt).fontSize) >= 12,
+                alt && `${alto(w, alt)} · ${w.getComputedStyle(alt).fontSize}`);
+
+      // El círculo de marcar va dentro del texto, así que no puede medir 44
+      // sin descolocar la línea: se agranda la zona pulsable por debajo.
+      const tick = d.querySelector("#v-hoy .tick");
+      const reglaTick = reglaCSS(w, ".stop .tick::after") || reglaCSS(w, ".tick::after");
+      const dentro = reglaTick && Math.abs(parseFloat(reglaTick.getPropertyValue("inset")));
+      const zona = tick && (parseFloat(w.getComputedStyle(tick).width) + 2 * (dentro || 0));
+      comprobar(`${app.nombre}: marcar una parada tiene 44 px de zona pulsable`,
+                zona >= 44, `${zona} px`);
+
+      // ---- El foco ----
+      const foco = reglaCSS(w, ":focus-visible");
+      comprobar(`${app.nombre}: el foco se ve (3 px o más)`,
+                !!foco && parseFloat(foco.getPropertyValue("outline-width") ||
+                          (foco.getPropertyValue("outline") || "").split(" ")[0]) >= 3,
+                foco && foco.cssText);
+      // El `border-radius` que llevaba antes se aplicaba al elemento, no al
+      // anillo: al enfocar un botón redondo lo dejaba cuadrado.
+      comprobar(`${app.nombre}: enfocar un botón no le cambia la forma`,
+                !!foco && !foco.getPropertyValue("border-radius"),
+                foco && foco.getPropertyValue("border-radius"));
+
+      comprobar(`${app.nombre}: nada de esto rompe la carga`,
+                dom.errores.length === 0, dom.errores[0]);
+    }
+
+    // ---- Una parada hecha se sigue leyendo ----
+    {
+      const { d, w } = await abreViaje(app, { [app.diario]: diarioConPrimeras() });
+      const hecha = d.querySelector("#v-hoy .stop.hecho");
+      comprobar(`${app.nombre}: hay una parada marcada para mirarla`, !!hecha);
+      if (hecha){
+        const p = hecha.querySelector("p");
+        const cs = w.getComputedStyle(p);
+        comprobar(`${app.nombre}: una parada hecha no se atenúa hasta no leerse`,
+                  cs.opacity === "" || cs.opacity === "1", cs.opacity);
+        comprobar(`${app.nombre}: su color sale del tema, no escrito a mano`,
+                  /^var\(--/.test(cs.color), cs.color);
+        // Que esté hecha no puede decirlo solo el color
+        comprobar(`${app.nombre}: se sabe que está hecha sin mirar el color`,
+                  /line-through/.test(cs.textDecoration || cs.textDecorationLine || "") &&
+                  hecha.querySelector(".tick").textContent.trim() === "✓",
+                  cs.textDecoration);
+      }
+    }
+
+    // ---- Las acciones siguen donde estaban ----
+    {
+      const { d, w, dom } = await abreViaje(app);
+      const hoy = d.getElementById("v-hoy");
+      const debe = [[".wz", "chips de navegación"], [".tick", "marcar paradas"],
+                    ["#abrir-conduccion", "modo conducción"],
+                    ["input[type=file]", "cámara"], ["[data-mi-pos]", "situarme"]];
+      const faltan = debe.filter(([sel]) => !hoy.querySelector(sel)).map(([, q]) => q);
+      comprobar(`${app.nombre}: en Hoy siguen estando todas las acciones`,
+                faltan.length === 0, "faltan: " + faltan.join(", "));
+
+      // La entrada al modo conducción, separada del resto
+      // El atajo `border-top` no lo computa bien el navegador simulado con
+      // la hoja entera cargada, así que se lee la regla, que es lo que él
+      // mismo tiene guardado.
+      const conducir = hoy.querySelector(".conducir");
+      const regla = reglaCSS(w, ".conducir");
+      comprobar(`${app.nombre}: el modo conducción tiene su propio bloque separado`,
+                !!conducir && /solid/.test(conducir.querySelector("button").className) &&
+                !!regla && /var\(--/.test(regla.getPropertyValue("border-top")) &&
+                parseFloat(w.getComputedStyle(conducir).paddingTop) >= 12,
+                regla && regla.cssText);
+
+      // Las pestañas siguen pintando
+      const pestanas = [...d.querySelectorAll("nav button")];
+      let vacias = 0;
+      for (const b of pestanas){
+        b.click(); await esperar(30);
+        const v = d.getElementById("v-" + b.dataset.v);
+        if (!v || v.innerHTML.trim().length < 40) vacias++;
+      }
+      comprobar(`${app.nombre}: las ${pestanas.length} pestañas siguen pintando`,
+                pestanas.length >= 4 && vacias === 0, `${vacias} vacías`);
+      comprobar(`${app.nombre}: recorrerlas no da errores`, dom.errores.length === 0, dom.errores[0]);
+    }
+
+    // ---- Claro y oscuro ----
+    {
+      const lee = async tema => {
+        const { d } = await abreViaje(app, { tema_viajes: tema });
+        return d.getElementById("v-hoy").textContent.replace(/\s+/g, " ").trim();
+      };
+      const oscuro = await lee("oscuro"), claro = await lee("claro");
+      comprobar(`${app.nombre}: Hoy enseña lo mismo en claro y en oscuro`,
+                oscuro === claro && oscuro.length > 100,
+                `${oscuro.length} vs ${claro.length}`);
+    }
+
+    // ---- El modo conducción sigue siendo el mismo ----
+    {
+      const { d } = await abreViaje(app);
+      d.getElementById("abrir-conduccion").click();
+      const v = d.querySelector(".conduce");
+      comprobar(`${app.nombre}: el modo conducción sigue enseñando una sola parada`,
+                !!v && v.querySelectorAll("h1").length === 1,
+                v && v.querySelectorAll("h1").length);
+      comprobar(`${app.nombre}: y conserva sus mismos botones`,
+                !!v && !!d.getElementById("cd-sig") && !!d.getElementById("cd-salir") &&
+                (!!v.querySelector(".cd-ir") || /no tiene ubicación/.test(v.textContent)));
+    }
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -3144,6 +3322,7 @@ async function laCopiaDeSeguridad(){
   await elBorradoNoResucita();
   await elModoConduccion();
   await laCopiaDeSeguridad();
+  await lasDecisionesVisuales();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);

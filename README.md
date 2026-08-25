@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               536 comprobaciones + fotografías de comportamiento
+/tests/               590 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 536 en verde
+node tests/probar.js   # las 590 en verde
 node tests/foto.js comparar
 ```
 
@@ -134,6 +134,23 @@ nuevo.
 
 **Señal de que te estás pasando al unificar:** si hace falta un `if` con el
 nombre del viaje dentro del motor, ese trozo no era común.
+
+### Cómo se ven las tres apps de viaje
+
+Las tres comparten los mismos números y solo cambian los nombres de color, así
+que una decisión visual se aplica tres veces con el mismo valor. Lo que hay que
+respetar al tocarlas:
+
+| Decisión | Valor | Por qué |
+|---|---|---|
+| Zona pulsable de un control principal | **44 px** | `.btn`, `.wz` y `.wz-alt` con `min-height`; el círculo de marcar va dentro del texto, así que mide 26 px y estira su zona con un `::after` de `inset:-9px` |
+| Texto que se lee de un vistazo | **14,5 px** la descripción de la parada, 14 las notas, 13 la hora | 13,5 y 12 se quedaban cortos con sol |
+| Una parada hecha | color del tema + tachado + ✓ | `opacity:.45` la dejaba entre **2,0 y 4,0:1**. Ninguna opacidad por debajo de 1 llega a 4,5:1, porque el color atenuado ya parte de 6:1 |
+| Anillo de foco | **3 px**, sin `border-radius` | el `border-radius:4px` que llevaba se aplicaba al elemento, no al anillo: enfocar un botón redondo lo dejaba cuadrado |
+| Entrada al modo conducción | `.conducir`, ancho completo, separado por una línea | es lo que se busca con prisa |
+
+Ningún estado depende solo del color, y el peor par de contraste de todo lo
+anterior es **4,83:1** sobre los seis fondos (tres apps × claro y oscuro).
 
 ---
 
@@ -375,7 +392,7 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 536 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 590 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que
@@ -386,7 +403,9 @@ no pide ubicación y que una parada sin sitio no genera un enlace inventado. Y l
 copia de seguridad: que lleva todos los tipos de datos, que **no** lleva la
 sesión ni la contraseña, que once clases de archivo malo se rechazan sin tocar
 ningún almacén, que restaurar funde en vez de pisar y que un fallo al escribir
-se deshace.
+se deshace. Y las decisiones visuales: 44 px de zona pulsable, foco de 3 px
+que no deforma el botón, una parada hecha que se sigue leyendo, y que claro y
+oscuro enseñan lo mismo.
 
 **`node tests/foto.js`** — guarda el HTML de 51 vistas y lo compara después de
 mover código. Es lo que hace seguro refactorizar.

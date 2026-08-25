@@ -292,11 +292,22 @@ Ninguna bloquea. Anotadas para no volver a descubrirlas:
   nada: es marcado inválido, no un fallo. Arreglarlo mueve las fotografías sin
   que nadie note la diferencia, así que se deja para el hito visual. La prueba
   de ids repetidos deja fuera lo que va dentro de un `<svg>` por eso.
-- **Áreas táctiles por debajo de 44 px** en toda la app: `.tick` 22×22,
-  `.quitar` 23, `.estrella` 24, y el `.btn` normal ~34 de alto. Ningún botón
-  declara `min-height`. → hito visual.
+- **Áreas táctiles por debajo de 44 px.** Resuelto en las tres apps de viaje
+  (v107): `.btn`, `.wz` y `.wz-alt` con `min-height:44px`, y el círculo de marcar
+  estira su zona con un `::after`. **Siguen cortos**: `.quitar` de las miniaturas
+  (23 px), `.estrella` de valorar una pernocta (24) y los controles de la portada
+  y del editor, que este bloque no tocaba.
 - **28 tamaños de letra y 15 radios de borde distintos** entre las cinco apps,
-  y cada una nombra los mismos roles de color de forma distinta. → hito visual.
+  y cada una nombra los mismos roles de color de forma distinta. Al mejorar las
+  tres de viaje se comprobó que **entre ellas los números ya coinciden**: solo
+  cambian los nombres de color. La dispersión está entre ese grupo, la portada y
+  el editor. Unificarla de verdad pide variables compartidas, que es un cambio
+  mayor que lo que este bloque permitía.
+- **Mejoras visuales vistas y no hechas**, ninguna bloquea: la cabecera de las
+  tres apps sigue a 27 px sin escalar con el ancho; los rótulos de sección son
+  mono en mayúsculas, legibles pero decorativos; el mapa del día y la foto de
+  portada compiten por el primer golpe de vista en Hoy; y el modo conducción
+  usa esquinas de 14 px mientras el resto de la app usa píldoras.
 - **El acuse del traspaso (`traspaso_ok`) es por móvil, no por app.** Si un móvil
   usa a la vez Safari y el icono de inicio, el acuse que deja Safari no dice nada
   sobre lo que pasa desde el icono. Es conservador en la dirección buena (como
@@ -448,6 +459,7 @@ Para no volver a proponerlo:
 | El mapa se sitúa al momento, sin esperar al GPS | v91 |
 | Modo conducción: una parada, letra grande y un botón | v106 |
 | Copia de seguridad manual: un archivo y vuelta atrás fundiendo | v105 portada |
+| Legibilidad y zonas pulsables en las tres apps de viaje | v107 |
 
 ---
 
