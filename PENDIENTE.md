@@ -294,9 +294,11 @@ Ninguna bloquea. Anotadas para no volver a descubrirlas:
   de ids repetidos deja fuera lo que va dentro de un `<svg>` por eso.
 - **Áreas táctiles por debajo de 44 px.** Resuelto en las tres apps de viaje
   (v107): `.btn`, `.wz` y `.wz-alt` con `min-height:44px`, y el círculo de marcar
-  estira su zona con un `::after`. **Siguen cortos**: `.quitar` de las miniaturas
-  (23 px), `.estrella` de valorar una pernocta (24) y los controles de la portada
-  y del editor, que este bloque no tocaba.
+  estira su zona con un `::after`. La portada y el editor, en v106: botones
+  grandes a 48 px, centro de estado a 44 y botones del editor a 44. **Siguen
+  cortos**: `.quitar` de las miniaturas (23 px), `.estrella` de valorar una
+  pernocta (24) y los `.btn.fino` del editor (40) — son los «Quitar» pegados a su
+  fila, y subirlos descoloca la línea.
 - **28 tamaños de letra y 15 radios de borde distintos** entre las cinco apps,
   y cada una nombra los mismos roles de color de forma distinta. Al mejorar las
   tres de viaje se comprobó que **entre ellas los números ya coinciden**: solo
@@ -308,6 +310,18 @@ Ninguna bloquea. Anotadas para no volver a descubrirlas:
   mono en mayúsculas, legibles pero decorativos; el mapa del día y la foto de
   portada compiten por el primer golpe de vista en Hoy; y el modo conducción
   usa esquinas de 14 px mientras el resto de la app usa píldoras.
+- **El color de cada tarjeta de viaje sigue escrito a mano.** `VIAJES` lleva un
+  `acento` por viaje (`#4FC3B8` Eslovenia, `#7FB069` Asturias, `#5BC8B4` los
+  propios) y la portada lo pinta en `.viaje.curso .estado` y en la flecha. Sobre
+  la tarjeta blanca del modo claro eso da **2,0:1**. No se ha tocado porque es un
+  dato del viaje, no una variable de tema, y arreglarlo bien pide un color por
+  tema para cada viaje. Son señales secundarias: el título y las fechas van a
+  contraste completo.
+- **Más mejoras vistas y no hechas en la portada y el editor:** el título de la
+  portada va a 34 px y el del editor a 24, sin una escala común; los rótulos de
+  sección siguen siendo mono en mayúsculas en las cinco apps; el editor no avisa
+  de cambios sin guardar al salir; y la barra fija de «Guardar» puede tapar el
+  último campo con el teclado abierto.
 - **El acuse del traspaso (`traspaso_ok`) es por móvil, no por app.** Si un móvil
   usa a la vez Safari y el icono de inicio, el acuse que deja Safari no dice nada
   sobre lo que pasa desde el icono. Es conservador en la dirección buena (como
@@ -460,6 +474,7 @@ Para no volver a proponerlo:
 | Modo conducción: una parada, letra grande y un botón | v106 |
 | Copia de seguridad manual: un archivo y vuelta atrás fundiendo | v105 portada |
 | Legibilidad y zonas pulsables en las tres apps de viaje | v107 |
+| Cierre visual: portada y editor a la altura de las tres apps | v106 portada |
 
 ---
 
