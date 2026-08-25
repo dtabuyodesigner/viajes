@@ -20,6 +20,11 @@
      el estado que más se mira era el que peor se leía al sol. */
   --ok-txt:#5BC8B4;
   --aviso-txt:#E0B25A;
+  /* El acento de la portada. Escrito a mano daba 1,87 sobre fondo
+     claro: el mismo fallo que ya se corrigió en --ok-txt. Se llama
+     --marca y no --acento porque ese ya lo usa cada tarjeta de viaje
+     con el color del suyo. */
+  --marca:#5BC8B4;
   --soca:#4FC3B8;   /* Eslovenia */
   --prau:#7FB069;   /* Asturias */
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
@@ -31,6 +36,9 @@ body{margin:0;background:var(--fondo);color:var(--tinta);font-family:var(--sans)
 header{padding:calc(34px + env(safe-area-inset-top)) 22px 10px;max-width:640px;margin:0 auto}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;
   color:var(--tinta-dim);margin:0 0 6px}
+/* La portada no tenía ninguna regla de foco: con teclado no se veía
+   dónde estabas. Mismo anillo que las tres apps de viaje. */
+:focus-visible{outline:3px solid var(--aviso-txt);outline-offset:3px}
 h1{font-size:34px;line-height:1.08;letter-spacing:-.03em;font-weight:800;margin:0}
 main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
 
@@ -49,12 +57,14 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .viaje.futuro .estado,.viaje.hecho .estado{color:var(--tinta-dim)}
 .viaje.hecho{opacity:.62}
 .viaje .flecha{position:absolute;right:17px;bottom:17px;font-size:20px;color:var(--acento)}
-.nota{font-size:13px;color:var(--tinta-dim);line-height:1.55;margin:22px 2px 0}
-.mantenimiento{margin:26px 0 0;padding:16px;border:1px solid var(--linea);border-radius:16px;
+.nota{font-size:13.5px;color:var(--tinta-dim);line-height:1.6;margin:22px 2px 0}
+.mantenimiento{margin:34px 0 0;padding:18px;border:1px solid var(--linea);border-radius:16px;
   background:var(--fondo-2)}
 .ver{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--tinta-dim);margin:0 0 11px}
-.btn-act{width:100%;padding:12px;border-radius:999px;border:0;background:var(--tinta);color:var(--fondo);
-  font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer}
+.btn-act{display:flex;align-items:center;justify-content:center;width:100%;
+  min-height:48px;padding:12px 16px;border-radius:999px;border:0;
+  background:var(--tinta);color:var(--fondo);
+  font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer}
 .btn-act.ligero{background:transparent;color:var(--tinta);border:1px solid var(--linea);
   font-weight:600;margin-top:8px}
 .mantenimiento .nota{margin:0}
@@ -62,11 +72,11 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .copia .btn-act{margin-top:8px}
 .copia-caja{margin-top:12px;border-top:1px solid var(--linea);padding-top:11px}
 .copia-caja .row{display:flex;justify-content:space-between;gap:12px;
-  padding:4px 0;font-size:12.5px;align-items:baseline}
+  padding:7px 0;font-size:13.5px;align-items:baseline}
 .copia-caja .k{color:var(--tinta-dim);flex:0 0 auto}
 .copia-caja .v{text-align:right}
 .copia-caja h3{margin:0 0 8px;font-size:14.5px}
-.copia-caja p{margin:0 0 8px;font-size:12.5px;line-height:1.5;color:var(--tinta-dim)}
+.copia-caja p{margin:0 0 9px;font-size:13.5px;line-height:1.55;color:var(--tinta-dim)}
 .copia-caja p.mal{color:var(--rojo-txt)}
 .copia-caja p.bien{color:var(--ok-txt)}
 .ops{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
@@ -74,24 +84,26 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
   background:transparent;border:1px solid var(--linea);color:var(--tinta);font:inherit}
 .op b{display:block;font-size:13.5px;font-weight:600}
 .op small{display:block;font-size:11px;color:var(--tinta-dim);margin-top:2px;line-height:1.3}
-.op.on{border-color:#5BC8B4;background:rgba(91,200,180,.12)}
-.op.on b{color:#5BC8B4}
+.op.on{border-color:var(--marca);background:rgba(91,200,180,.12)}
+.op.on b{color:var(--marca)}
 .crear{display:flex;align-items:center;gap:13px;padding:16px;margin:0 0 14px;
   border:1px dashed var(--linea);border-radius:18px;color:inherit;text-decoration:none}
 .crear .mas{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--fondo-2);
-  border:1px solid var(--linea);color:#5BC8B4;font-size:20px;display:grid;place-items:center}
+  border:1px solid var(--linea);color:var(--marca);font-size:20px;display:grid;place-items:center}
 .crear b{display:block;font-size:15.5px}
 .crear small{display:block;font-size:12.5px;color:var(--tinta-dim);margin-top:2px}
-.lnk{background:none;border:0;padding:0;font:inherit;color:#5BC8B4;
-  cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.lnk{position:relative;background:none;border:0;padding:0;font:inherit;
+  color:var(--marca);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.lnk::after{content:"";position:absolute;inset:-12px -8px}
 .login{margin-top:12px}
 .login input{width:100%;padding:11px 13px;margin-bottom:8px;border-radius:12px;
   border:1px solid var(--linea);background:var(--fondo);color:var(--tinta);
   font-family:var(--sans);font-size:15px}
 .login input::placeholder{color:var(--tinta-dim)}
 #err-login{color:var(--rojo-txt)}
-.estado-linea{display:block;width:100%;text-align:left;background:none;border:0;
-  padding:8px 0 0;font:inherit;font-size:12.5px;color:var(--tinta-dim);cursor:pointer}
+.estado-linea{display:flex;align-items:center;width:100%;min-height:44px;
+  text-align:left;background:none;border:0;padding:10px 0 6px;font:inherit;
+  font-size:13.5px;color:var(--tinta-dim);cursor:pointer}
 .estado-linea .est-glifo{font-weight:700;margin-right:2px}
 .estado-linea[data-nivel="bien"] .est-glifo{color:var(--ok-txt)}
 .estado-linea[data-nivel="aviso"] .est-glifo,
@@ -99,28 +111,29 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .estado-linea[data-nivel="problema"] .est-txt{color:var(--rojo-txt)}
 .est-detalle{margin-top:10px;border-top:1px solid var(--linea);padding-top:10px}
 .est-detalle .row{display:flex;justify-content:space-between;gap:12px;
-  padding:5px 0;font-size:12.5px;align-items:baseline}
+  padding:7px 0;font-size:13.5px;align-items:baseline}
 .est-detalle .k{color:var(--tinta-dim);flex:0 0 auto}
 .est-detalle .v{text-align:right}
 
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
-  --rojo-txt:#A93226;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
+  --rojo-txt:#A93226;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;--marca:#0F7A69;}
 @media (prefers-color-scheme: light){
   body.auto{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
-  --rojo-txt:#A93226;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
+  --rojo-txt:#A93226;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;--marca:#0F7A69;}
 }
 
 /* Selector de color, arriba a la derecha */
 header{position:relative}
 .tema-mini{position:absolute;top:calc(12px + env(safe-area-inset-top));right:18px;
   display:flex;gap:2px;padding:2px;border-radius:999px;z-index:2}
-.tm{width:28px;height:28px;border-radius:50%;border:0;background:transparent;
-  cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
+.tm{position:relative;width:30px;height:30px;border-radius:50%;border:0;
+  background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0;opacity:.42;
   color:currentColor;font-family:var(--sans)}
 .tm.on{opacity:1;background:rgba(127,127,127,.18)}
+.tm::after{content:"";position:absolute;inset:-7px;border-radius:50%}
 
 /* La barra y la cabecera siguen el color de fondo, sea cual sea el tema */
 @supports not (background: color-mix(in srgb, red 50%, transparent)){
@@ -129,7 +142,7 @@ header{position:relative}
 }
 
 .aviso-nueva{position:fixed;left:14px;right:14px;bottom:calc(16px + env(safe-area-inset-bottom));
-  z-index:60;padding:14px;border-radius:14px;border:0;background:#5BC8B4;color:#12181C;
+  z-index:60;padding:14px;border-radius:14px;border:0;background:var(--marca);color:var(--fondo);
   font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer;
   box-shadow:0 6px 24px rgba(0,0,0,.3)}
 </style>
@@ -203,7 +216,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v105 · 24/08 20:10";
+const VERSION = "v106 · 25/08 12:40";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();

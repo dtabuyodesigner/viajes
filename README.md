@@ -20,7 +20,7 @@ conduce por sitios donde no hay línea.
 /assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               590 comprobaciones + fotografías de comportamiento
+/tests/               615 comprobaciones + fotografías de comportamiento
 ```
 
 Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
@@ -66,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 590 en verde
+node tests/probar.js   # las 615 en verde
 node tests/foto.js comparar
 ```
 
@@ -151,6 +151,21 @@ respetar al tocarlas:
 
 Ningún estado depende solo del color, y el peor par de contraste de todo lo
 anterior es **4,83:1** sobre los seis fondos (tres apps × claro y oscuro).
+
+### Y la portada y el editor
+
+Mismos criterios, aplicados al final:
+
+| Decisión | Valor | Por qué |
+|---|---|---|
+| Acento de la portada | `--marca`, `#5BC8B4` / `#0F7A69` | escrito a mano daba **1,87:1** en claro, el mismo fallo que ya se corrigió una vez en `--ok-txt`. Se llama `--marca` y no `--acento` porque ese ya lo usa cada tarjeta con el color de su viaje |
+| Foco de la portada | 3 px, `var(--aviso-txt)` | **no había ninguna regla de foco** |
+| Rojo de borrar del editor | `#E08A72` en oscuro | daba **2,95:1** sobre el fondo de una parada: el botón que más conviene leer era el que peor se leía |
+| Tres niveles de acción | relleno / filete de 1 px / filete de 2 px y negrita | lo destructivo se distinguía solo por el color |
+| Etiquetas del editor | `<label class="campo">` envolviendo el campo | había 28 `<label>` y **ni un solo `for=`**: tocar la etiqueta no hacía nada, y los campos que se pintan solos ni siquiera tienen `id` |
+| Centro de estado | 44 px de alto, 13,5 px de letra | era la línea más pequeña de la pantalla y es de lo que más se mira |
+
+Peor par de contraste de las dos pantallas: **4,83:1** en la portada y **4,62:1** en el editor, sobre los dos temas.
 
 ---
 
@@ -392,7 +407,7 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 590 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 615 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
 tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
 app está en su service worker**, que **la nube no borra bloques del viaje**, que
@@ -405,7 +420,9 @@ sesión ni la contraseña, que once clases de archivo malo se rechazan sin tocar
 ningún almacén, que restaurar funde en vez de pisar y que un fallo al escribir
 se deshace. Y las decisiones visuales: 44 px de zona pulsable, foco de 3 px
 que no deforma el botón, una parada hecha que se sigue leyendo, y que claro y
-oscuro enseñan lo mismo.
+oscuro enseñan lo mismo. Y en la portada y el editor: que ningún color crítico va
+escrito a mano, que cada etiqueta está atada a su campo, y que borrar se nota
+sin mirar el color.
 
 **`node tests/foto.js`** — guarda el HTML de 51 vistas y lo compara después de
 mover código. Es lo que hace seguro refactorizar.

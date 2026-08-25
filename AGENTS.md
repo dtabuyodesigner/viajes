@@ -181,6 +181,9 @@ Están aquí para que no se repitan:
 | Una prueba con el fallo puesto no saltaba, y la prueba estaba bien | El fallo se inyectó en una línea a la que no se llega en ese caso: el código salía antes | Al verificar en los dos sentidos, comprobar que el fallo inyectado **se ejecuta**, no solo que está escrito |
 | Las pruebas del traspaso al editor daban verde en falso | Compartían un solo `localStorage` simulado, así que nunca podían reproducir el caso que importaba | Cuando dos páginas pueden estar en almacenes distintos, la prueba tiene que darles almacenes distintos |
 | Un reemplazo se llevó cuatro funciones por delante | Se sustituyó por rango entre dos anclas y en medio había más código del que se creía | Después de reemplazar por rango, comprobar qué funciones siguen definidas, no solo `node --check` |
+| Un color escrito a mano que ya se había corregido una vez | `--ok-txt` se arregló porque `#5BC8B4` daba 1,87 sobre fondo claro. El mismo valor seguía a mano en otros cinco sitios de la portada, con el mismo 1,87 | Al arreglar un color, buscar ese valor en todo el archivo. Si hizo falta una variable, es que hace falta en todos los sitios donde estaba |
+| Una variable nueva con un nombre ya ocupado | Al meter `--acento` en el `:root` de la portada, resultó que cada tarjeta de viaje ya define el suyo en línea con el color de su viaje | Antes de añadir una variable, `grep` de su nombre. Vale para `--var` igual que para un `const` de `sync.js` |
+| Una prueba que contaba fallos sobre una lista vacía | «ninguna etiqueta suelta» daba verde cuando no había ninguna etiqueta | Contar lo que SÍ tiene que estar, y exigir un mínimo. Un cero puede significar «todo bien» o «no hay nada» |
 | Una prueba de rechazo que habría pasado con la comprobación quitada | El archivo malo que se le daba no llevaba datos: aunque se hubiera colado, no habría cambiado nada visible, así que el «no cambió ningún almacén» daba verde igual | Una prueba de rechazo se hace con una carga que **haría daño de verdad** si pasara. Si no, no prueba la comprobación: prueba que un archivo vacío no hace nada |
 | Volcar un almacén entero para copiarlo mete secretos dentro | `localStorage` guarda también la sesión de Supabase y la contraseña de Eslovenia. Una copia hecha con `Object.keys(localStorage)` se los habría llevado al archivo | La copia lleva una **lista explícita** de claves. Es más larga de mantener, pero lo que no está en la lista no puede colarse |
 | Un lector de estado que devolvía `false` cuando no podía leer | El modo conducción pregunta qué paradas están hechas. Si el diario no se puede consultar, «ninguna hecha» y «no se sabe» llevan a sitios distintos: la primera respuesta haría empezar por una parada que igual ya está hecha | Cuando el que pregunta tiene que actuar distinto sin dato, el lector devuelve `null`, no el valor por defecto. `marcasDeParadas()` lo hace así |
@@ -199,7 +202,7 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 ## Cómo se publica
 
 ```bash
-node tests/probar.js              # las 590 en verde, y LEER el resultado
+node tests/probar.js              # las 615 en verde, y LEER el resultado
 node tests/foto.js comparar       # si has movido código
 # subir VERSION, y el CACHE del sw.js de cada app que toques
 #   (el código común va SIN ?v=: la versión la lleva el service worker)

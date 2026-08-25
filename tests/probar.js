@@ -3275,6 +3275,180 @@ async function lasDecisionesVisuales(){
   }
 }
 
+/* ═══ Portada y editor: cómo se ven y cómo se usan ═══ */
+
+const VIAJE_EDITOR = JSON.stringify([{ id:"p1", nombre:"Prueba", desde:"2026-07-01",
+  hasta:"2026-07-05", salida:"León",
+  dias:[{ t:"Día uno", dest:"Zagreb", paradas:[{ h:"Tarde", txt:"Una parada" }] },
+        { t:"Día dos", dest:"Split",  paradas:[{ txt:"Otra parada" }] }],
+  reservas:{ vuelos:[{ ruta:"MAD → ZAG", fecha:"1 jul", hora:"18:55", cia:"X", loc:"ABC1", n:"" }],
+             coche:{ empresa:"Rent", reserva:"R1", recogida:"", devolucion:"", telefono:"+34600000000" },
+             telefonos:[{ q:"Hotel", n:"+34611111111" }] } }]);
+
+async function abrePortada2(almacen = {}){
+  const dom = abrir("index.html", { url:"https://x/", almacen });
+  await esperar(500);
+  return { dom, w:dom.window, d:dom.window.document, almacen };
+}
+async function abreEditor2(almacen = {}){
+  almacen.viajes_propios = almacen.viajes_propios || VIAJE_EDITOR;
+  const dom = abrir("crear/index.html", { url:"https://x/crear/?id=p1", almacen, conexion:false });
+  await esperar(600);
+  return { dom, w:dom.window, d:dom.window.document, almacen };
+}
+
+async function laPortadaYElEditor(){
+  console.log(`\n${gris("──")} Cómo se ven la portada y el editor`);
+
+  /* ---- Portada ---- */
+  {
+    const { d, w, dom } = await abrePortada2();
+
+    // El foco: la portada no tenía ni una regla
+    const foco = reglaCSS(w, ":focus-visible");
+    comprobar("portada: el foco se ve",
+              !!foco && parseFloat((foco.getPropertyValue("outline") || "").split(" ")[0] ||
+                                   foco.getPropertyValue("outline-width")) >= 3,
+              foco ? foco.cssText : "no hay regla de foco");
+    comprobar("portada: y enfocar no le cambia la forma al control",
+              !!foco && !foco.getPropertyValue("border-radius"));
+
+    // Ningún color crítico escrito a mano: el mismo #5BC8B4 daba 1,87 en claro
+    for (const sel of [".lnk", ".op.on b", ".crear .mas", ".aviso-nueva"]){
+      const r = reglaCSS(w, sel);
+      const usa = r && (r.getPropertyValue("color") + r.getPropertyValue("background"));
+      comprobar(`portada: «${sel}» saca su color del tema`,
+                !!usa && /var\(--/.test(usa) && !/#[0-9a-fA-F]{3,8}/.test(usa),
+                r && r.cssText.slice(0, 90));
+    }
+
+    // Zonas pulsables de lo que más se toca
+    const btnAct = d.querySelector(".btn-act");
+    comprobar("portada: los botones grandes llegan a 48 px",
+              !!btnAct && parseFloat(w.getComputedStyle(btnAct).minHeight) >= 48,
+              btnAct && w.getComputedStyle(btnAct).minHeight);
+    const estado = d.getElementById("nube");
+    comprobar("portada: el centro de estado es pulsable de verdad",
+              !!estado && parseFloat(w.getComputedStyle(estado).minHeight) >= 44 &&
+              parseFloat(w.getComputedStyle(estado).fontSize) >= 13,
+              estado && `${w.getComputedStyle(estado).minHeight} · ${w.getComputedStyle(estado).fontSize}`);
+
+    // Lo que no puede desaparecer de la portada
+    const debe = [["#nube", "centro de estado"], ["#btn-copia", "descargar copia"],
+                  ["#btn-restaurar", "restaurar copia"], [".crear", "crear un viaje"],
+                  ["#btn-actualizar", "buscar actualización"], [".viaje", "tarjetas de viaje"]];
+    const faltan = debe.filter(([s]) => !d.querySelector(s)).map(([, q]) => q);
+    comprobar("portada: el estado y la copia siguen a la vista, sin menús",
+              faltan.length === 0, "faltan: " + faltan.join(", "));
+    comprobar("portada: sigue cargando sin errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // Claro y oscuro enseñan lo mismo
+  {
+    const lee = async tema => {
+      const { d } = await abrePortada2({ tema_viajes: tema });
+      const c = d.body.cloneNode(true);
+      c.querySelectorAll("script, style, template").forEach(x => x.remove());
+      return c.textContent.replace(/\s+/g, " ").trim();
+    };
+    const o = await lee("oscuro"), c = await lee("claro");
+    comprobar("portada: claro y oscuro enseñan lo mismo", o === c && o.length > 100,
+              `${o.length} vs ${c.length}`);
+  }
+
+  /* ---- Editor ---- */
+  {
+    const { d, w, dom } = await abreEditor2();
+
+    const foco = reglaCSS(w, ":focus-visible");
+    comprobar("editor: enfocar un botón no lo deja cuadrado",
+              !!foco && !foco.getPropertyValue("border-radius"),
+              foco && foco.getPropertyValue("border-radius"));
+
+    // Cada etiqueta, atada a su campo: antes había 28 sin un solo `for`
+    const campos = [...d.querySelectorAll("label.campo")];
+    comprobar("editor: los campos se pintan con su etiqueta", campos.length >= 15, campos.length);
+    const sueltos = campos.filter(c => {
+      const ctrl = c.querySelector("input, textarea, select");
+      return !ctrl || !ctrl.labels || ctrl.labels.length === 0;
+    });
+    // Contar los sueltos no basta: sin campos, la lista vacía daba verde.
+    // Se cuentan los que SÍ están atados, que es lo que se quiere ver.
+    const atados = campos.length - sueltos.length;
+    comprobar("editor: tocar una etiqueta lleva a su campo",
+              atados === campos.length && atados >= 15,
+              `${atados} atados de ${campos.length}`);
+    comprobar("editor: ya no queda ningún campo sin etiqueta asociada",
+              d.querySelectorAll("div.campo").length === 0);
+
+    // Tres niveles de acción que se distinguen sin mirar el color
+    const principal = reglaCSS(w, ".btn.solid");
+    const secundario = reglaCSS(w, ".btn");
+    const borrar = reglaCSS(w, ".btn.borrar");
+    comprobar("editor: lo principal va relleno y lo secundario con filete",
+              !!principal && /var\(--/.test(principal.getPropertyValue("background")) &&
+              /none/.test(secundario.getPropertyValue("background")),
+              principal && principal.cssText.slice(0, 70));
+    comprobar("editor: borrar se nota sin depender del color",
+              !!borrar && parseFloat(borrar.getPropertyValue("border-width")) >= 2 &&
+              parseFloat(borrar.getPropertyValue("font-weight")) >
+              parseFloat(secundario.getPropertyValue("font-weight")),
+              borrar && borrar.cssText);
+
+    // Zonas pulsables
+    const btn = d.querySelector(".barra .btn");
+    comprobar("editor: los botones llegan a 44 px",
+              !!btn && parseFloat(w.getComputedStyle(btn).minHeight) >= 44,
+              btn && w.getComputedStyle(btn).minHeight);
+    const campo = d.querySelector("input[type=text]");
+    comprobar("editor: los campos son cómodos de tocar",
+              !!campo && parseFloat(w.getComputedStyle(campo).fontSize) >= 15,
+              campo && w.getComputedStyle(campo).fontSize);
+
+    // Nada pierde su función
+    const debe = [["#guardar", "guardar"], ["#previsualizar", "ver cómo queda"],
+                  ["#exportar", "exportar"], ["#importar", "importar"],
+                  ["#nombre", "nombre del viaje"], ["#add-dia", "añadir día"],
+                  ["#eliminar", "eliminar viaje"]];
+    const faltan = debe.filter(([s]) => !d.querySelector(s)).map(([, q]) => q);
+    comprobar("editor: guardar, importar, exportar y lo demás siguen ahí",
+              faltan.length === 0, "faltan: " + faltan.join(", "));
+    comprobar("editor: sigue cargando sin errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // Que el editor siga guardando lo que se escribe
+  {
+    const almacen = {};
+    const { d, w, dom } = await abreEditor2(almacen);
+    const escribe = (id, v) => { const e = d.getElementById(id); e.value = v;
+      e.dispatchEvent(new w.Event("input", { bubbles:true })); };
+    escribe("nombre", "Nombre cambiado");
+    d.getElementById("guardar").click();
+    await esperar(300);
+    const guardado = JSON.parse(almacen.viajes_propios || "[]")[0] || {};
+    comprobar("editor: guardar sigue guardando", guardado.nombre === "Nombre cambiado",
+              guardado.nombre);
+    comprobar("editor: y no pierde los días ni las reservas",
+              (guardado.dias || []).length === 2 &&
+              (guardado.reservas?.vuelos || []).length === 1,
+              `${(guardado.dias||[]).length} días`);
+    comprobar("editor: editar no deja errores", dom.errores.length === 0, dom.errores[0]);
+  }
+
+  // Claro y oscuro
+  {
+    const lee = async tema => {
+      const { d } = await abreEditor2({ tema_viajes: tema });
+      const c = d.body.cloneNode(true);
+      c.querySelectorAll("script, style, template").forEach(x => x.remove());
+      return c.textContent.replace(/\s+/g, " ").trim();
+    };
+    const o = await lee("oscuro"), c = await lee("claro");
+    comprobar("editor: claro y oscuro enseñan lo mismo", o === c && o.length > 100,
+              `${o.length} vs ${c.length}`);
+  }
+}
+
 /* ═══ Ejecutar ═══ */
 (async () => {
   console.log("\n" + gris("═".repeat(52)));
@@ -3323,6 +3497,7 @@ async function lasDecisionesVisuales(){
   await elModoConduccion();
   await laCopiaDeSeguridad();
   await lasDecisionesVisuales();
+  await laPortadaYElEditor();
 
   console.log("\n" + gris("─".repeat(52)));
   if (fallos === 0) console.log(`  ${verde("Todo correcto")} · ${pruebas} comprobaciones\n`);
