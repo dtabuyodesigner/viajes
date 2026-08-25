@@ -47,7 +47,8 @@ duermes y, si tienes una parada a menos de 5 km, un aviso.
 **Los botones de navegación** van numerados en el orden del día. El grande abre
 Waze; el pequeño de al lado, **map**, abre Google Maps por si Waze falla.
 
-**Modo conducción.** En Hoy, debajo de los botones de navegación. Abre una
+**Modo conducción.** En Hoy, en su propio bloque separado por una línea, debajo
+de los botones de navegación. Abre una
 pantalla a tamaño grande con una sola parada: la primera que no hayáis tachado.
 Sale la hora si la tiene, el nombre de la parada, la nota, y un botón **Ir** que
 ocupa media pantalla. Debajo, *Siguiente* para pasar a la parada de después y
