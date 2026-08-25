@@ -1556,7 +1556,7 @@ async function pintaTiempo(xy, donde){
    ═══════════════════════════════════════════════════════════ */
 
 function botonModoConduccion(){
-  return `<div class="btns" style="margin:14px 0 0">
+  return `<div class="conducir">
     <button class="btn solid" id="abrir-conduccion">Modo conducción</button>
   </div>`;
 }
