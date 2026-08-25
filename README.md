@@ -11,28 +11,34 @@ conduce por sitios donde no hay línea.
 
 ```
 /                     portada: elige viaje, sincroniza, actualiza, comparte
-/eslovenia/           Eslovenia y Venecia, 18–29 julio 2026   (a medida)
-/asturias/            Asturias occidental, 5 días             (a medida)
-/crear/               editor: crear, pedir a una IA e importar viajes
+/eslovenia/           Eslovenia y Venecia, 18–29 julio 2026
+/eslovenia/datos.js     …sus datos: días, guía, vuelos, seguros, info
+/asturias/            Asturias occidental, 5 días
+/asturias/datos.js      …sus datos: días, guía, park4night, info
+/crear/               editor: crear, editar, pedir a una IA e importar
 /viaje/?id=xxx        visor de los viajes creados
-/assets/app.js        motor común: lo que comparten las tres apps de viaje
+/assets/app.js        motor común: lo que comparten las apps de viaje
 /sync.js              nube, diario, fotos y documentos
 /sql/                 SQL de las tablas, para pegar en Supabase
-/tests/               72 comprobaciones + fotografías de comportamiento
+/tests/               615 comprobaciones + fotografías de comportamiento
 ```
 
-Cada carpeta es una app independiente de **un solo archivo HTML** con su CSS y su
-JavaScript dentro. Sin compilar, sin dependencias en producción.
+Cada carpeta es una app sin compilar y sin dependencias en producción. Los dos
+viajes escritos a mano ya no llevan sus datos dentro: el HTML pone la estructura,
+`assets/app.js` el motor y `datos.js` el viaje. **Un viaje nuevo es un archivo de
+datos, no una app entera.**
 
 | | líneas | peso |
 |---|--:|--:|
 | portada | 424 | 18 KB |
 | editor | 1.356 | 60 KB |
 | visor | 1.072 | 54 KB |
-| Eslovenia | 2.281 | 134 KB |
-| Asturias | 1.831 | 103 KB |
-| **assets/app.js** | **1.096** | **46 KB** |
-| sync.js | 828 | 30 KB |
+| Eslovenia | 1.912 | — |
+| …sus datos | 381 | — |
+| Asturias | 1.563 | — |
+| …sus datos | 281 | — |
+| **assets/app.js** | **1.176** | — |
+| sync.js | 845 | — |
 
 ---
 
@@ -60,7 +66,7 @@ Todo va a `dev`. A `main` solo lo que esté probado y cuando se pida.
 
 ```bash
 npm install            # jsdom y fake-indexeddb, solo para las pruebas
-node tests/probar.js   # las 72 en verde
+node tests/probar.js   # las 615 en verde
 node tests/foto.js comparar
 ```
 
@@ -81,8 +87,9 @@ node tests/foto.js comparar
 | Recorrido real en el mapa | | ● | ● | | |
 | Alojamiento con sus enlaces | | ● | ● | ● | |
 | Tarjetas de embarque | | ● | | | |
-| Guía de lugares | | 39 fichas | 27 fichas | | |
+| Guía de lugares | | 40 fichas | 27 fichas | | |
 | Reservas y localizadores | | ● | | ● | ● |
+| Editar el viaje desde el móvil | | ● | ● | ● | ● |
 | Qué ver por aquí | | ● | ● | ● | |
 | Servicios: cerca o de camino | | ● | ● | ● | |
 | Tiempo real por carretera | | ● | ● | ● | |
@@ -96,7 +103,7 @@ node tests/foto.js comparar
 
 ## El motor común
 
-`assets/app.js` tiene lo que era idéntico en las tres apps de viaje:
+`assets/app.js` tiene lo que era idéntico en las apps de viaje:
 
 - **Ubicación**: `comoTexto` / `comoPar` (admite `"lat,lon"` y `[lat, lon]`),
   `ubicacionRapida` (pinta ya, afina después), `ubicacionFresca` (antes de cada
@@ -105,13 +112,60 @@ node tests/foto.js comparar
 - **Buscar**: `buscarServicios`, `buscarEnRuta`, `queVerCerca`, `porCarretera`
 - **Guardar**: cámara y galería, portada del día, «Estoy aquí», pernoctas,
   documentos
-- **Mostrar**: `bloqueHotel`, `frasesDelDia` (el primer vistazo)
+- **Mostrar**: `bloqueHotel`, `frasesDelDia` (el primer vistazo), `indexaGuia`
+- **Qué viaje manda**: `viajeEnUso(id, delArchivo)` pone la copia guardada en el
+  móvil encima de la del archivo, **fusionando**: lo que la copia no traiga se
+  queda como está en el archivo
+- **Llevar el viaje al editor**: `dejaTraspaso` lo deja para la otra app y el
+  editor deja acuse de recibo; `traspasoSinRecoger` detecta que no llegó
+- **Modo conducción**: `botonModoConduccion` pinta la entrada en Hoy,
+  `activaModoConduccion` la engancha y `abreModoConduccion` lleva la pantalla.
+  `marcasDeParadas` dice qué paradas están hechas —o `null` si el diario no se
+  puede leer, que no es lo mismo que «ninguna»— y `destinoDeParada` decide si
+  hay a dónde ir
 
 Las apps aportan sus datos y sus piezas propias. Eslovenia tiene vuelos, seguros
-y guía; Asturias, park4night; el visor, el editor detrás.
+y tarjetas de embarque; Asturias, park4night; el visor, el editor detrás.
+
+Lo único que el modo conducción no pudo unificar es dónde vive el diario:
+Eslovenia y Asturias tienen `DIARIO`, el visor usa `P`. `marcasDeParadas` mira
+cuál de los dos existe. Es una adaptación de tres líneas, no un modelo de datos
+nuevo.
 
 **Señal de que te estás pasando al unificar:** si hace falta un `if` con el
 nombre del viaje dentro del motor, ese trozo no era común.
+
+### Cómo se ven las tres apps de viaje
+
+Las tres comparten los mismos números y solo cambian los nombres de color, así
+que una decisión visual se aplica tres veces con el mismo valor. Lo que hay que
+respetar al tocarlas:
+
+| Decisión | Valor | Por qué |
+|---|---|---|
+| Zona pulsable de un control principal | **44 px** | `.btn`, `.wz` y `.wz-alt` con `min-height`; el círculo de marcar va dentro del texto, así que mide 26 px y estira su zona con un `::after` de `inset:-9px` |
+| Texto que se lee de un vistazo | **14,5 px** la descripción de la parada, 14 las notas, 13 la hora | 13,5 y 12 se quedaban cortos con sol |
+| Una parada hecha | color del tema + tachado + ✓ | `opacity:.45` la dejaba entre **2,0 y 4,0:1**. Ninguna opacidad por debajo de 1 llega a 4,5:1, porque el color atenuado ya parte de 6:1 |
+| Anillo de foco | **3 px**, sin `border-radius` | el `border-radius:4px` que llevaba se aplicaba al elemento, no al anillo: enfocar un botón redondo lo dejaba cuadrado |
+| Entrada al modo conducción | `.conducir`, ancho completo, separado por una línea | es lo que se busca con prisa |
+
+Ningún estado depende solo del color, y el peor par de contraste de todo lo
+anterior es **4,83:1** sobre los seis fondos (tres apps × claro y oscuro).
+
+### Y la portada y el editor
+
+Mismos criterios, aplicados al final:
+
+| Decisión | Valor | Por qué |
+|---|---|---|
+| Acento de la portada | `--marca`, `#5BC8B4` / `#0F7A69` | escrito a mano daba **1,87:1** en claro, el mismo fallo que ya se corrigió una vez en `--ok-txt`. Se llama `--marca` y no `--acento` porque ese ya lo usa cada tarjeta con el color de su viaje |
+| Foco de la portada | 3 px, `var(--aviso-txt)` | **no había ninguna regla de foco** |
+| Rojo de borrar del editor | `#E08A72` en oscuro | daba **2,95:1** sobre el fondo de una parada: el botón que más conviene leer era el que peor se leía |
+| Tres niveles de acción | relleno / filete de 1 px / filete de 2 px y negrita | lo destructivo se distinguía solo por el color |
+| Etiquetas del editor | `<label class="campo">` envolviendo el campo | había 28 `<label>` y **ni un solo `for=`**: tocar la etiqueta no hacía nada, y los campos que se pintan solos ni siquiera tienen `id` |
+| Centro de estado | 44 px de alto, 13,5 px de letra | era la línea más pequeña de la pantalla y es de lo que más se mira |
+
+Peor par de contraste de las dos pantallas: **4,83:1** en la portada y **4,62:1** en el editor, sobre los dos temas.
 
 ---
 
@@ -135,11 +189,56 @@ seguidos caen en el mismo milisegundo y el segundo pisaba al primero.
 **Ojo con iOS:** cada app de la pantalla de inicio tiene su propio almacén. Hay
 que iniciar sesión en cada una.
 
+### Copia de seguridad manual
+
+En la portada. Un archivo JSON con todo lo local, y vuelta atrás fundiendo. El
+motor está en `sync.js`; la portada solo pone la pantalla.
+
+| Función | Qué hace | Escribe |
+|---|---|---|
+| `copiaCompleta()` | reúne las claves de `clavesDeCopia()` y toda la tienda de fotos | no |
+| `leeClaveParaCopia(k)` | distingue clave ausente de `localStorage` que no deja leer | no |
+| `resumenDeCopia(c)` | viajes, entradas de diario, fotos, documentos, pendientes | no |
+| `validaCopia(texto)` | identidad, formato, estructura mínima | **no** |
+| `preparaRestauracion(c)` | calcula la fusión entera | **no** |
+| `restauraCopia(texto)` | valida, prepara, escribe, y deshace si falla | sí |
+
+**La lista de claves es explícita.** Volcar `localStorage` entero sería más
+corto y metería en el archivo la sesión de Supabase y la contraseña guardada de
+Eslovenia. Lo que no está en `clavesDeCopia()` no sale en la copia. Fuera
+quedan, a propósito: la sesión, `eslovenia26_pw`, `traspaso_viaje` y
+`traspaso_ok`.
+
+**La regla de fusión, conservadora:** lo que ya hay en el móvil no se pierde.
+Viaje que está en los dos, gana el de `actualizado` más reciente y los empates
+los gana el local. El diario pasa por `DIARIO_SYNC.fundir`, la misma función que
+usa la sincronización entre dos móviles. Las fotos se añaden solo si su id no
+está, así que restaurar dos veces no duplica. Los ajustes solo se rellenan si
+faltan. Un viaje con lápida local no resucita; una lápida de la copia que apunte
+a un viaje vivo aquí se descarta, porque borrar algo que existe por lo que diga
+un archivo viejo sería destruir datos.
+
+**Si algo no se puede leer, no hay copia.** Ni las fotos ni una sola clave de
+`localStorage`. `leeClave` devuelve `null` tanto si la clave no está como si no
+se pudo leer, y para restaurar da igual —«no está» y «no se sabe» llevan a lo
+mismo: rellenar solo lo que falte—, pero al hacer la copia no: una lectura que
+falla tomada por «no hay nada» produce un archivo sin viajes que parece
+correcto. Por eso la copia usa `leeClaveParaCopia()`, que distingue los dos
+casos, y se detiene diciendo qué clave no pudo leer.
+
+**Hasta dónde llega lo transaccional.** IndexedDB sí lo es: `FOTOS.meterVarias`
+usa una transacción y o entran todas o ninguna. `localStorage` no lo es, así que
+se guarda el valor anterior de cada clave y se deshace a mano. Por eso las fotos
+van primero: si el `localStorage` falla, se revierte y además se sacan las fotos
+metidas. Si ni eso se puede, la app lo dice — no se finge una reversión que no
+ha ocurrido.
+
 ### En Supabase (`cmkzcvfjgrgxwqjimtxa`)
 
 | Tabla | Qué guarda | Conflictos |
 |---|---|---|
-| `viajes` | un viaje por fila, días en `jsonb` | gana el más reciente |
+| `viajes` | un viaje por fila, días en `jsonb`, el resto en `extra` | gana el más reciente, **fundiendo**: lo que la nube no lleve no se borra |
+| — | borrados pendientes en `viajes_borrados` | se reintentan hasta que el servidor confirma: un viaje borrado sin cobertura no resucita |
 | `viaje_diario` | marcas, notas, posiciones, visitas, pernoctas, portadas | **por entrada**, con marca de tiempo propia |
 | `viaje_fotos` | fotos compartidas | por id, borrado lógico |
 
@@ -147,20 +246,47 @@ Las tarjetas de embarque **no** van a la nube: llevan nombre y código de barras
 
 ### Forma de un viaje
 
+Solo `id`, `nombre` y `dias` hacen falta. **Todo lo demás es opcional**: un viaje
+sin guía, sin vuelos o sin información se abre igual, y las pestañas que no
+tienen nada que enseñar salen vacías en vez de romperse.
+
 ```js
 {
   id, nombre, desde, hasta, salida,
   normas: ["Andando sin acera se camina por la izquierda", …],
+
   dias: [{
     t, dest, xy, km, lluvia, foto,
     hotel: "Hotel Jägerhorn",              // nombre exacto, para buscarlo
-    hotelWeb: "https://…",                 // solo si la IA la sabe de verdad
+    hotelWeb: "https://…",                 // solo si se sabe de verdad
+    f: "2026-07-18",                       // fecha propia del día, si la tiene
+    d: 1,                                  // o su número, si el viaje no tiene fechas
+    arte: "cueva", base: "Brne Rooms · Postojna",   // ilustración y rótulo
     paradas: [{ h, txt, c, n, mapa, w, xy, g, key, park }]
   }],
-  reservas: { vuelos: [{ ruta, fecha, hora, cia, loc, vuelo, asientos, secuencia }],
-              coche, telefonos }
+
+  // Bloques opcionales. Los usa quien los tenga.
+  guia: [{ zona, arte, nota, lugares: [{ id, xy, n, t, d, k, m, tip, wl }] }],
+  info: { clave: [[etiqueta, texto], …] },
+  vuelos: [{ ruta, fecha, hora, cia, loc, vuelo, terminal, puerta, asientos, secuencia }],
+  acceso: { cia, email, url },
+  coche: { proveedor, reserva, recogida, devolucion, telefono, franquicia, … },
+  seguros: [{ nombre, poliza, limite, que, no }],
+  telefonos: [{ q, sub, n, wa, urgente }],
+  alojamientos: [{ fechas, nombre, zona }],
+
+  // Y lo que se invente mañana: ni el editor ni la nube lo tiran.
+  reservas: { vuelos, coche, telefonos }   // forma antigua, se sigue leyendo
 }
 ```
+
+**Una parada apunta a su ficha de la guía con `g`**, que es el `id` del lugar.
+`xyDeParada()` usa las coordenadas de la ficha si la parada no trae las suyas.
+
+**Los campos que no se reconocen se conservan.** El editor parte del viaje que
+recibe y solo pone en su sitio lo que sabe; la nube manda en la columna `extra`
+todo lo que no tiene columna propia. Abrir un viaje y guardarlo sin tocarlo lo
+devuelve entero: hay una prueba que lo vigila campo por campo.
 
 ### El diario, aparte
 
@@ -181,6 +307,7 @@ Las tarjetas de embarque **no** van a la nube: llevan nombre y código de barras
 **Si añades un archivo del que depende la app, dilo en los cinco `sw.js`.** Al
 crear `assets/app.js` no se hizo, y desde el icono de inicio la app se quedaba a
 medias: el service worker devolvía el HTML de la página donde iba un script.
+Ahora hay una prueba que lo caza, pero la regla sigue siendo la misma.
 
 **El código común se pide sin `?v=`.** La versión la lleva el service worker. Con
 `?v=` la copia guardada nunca coincidía con la pedida.
@@ -200,6 +327,59 @@ búsqueda. Ya se publicaron 34 enlaces de Wikiloc que daban 404.
 
 **Cambiar la lógica obliga a revisar los textos.** «Buscando en 5 km» en un modo
 sin radio es peor que no decir nada.
+
+**Cómo está el viaje se decide en un solo sitio.** `comoEstaTodo()` y
+`resumenDeEstado()` en `sync.js` responden a una sola pregunta: ¿qué está subido
+y qué no? Las cinco apps pintan ese mismo modelo:
+la portada con detalle completo, el editor y los tres viajes con una línea que
+se abre. Nada de correos, tablas ni códigos de error.
+
+**Ninguna frase promete por lo que no se puede comprobar.** El diario no tiene
+cola de pendientes: cada gesto hace `subir().catch()` y un fallo no deja rastro,
+así que **no se sabe** si llegó al otro móvil. Por eso el resumen verde dice
+«Viajes y fotos al día» y no «a salvo» ni «todo sincronizado» — una frase así
+estaría respondiendo también por las notas, las marcas y las pernoctas. El diario
+tiene su propia fila en el detalle diciendo lo que hay. Una prueba recorre el
+texto visible de las cinco apps buscando garantías de más.
+
+Tampoco hay hora de última sincronización: la marca `actualizado` la pone siempre
+el propio móvil antes de mandar, y no existe ninguna confirmada por el servidor.
+
+**«Preparado sin cobertura» se afirma con evidencia.** Se comprueba que existe la
+caché de cada app y que dentro está su página, buscando por prefijo porque los
+nombres llevan versión. `caches` es por origen, así que la portada las ve las
+cinco. No promete que estén todas las fotos: eso solo se guarda al visitarlas.
+
+**Las búsquedas tienen plazo y se pueden parar.** Un solo plazo desde el toque
+—`PRESUPUESTO_BUSQUEDA`, 30 s— que cubre GPS y servidores de mapas hasta los
+primeros resultados. Cambiar de servidor **no reinicia el reloj**. Mientras
+busca hay un botón de **Cancelar** que aborta las peticiones de verdad.
+
+Los tiempos por carretera van **después y aparte**, con su propio límite corto:
+para entonces los resultados ya están en pantalla y ya sirven. Si fallan, si se
+cancelan o si tardan, la lista se queda como está y solo cambia la nota de
+abajo. Nunca se sustituyen resultados válidos por un mensaje de error.
+
+Además del `AbortController` hay una **generación** de búsqueda, porque hay cosas
+que no se pueden abortar: el GPS no tiene cancelación, y una respuesta vieja
+puede llegar cuando ya se ha pedido otra categoría. Comparando la generación se
+sabe si lo que llega sigue valiendo o hay que tirarlo.
+
+**Ningún botón puede quedarse esperando.** `conTope()` y `fetchConTope()` en
+`sync.js` ponen límite a todo lo que va por red, y `trabajando()` se encarga del
+botón: lo desactiva mientras trabaja, lo anuncia con `aria-busy`, y lo devuelve
+a su texto **también cuando falla**, enseñando el motivo real.
+
+**El almacén de una app instalada en iOS no es el de Safari.** WebKit lo tiene
+documentado como intencional (bug 181849). Por eso llevar un viaje de
+`/eslovenia/` a `/crear/` no se da por hecho: se deja un traspaso, el editor deja
+acuse de recibo, y si no llega se dice en vez de abrir un viaje en blanco. **No
+hay ningún almacén del navegador que escape a ese aislamiento**: IndexedDB, Cache
+y `sessionStorage` se parten igual.
+
+**Un error del servidor no es una columna que falta.** Solo se deja de mandar
+`extra` cuando el error lo identifica (`PGRST204`, o el mensaje de la columna).
+Con cualquier otro fallo el viaje queda pendiente y se reintenta entero.
 
 **Nada de colores fijos en lo estructural**, o el modo claro se rompe. Hay una
 prueba que lo vigila.
@@ -227,11 +407,24 @@ Ninguno necesita clave.
 
 ## Las pruebas
 
-**`node tests/probar.js`** — 72 comprobaciones: que cada app carga y pinta, que
+**`node tests/probar.js`** — 615 comprobaciones: que cada app carga y pinta, que
 no hay funciones sin definir, que el tema claro no rompe nada, que cada vista
-tiene sus ids, que la ubicación vale en sus dos formatos.
+tiene sus ids, que la ubicación vale en sus dos formatos, que **lo que carga una
+app está en su service worker**, que **la nube no borra bloques del viaje**, que
+**abrir y guardar en el editor conserva el viaje entero**, y que Eslovenia y
+Asturias se pueden editar sin perder su guía. El modo conducción tiene las
+suyas: que empieza en la parada correcta, que `Siguiente` no escribe nada, que
+no pide ubicación y que una parada sin sitio no genera un enlace inventado. Y la
+copia de seguridad: que lleva todos los tipos de datos, que **no** lleva la
+sesión ni la contraseña, que once clases de archivo malo se rechazan sin tocar
+ningún almacén, que restaurar funde en vez de pisar y que un fallo al escribir
+se deshace. Y las decisiones visuales: 44 px de zona pulsable, foco de 3 px
+que no deforma el botón, una parada hecha que se sigue leyendo, y que claro y
+oscuro enseñan lo mismo. Y en la portada y el editor: que ningún color crítico va
+escrito a mano, que cada etiqueta está atada a su campo, y que borrar se nota
+sin mirar el color.
 
-**`node tests/foto.js`** — guarda el HTML de 34 vistas y lo compara después de
+**`node tests/foto.js`** — guarda el HTML de 51 vistas y lo compara después de
 mover código. Es lo que hace seguro refactorizar.
 
 Y pruebas sueltas para lo que costó acertar: `posicion.js`, `ruta-delante.js`,

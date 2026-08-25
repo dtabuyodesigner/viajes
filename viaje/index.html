@@ -13,13 +13,14 @@
   --line:rgba(91,200,180,.18); --ac:#5BC8B4; --acd:#3E8C7E; --am:#D9A233; --rj:#C0503F;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --ok-txt:#5BC8B4; --aviso-txt:#E0B25A;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--f);color:var(--t);font-family:var(--sans);font-size:16px;
   line-height:1.5;-webkit-font-smoothing:antialiased;
   padding-bottom:calc(72px + env(safe-area-inset-bottom))}
 a{color:var(--ac);text-decoration:none}
-:focus-visible{outline:2px solid var(--am);outline-offset:2px;border-radius:5px}
+:focus-visible{outline:3px solid var(--am);outline-offset:3px}
 
 header{position:sticky;top:0;z-index:20;
   background:linear-gradient(180deg,var(--f) 74%,transparent);
@@ -38,26 +39,26 @@ main{padding:0 20px 30px;max-width:640px;margin:0 auto}
 .senda{position:relative;margin:8px 0 0;padding-left:28px}
 .senda::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:3px;
   background:linear-gradient(180deg,var(--ac),var(--acd));border-radius:3px;opacity:.55}
-.stop{position:relative;padding:0 0 22px}
+.stop{position:relative;padding:0 0 24px}
 .stop::before{content:"";position:absolute;left:-25px;top:7px;width:11px;height:11px;
   border-radius:50%;background:var(--f);border:3px solid var(--ac)}
 .stop.hecho::before{background:var(--ac)}
-.stop.hecho > p{opacity:.45;text-decoration:line-through}
-.stop.hecho small{opacity:.45}
-.t{font-family:var(--mono);font-size:12px;color:var(--am);letter-spacing:.06em;display:block;margin-bottom:2px}
+.stop.hecho > p{color:var(--td);text-decoration:line-through;text-decoration-thickness:1px}
+.t{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--am);letter-spacing:.06em;display:block;margin-bottom:3px}
 .stop p{margin:0;font-size:16px}
-.stop small{display:block;color:var(--td);font-size:13.5px;margin-top:3px;line-height:1.45}
-.tick{margin-left:9px;width:22px;height:22px;border-radius:50%;vertical-align:middle;
+.stop small{display:block;color:var(--td);font-size:14.5px;margin-top:5px;line-height:1.5}
+.tick{position:relative;margin-left:10px;width:26px;height:26px;border-radius:50%;vertical-align:middle;
   border:1.5px solid var(--line);background:transparent;color:var(--ac);
-  font-size:12px;line-height:1;cursor:pointer;padding:0}
+  font-size:14px;line-height:1;cursor:pointer;padding:0}
+.tick::after{content:"";position:absolute;inset:-9px;border-radius:50%}
 
 .card{background:var(--f2);border:1px solid var(--line);border-radius:14px;padding:16px;margin:0 0 12px}
 .card h3{margin:0 0 8px;font-size:16px}
 .sec{margin:24px 0 10px}
-.label{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--acd)}
+.label{font-family:var(--mono);font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--acd)}
 .sec .label{display:block;margin-bottom:2px}
-.sec h2{margin:0;font-size:19px;letter-spacing:-.02em}
-.note{font-size:13.5px;color:var(--td);line-height:1.5;margin:10px 0 0}
+.sec h2{margin:0;font-size:21px;letter-spacing:-.02em}
+.note{font-size:14px;color:var(--td);line-height:1.55;margin:11px 0 0}
 
 .day{width:100%;text-align:left;display:flex;gap:14px;align-items:baseline;background:none;
   border:0;border-top:1px solid var(--line);padding:15px 2px;color:inherit;font:inherit;cursor:pointer}
@@ -68,21 +69,27 @@ main{padding:0 20px 30px;max-width:640px;margin:0 auto}
 .day.past{opacity:.42}
 .day.today .num{color:var(--am);font-weight:700}
 
-.ruta{background:var(--f2);border:1px solid var(--line);border-radius:14px;padding:15px;margin:6px 0 20px}
+.ruta{background:var(--f2);border:1px solid var(--line);border-radius:14px;padding:17px;margin:6px 0 22px}
 .wz-lista{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+/* La entrada al modo conducción, separada: es la que se busca con prisa */
+.conducir{display:flex;margin:18px 0 24px;padding-top:18px;border-top:1px solid var(--line)}
+.conducir .btn{flex:1;min-height:52px;font-size:16px}
+
 .wz-par{display:inline-flex;align-items:stretch;border:1px solid var(--acd);
   border-radius:999px;overflow:hidden;max-width:100%}
 .wz{display:inline-flex;align-items:center;gap:8px;padding:9px 13px 9px 9px;
-  border:0;color:var(--t);font-size:13.5px;font-weight:500}
+  border:0;color:var(--t);font-size:14px;font-weight:500;min-height:44px}
 .wz b{flex:0 0 auto;width:21px;height:21px;border-radius:50%;background:var(--ac);color:var(--f);
   font-family:var(--mono);font-size:11.5px;font-weight:700;display:grid;place-items:center}
 .wz-par.cama-par{border-color:var(--am)}
 .wz-par.cama-par .wz b{background:var(--am)}
 .wz-alt{display:inline-flex;align-items:center;padding:0 11px;flex:0 0 auto;
   border-left:1px solid var(--acd);color:var(--td);font-family:var(--mono);
-  font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  min-height:44px;justify-content:center;min-width:44px}
 
-.btn{display:inline-block;padding:9px 14px;border-radius:999px;border:1px solid var(--acd);
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:44px;padding:10px 16px;border-radius:999px;border:1px solid var(--acd);
   color:var(--ac);font-size:13.5px;font-weight:600;background:none;cursor:pointer;font-family:var(--sans)}
 .btn.solid{background:var(--ac);color:var(--f);border-color:var(--ac)}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
@@ -148,10 +155,10 @@ ul.plain li:first-child{border-top:0}
 
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
-  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;}
+  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 @media (prefers-color-scheme: light){
   body.auto{--f:#F4F6F5;--f2:#FFFFFF;--t:#0D1F24;--td:#4C626A;
-  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;}
+  --line:rgba(13,31,36,.15);--ac:#0F7A69;--acd:#14907C;--am:#8A6412;--rj:#A83E29;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 }
 
 /* Selector de color, arriba a la derecha */
@@ -310,6 +317,42 @@ header{position:relative}
   font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;
   box-shadow:0 6px 24px rgba(0,0,0,.35)}
 .hotel-zona{margin:18px 0 8px}
+.estado-linea{display:block;width:100%;text-align:left;background:none;border:0;
+  padding:0;font:inherit;font-size:13px;color:var(--td);cursor:pointer}
+.estado-linea .est-glifo{font-weight:700;margin-right:3px}
+.estado-linea[data-nivel="bien"] .est-glifo{color:var(--ok-txt)}
+.estado-linea[data-nivel="aviso"] .est-glifo,
+.estado-linea[data-nivel="problema"] .est-glifo{color:var(--aviso-txt)}
+.est-detalle{margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+.est-detalle .row{display:flex;justify-content:space-between;gap:12px;
+  padding:4px 0;font-size:12.5px;align-items:baseline}
+.est-detalle .k{color:var(--td);flex:0 0 auto}
+.est-detalle .v{text-align:right}
+.btn.parar{border-color:var(--aviso-txt);color:var(--aviso-txt)}
+
+/* Modo conducción: se lee de un vistazo, con sol y con una mano.
+   Los botones no bajan de 56px y el bloque de acciones no se va nunca
+   fuera de la pantalla, aunque la nota de la parada sea larga. */
+.conduce{position:fixed;inset:0;z-index:120;background:var(--f);color:var(--t);
+  display:flex;flex-direction:column;
+  padding:calc(20px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom))}
+.conduce:focus{outline:none}
+.conduce .cd-texto{flex:1 1 auto;min-height:0;overflow-y:auto}
+.conduce .cd-cab{margin:0;font-size:15px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--td)}
+.conduce .cd-hora{margin:16px 0 0;font-size:29px;font-weight:700;color:var(--ac)}
+.conduce h1{margin:8px 0 0;font-size:34px;line-height:1.18;font-weight:700}
+.conduce .cd-nota{margin:16px 0 0;font-size:19px;line-height:1.45;color:var(--td)}
+.conduce .cd-acciones{flex:0 0 auto;padding-top:14px}
+.conduce .cd-btn{display:block;width:100%;box-sizing:border-box;margin:10px 0 0;
+  min-height:56px;padding:15px 18px;border-radius:14px;
+  border:1px solid var(--line);background:transparent;color:var(--t);
+  font-family:var(--sans);font-size:20px;font-weight:600;line-height:1.25;
+  text-align:center;text-decoration:none;cursor:pointer}
+.conduce .cd-ir{min-height:72px;font-size:26px;font-weight:700;
+  background:var(--ac);color:var(--f);border-color:var(--ac)}
+.conduce .cd-sin{margin:10px 0 0;min-height:56px;display:flex;align-items:center;
+  justify-content:center;text-align:center;font-size:19px;color:var(--td)}
 </style>
 </head>
 <body>
@@ -670,14 +713,15 @@ function vistaHoy(){
 
   let h = `<div id="vistazo"></div><div id="mapa-cab-hoy-${i}">${mapaCabecera(i, "hoy")}</div><div id="aviso-cerca"></div><div id="portada-hoy"></div><div id="zona-tiempo"></div>`
         + (d.foto ? `<img class="foto-dia" src="${d.foto}" alt="">` : "")
-        + botonesRuta(i) + `<div id="mapa-dia-hoy-${i}">${mapaDia(i, "hoy")}</div>`
+        + botonesRuta(i) + botonModoConduccion()
+        + `<div id="mapa-dia-hoy-${i}">${mapaDia(i, "hoy")}</div>`
         + pintaParadas(d, i, "hoy");
   const sig = VIAJE.dias[i+1];
   if (sig) h += `<div class="sec"><span class="label">Día siguiente</span>
     <h2>${esc(sig.t || "Día " + (i+2))}</h2></div>
     <p class="note">${sig.paradas.filter(p=>p.txt).map(p => esc(p.txt)).join(" · ") || "Sin paradas"}</p>`;
   document.getElementById("v-hoy").innerHTML = h;
-  activaDiario();
+  activaDiario(); activaModoConduccion(i);
   activaCamara(i, "hoy"); pintaGaleria(i, true, "hoy");
   activaAqui(i, "hoy"); activaBuscarSitio(i, "hoy"); pintaAqui(i, "hoy"); pintaPernocta(i, "hoy"); activaMapaCab(i, "hoy"); pintaPortada(i, "hoy");
   pintaVistazo(i);
@@ -733,6 +777,11 @@ const CATEGORIAS = [
 
 function guardaPosicion(par){ miPos = par.join(","); }
 let miPos = null, catActiva = null, radioKm = 5;
+/* Se usaba en ocho sitios de la vista «Qué hay cerca» y no se declaraba en
+   ninguno: al pulsar «Usar mi ubicación» saltaba un ReferenceError que el
+   try/catch se tragaba, y los chips de categoría no llegaban a aparecer.
+   La pestaña entera no funcionaba. */
+let modoBusca = "cerca";
 
 function distancia(a, b){
   const R = 6371, r = x => x * Math.PI / 180;
@@ -751,29 +800,35 @@ function pedirUbicacion(){
   });
 }
 
-async function buscarCerca(cat, pos, km){
+async function buscarCerca(cat, pos, km, op, alProbar){
   // En radios grandes, cosas como las gasolineras salen a miles y el servidor
   // se atraganta. Se le pide el mínimo y se corta pronto.
+  //
+  // Aquí solo hay un servidor, a diferencia de las apps a medida. Aun así
+  // pasa por el mismo motor de presupuesto y cancelación: el plazo desde el
+  // toque es el mismo, y también se puede parar. Darle los tres servidores
+  // sería otra mejora, y cambia proveedores: queda para su momento.
   const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
   const tope = km >= 50 ? 60 : 40;
   const espera = km >= 50 ? 50 : 25;
-  const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-  const ctrl = new AbortController();
-  const corte = setTimeout(() => ctrl.abort(), (espera + 8) * 1000);
-  try {
+  const intentos = [ { tope, espera, ms: (espera + 8) * 1000 } ];
+
+  return conPresupuesto(op, intentos, async (n, senal) => {
+    const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
     const r = await fetch("https://overpass-api.de/api/interpreter?data=" + encodeURIComponent(consulta),
-                          { signal: ctrl.signal });
-    clearTimeout(corte);
-    if (!r.ok) throw new Error(r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : r.status);
+                          { signal: senal });
+    if (!r.ok)
+      return { motivo: r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status) };
     const d = await r.json();
-    return (d.elements || []).map(e => {
+    const sitios = (d.elements || []).map(e => {
       const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
       if (la == null) return null;
       return { nombre: e.tags?.name || cat.n,
                detalle: e.tags?.["addr:street"] || e.tags?.operator || e.tags?.description || "",
                xy:[la, lo], km: distancia(pos, [la, lo]) };
     }).filter(Boolean).sort((a,b) => a.km - b.km).slice(0, 12);
-  } catch (e){ clearTimeout(corte); throw e; }
+    return sitios.length ? { listo:true, valor:sitios } : { vacia:true };
+  }, { alProbar });
 }
 
 function hayReservas(){
@@ -885,16 +940,18 @@ function vistaCerca(){
   }));
 }
 
-async function lanzarCerca(){
+async function lanzarCerca(presupuesto){
   const cont = document.getElementById("res-cerca");
   const cat = CATEGORIAS.find(c => c.id === catActiva);
   if (!cont || !cat) return;
-  cont.innerHTML = `<p class="note">${modoBusca === "ruta"
-    ? `Localizando y buscando ${cat.n.toLowerCase()} por delante…`
-    : `Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`}</p>`;
+  const op = abreBusqueda(presupuesto);
+  pintaBuscando(cont, `Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`);
   try {
-    const r = await buscarCerca(cat, miPos, radioKm);
-    if (!r.length){ cont.innerHTML = `<p class="note">Nada en ${radioKm} km. Prueba a ampliar el radio.</p>`; return; }
+    const res = await buscarCerca(cat, miPos, radioKm, op,
+      n => progresoBusqueda(`Buscando ${cat.n.toLowerCase()} en ${radioKm} km…`));
+    if (res.estado === "reemplazada") return;
+    if (res.estado !== "bien"){ pintaFinBusqueda(cont, op, res, { km:radioKm, modo:modoBusca }); return; }
+    const r = res.valor;
     cont.innerHTML = `<ul class="plain">${r.map((x, i) => `
       <li>
         <div class="lugar-fila">
@@ -909,7 +966,7 @@ async function lanzarCerca(){
         </div>
       </li>`).join("")}</ul>
       <p class="note" id="nota-serv">Calculando el tiempo por carretera…</p>`;
-    const t = await porCarretera(miPos, r.map(x => x.xy));
+    const t = await porCarreteraDeBusqueda(op, miPos, r.map(x => x.xy));
     const ns = document.getElementById("nota-serv");
     if (t){
       // con los tiempos reales hay que reordenar: el orden por línea recta no vale
@@ -938,25 +995,11 @@ async function lanzarCerca(){
         : "<b>Distancias en línea recta.</b> Datos de OpenStreetMap.";
     }
   } catch (e) {
-    const motivo = String(e?.message || "");
-    cont.innerHTML = `<p class="note">${
-      motivo === "ocupado" ? "El servidor de mapas está saturado ahora mismo. Prueba en un minuto."
-      : motivo === "lento" || /abort/i.test(motivo)
-        ? `El servidor de mapas va lento ahora mismo. ${radioKm > 25
-            ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`
-      : !navigator.onLine ? "Sin conexión. Esto necesita red."
-      : `No se pudo consultar${modoBusca === "ruta" ? " por el camino" : ""}.
-          <button class="lnk" id="ver-motivo">ver por qué</button>`}</p>
-      <div id="detalle-fallo"></div>`;
-    const vm = document.getElementById("ver-motivo");
-    if (vm) vm.addEventListener("click", () => {
-      const f = (typeof ULTIMO_FALLO !== "undefined" && ULTIMO_FALLO) || {};
-      document.getElementById("detalle-fallo").innerHTML =
-        `<p class="motivo">${esc(motivo)}${f.servidor ? " · " + esc(f.servidor.replace("https://","").split("/")[0]) : ""}${
-          f.estado ? " · " + f.estado : ""}${f.detalle ? "<br>" + esc(f.detalle) : ""}${
-          f.remark ? "<br>" + esc(String(f.remark)) : ""}${
-          f.consulta ? "<br><br>" + esc(String(f.consulta).slice(0, 180)) : ""}</p>`;
-    });
+    if (op.viva())
+      pintaFinBusqueda(cont, op, { estado:"fallaron", motivo:String((e && e.message) || e) },
+                       { km:radioKm, modo:modoBusca });
+  } finally {
+    cierraBusqueda(op);
   }
 }
 
@@ -964,7 +1007,7 @@ function vistaInfo(){
   const op = (g, val, act, t, sub) =>
     `<button class="op${val === act ? " on" : ""}" data-${g}="${val}"><b>${t}</b><small>${sub}</small></button>`;
   const f0 = fechaDe(0), fn = fechaDe(VIAJE.dias.length - 1);
-  document.getElementById("v-info").innerHTML = `
+  document.getElementById("v-info").innerHTML = bloqueEstado() + `
     <div class="sec"><span class="label">El viaje</span><h2>${esc(VIAJE.nombre)}</h2></div>
     <div class="card">
       ${VIAJE.salida ? `<div class="note" style="margin:0 0 8px">Salida desde ${esc(VIAJE.salida)}</div>` : ""}
@@ -996,6 +1039,7 @@ function vistaInfo(){
     b.addEventListener("click", () => { P.app = b.dataset.app; vistaInfo(); }));
   document.querySelectorAll("[data-avisar]").forEach(b =>
     b.addEventListener("click", () => { P.avisar = b.dataset.avisar === "si"; vistaInfo(); }));
+  activaEstado();
 }
 
 const vistas = { hoy:vistaHoy, dias:vistaDias, reservas:vistaReservas, cerca:vistaCerca, info:vistaInfo };

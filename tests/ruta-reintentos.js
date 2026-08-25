@@ -1,5 +1,6 @@
 const fs = require('fs');
-const MOTOR = fs.readFileSync('/home/claude/viaje/assets/app.js','utf8');
+const path = require('path');
+const MOTOR = fs.readFileSync(path.join(__dirname, '..', 'assets/app.js'), 'utf8');
 
 const VIAJE = { dias: [{ xy:"46.281,14.322", paradas:[
   { xy:"46.368,14.095" }, { xy:"46.363,14.096" }, { xy:"46.393,14.058" },
@@ -19,10 +20,14 @@ async function probar(titulo, responder){
     return responder(llamadas.length);
   };
   const ctx = { VIAJE, LUGARES, MIPOS, distancia, fetch,
-                AbortController, setTimeout, clearTimeout, Math, Error, encodeURIComponent };
+                navigator: { geolocation: { getCurrentPosition: (ok, mal) => mal() } },
+                Promise, AbortController, setTimeout, clearTimeout, Math, Error, encodeURIComponent };
   const fn = new Function(...Object.keys(ctx),
+    MOTOR.match(/function comoTexto[\s\S]*?\n\}/)[0] + "\n" +
+    MOTOR.match(/function comoPar[\s\S]*?\n\}/)[0] + "\n" +
     MOTOR.match(/function xyDeParada[\s\S]*?\n\}/)[0] + "\n" +
     MOTOR.match(/function puntosDeRuta[\s\S]*?\n\}/)[0] + "\n" +
+    MOTOR.match(/async function ubicacionFresca[\s\S]*?\n\}/)[0] + "\n" +
     MOTOR.match(/async function buscarEnRuta[\s\S]*?\n\}\n/)[0] +
     "\nreturn buscarEnRuta;");
   const buscarEnRuta = fn(...Object.values(ctx));

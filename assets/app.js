@@ -5,12 +5,14 @@
    visor de viajes creados. Cada app aporta sus datos y sus
    piezas propias; esto es lo compartido.
 
-   Depende de que la app defina antes: VIAJE, VIAJE_ID, PREF,
-   esc(), navegarXY(). Como solo se usan al llamar a las
-   funciones, no importa el orden de carga.
+   Depende de que la app defina antes: VIAJE, VIAJE_ID, esc() y
+   navegarXY(). Como solo se usan al llamar a las funciones, no
+   importa el orden de carga.
 
-   Al tocar este archivo hay que subir el ?v=NN en las páginas
-   que lo cargan, o el móvil seguirá con la versión antigua.
+   Este archivo se pide SIN ?v=: la versión la lleva el service
+   worker. Al tocarlo hay que subir el CACHE de los sw.js que lo
+   guardan (viaje, eslovenia, asturias) o el móvil seguirá con la
+   versión antigua.
    ═══════════════════════════════════════════════════════════ */
 
 /* ---- Tiempo real por carretera (OSRM, datos de OpenStreetMap) ---- */
@@ -21,13 +23,19 @@ function formatoTiempo(seg){
   return r ? `${h} h ${r}` : `${h} h`;
 }
 
-async function porCarretera(origen, destinos){
+async function porCarretera(origen, destinos, opciones = {}){
+  // `senal` deja que la búsqueda entera se cancele de golpe; `ms` que el
+  // tope venga de fuera, para que las pruebas no tarden doce segundos.
+  const { ms = 12000, senal = null } = opciones;
   if (!navigator.onLine || !destinos.length) return null;
+  if (senal && senal.aborted) return null;
   const puntos = [origen, ...destinos].map(p => `${p[1]},${p[0]}`).join(";");
   const url = `https://router.project-osrm.org/table/v1/driving/${puntos}` +
               `?sources=0&annotations=duration,distance`;
   const ctrl = new AbortController();
-  const corte = setTimeout(() => ctrl.abort(), 12000);
+  const contagia = () => { try { ctrl.abort(); } catch {} };
+  if (senal) senal.addEventListener("abort", contagia, { once:true });
+  const corte = setTimeout(contagia, ms);
   try {
     const r = await fetch(url, { signal: ctrl.signal });
     clearTimeout(corte);
@@ -142,20 +150,15 @@ function activaAqui(i, ctx = "hoy"){
   const b = document.querySelector(`[data-aqui="${ctx}:${i}"]`);
   if (!b || b.dataset.listo) return;
   b.dataset.listo = "1";
-  b.addEventListener("click", async () => {
-    const antes = b.textContent;
-    b.textContent = "Localizando…";
-    try {
-      await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
-      b.textContent = "Guardado";
-      pintaAqui(i, ctx);
-      refrescaMapaCab(i, ctx);
-      // el nombre llega un momento después, de OpenStreetMap
-      setTimeout(() => pintaAqui(i, ctx), 1500);
-      setTimeout(() => pintaAqui(i, ctx), 4000);
-    } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
-    setTimeout(() => { b.textContent = antes; }, 2200);
-  });
+  b.addEventListener("click", () => trabajando(b, "Localizando…", async () => {
+    // Sin desactivar el botón, dos toques guardaban dos visitas distintas
+    await DIARIO_SYNC.apuntarAqui(VIAJE_ID, i, "");
+    pintaAqui(i, ctx);
+    refrescaMapaCab(i, ctx);
+    // el nombre llega un momento después, de OpenStreetMap
+    setTimeout(() => pintaAqui(i, ctx), 1500);
+    setTimeout(() => pintaAqui(i, ctx), 4000);
+  }, { exito:"Guardado", vuelve:2200 }));
 }
 
 
@@ -210,15 +213,14 @@ function enganchaPernocta(i, ctx){
   const z = document.getElementById(`cama-lista-${ctx}-${i}`);
   if (!z) return;
 
-  z.querySelectorAll(`[data-dormir]`).forEach(b => b.addEventListener("click", async () => {
-    b.textContent = "Localizando…";
-    try {
+  z.querySelectorAll(`[data-dormir]`).forEach(b =>
+    b.addEventListener("click", () => trabajando(b, "Localizando…", async () => {
+      // Igual que «Estoy aquí»: dos toques guardaban dos pernoctas
       await DIARIO_SYNC.apuntarPernocta(VIAJE_ID, i);
       pintaPernocta(i, ctx);
       setTimeout(() => pintaPernocta(i, ctx), 1600);
       setTimeout(() => pintaPernocta(i, ctx), 4000);
-    } catch (e){ b.textContent = typeof e === "string" ? e : "No se pudo"; }
-  }));
+    })));
 
   const actual = () => DIARIO_SYNC.pernoctaDelDia(VIAJE_ID, i);
 
@@ -312,23 +314,38 @@ function enganchaDoc(clave, titulo, pista){
 
   z.querySelectorAll(`[data-doc="${clave}"]`).forEach(inp => {
     if (inp.dataset.listo) return; inp.dataset.listo = "1";
+    // Una tanda cada vez, igual que en la cámara: dos selecciones seguidas
+    // guardaban el mismo documento dos veces.
+    let procesando = false;
     inp.addEventListener("change", async e => {
       const archivos = [...(e.target.files || [])];
-      if (!archivos.length) return;
-      const eti = inp.parentElement.querySelector("span");
+      if (!archivos.length) return;      // canceló el selector: nada que bloquear
+      if (procesando) return;
+      procesando = true;
+
+      const control = inp.parentElement;
+      const eti = control ? control.querySelector("span") : null;
       const antes = eti ? eti.textContent : "";
       if (eti) eti.textContent = archivos.length > 1 ? `Guardando ${archivos.length}…` : "Guardando…";
+      if (control) control.setAttribute("aria-busy", "true");
+
       let fallos = 0;
-      for (const f of archivos){
-        try {
-          // poca compresión: el código de barras tiene que poder leerse
-          const datos = await comprimirFoto(f, 1800, 0.92);
-          const id = await FOTOS.guardarDoc(VIAJE_ID, clave, datos, f.name);
-          if (!id) fallos++;
-        } catch { fallos++; }
+      try {
+        for (const f of archivos){
+          try {
+            // poca compresión: el código de barras tiene que poder leerse
+            const datos = await comprimirFoto(f, 1800, 0.92);
+            const id = await FOTOS.guardarDoc(VIAJE_ID, clave, datos, f.name);
+            if (!id) fallos++;
+          } catch { fallos++; }
+        }
+      } finally {
+        procesando = false;
+        if (eti) eti.textContent = antes;
+        if (control) control.removeAttribute("aria-busy");
+        inp.value = "";
       }
-      if (eti) eti.textContent = antes;
-      inp.value = "";
+
       if (fallos) alert(fallos === archivos.length
         ? "No se pudo guardar. ¿Queda sitio en el móvil?"
         : `${fallos} de ${archivos.length} no se pudieron guardar.`);
@@ -402,6 +419,232 @@ function bloqueHotel(d){
   </div>`;
 }
 
+/* ═══════════════════════════════════════════════════════════
+   Buscar sin que la espera se vaya de las manos.
+
+   Antes, una búsqueda podía tener a la persona esperando hasta
+   noventa segundos sin poder hacer nada: diez de GPS, sesenta y
+   ocho encadenando tres servidores de mapas, y doce más de
+   tiempos por carretera. Sin cobertura no pasaba —fetch falla al
+   instante— pero con cobertura débil de montaña sí, que es justo
+   donde se usa esto.
+
+   Ahora hay UN plazo desde el toque, no uno por fase. Quien
+   busca no distingue GPS de servidor de mapas: solo ve que no
+   puede hacer nada. Cambiar de servidor no reinicia la espera:
+   cada intento se queda con lo que quede.
+
+   Y se puede cancelar. El GPS no admite cancelación —la API no
+   la tiene— así que su respuesta se tira si llega tarde, en vez
+   de repintar una pantalla que la persona ya ha abandonado.
+   ═══════════════════════════════════════════════════════════ */
+
+const PRESUPUESTO_BUSQUEDA = 30000;   // GPS + mapas, hasta los primeros resultados
+const TOPE_GPS  = 8000;               // localizar no puede comerse el plazo
+const TOPE_RUTA = 8000;               // los tiempos por carretera van aparte
+
+/* La búsqueda en marcha, y su generación.
+
+   La generación hace falta además del AbortController porque hay cosas
+   que no se pueden abortar: el GPS no tiene cancelación, y una respuesta
+   vieja de Overpass o de OSRM puede llegar cuando la persona ya ha
+   pedido otra categoría. Comparando la generación se sabe si lo que
+   acaba de llegar sigue valiendo o hay que tirarlo. */
+let BUSQUEDA = null;
+let GENERACION = 0;
+
+function hayBusqueda(){ return !!BUSQUEDA; }
+function generacionBusqueda(){ return GENERACION; }
+
+/* Reemplazar no es cancelar. Si la búsqueda vieja se marcara como
+   cancelada, su orquestador pintaría «Búsqueda cancelada» encima de los
+   resultados de la nueva. Al reemplazar se calla; al cancelar, avisa. */
+function invalidaBusqueda(){
+  if (!BUSQUEDA) return false;
+  try { BUSQUEDA.maestro.abort(); } catch {}
+  BUSQUEDA = null;
+  GENERACION++;                  // nada de la generación vieja repinta
+  return true;
+}
+
+function cancelaBusqueda(){
+  if (!BUSQUEDA) return false;
+  BUSQUEDA.cancelada = true;     // lo pidió la persona
+  return invalidaBusqueda();
+}
+
+/* Abre una operación con su plazo. Cancela la anterior: cada cambio de
+   categoría, radio o modalidad manda sobre lo que hubiera en vuelo. */
+function abreBusqueda(presupuesto = PRESUPUESTO_BUSQUEDA){
+  invalidaBusqueda();
+  const gen = ++GENERACION;
+  const op = {
+    gen,
+    maestro: new AbortController(),
+    cancelada: false,
+    fin: Date.now() + presupuesto,
+    queda(){ return this.fin - Date.now(); },
+    viva(){ return this.gen === GENERACION && !this.cancelada; }
+  };
+  BUSQUEDA = op;
+  return op;
+}
+
+function cierraBusqueda(op){ if (BUSQUEDA === op) BUSQUEDA = null; }
+
+/* Dónde estamos, sin comerse el plazo.
+
+   El GPS no se puede abortar: la API no lo permite. Así que si cancelan
+   mientras tanto, su respuesta se descarta — ni se guarda la posición ni
+   se repinta nada. */
+async function ubicacionDeBusqueda(op){
+  if (!op || !op.viva()) return null;
+  const ms = Math.min(TOPE_GPS, op.queda());
+  if (ms <= 300) return null;
+
+  const p = await new Promise(ok => {
+    if (!navigator.geolocation) return ok(null);
+    let hecho = false;
+    const cierra = v => {
+      if (hecho) return;
+      hecho = true;
+      clearTimeout(corte);
+      op.maestro.signal.removeEventListener("abort", corta);
+      ok(v);
+    };
+    // Si cancelan, se deja de esperar AHORA. El GPS sigue por dentro —no se
+    // puede abortar— pero su respuesta ya no le importa a nadie, y los
+    // botones vuelven en el acto en vez de al cabo de ocho segundos.
+    const corta = () => cierra(null);
+    const corte = setTimeout(corta, ms);
+    op.maestro.signal.addEventListener("abort", corta, { once:true });
+    navigator.geolocation.getCurrentPosition(
+      pos => cierra([pos.coords.latitude, pos.coords.longitude]),
+      () => cierra(null),
+      { enableHighAccuracy:true, timeout:ms, maximumAge:30000 });
+  });
+
+  if (!op.viva()) return null;          // llegó tarde: se tira
+  if (p){ try { if (typeof guardaPosicion === "function") guardaPosicion(p); } catch {} }
+  return p;
+}
+
+/* Recorre los intentos sin pasarse del plazo.
+
+   `pide(n, senal)` hace la petición del intento n con esa señal y
+   devuelve { listo:true, valor } si hay resultado, { vacia:true } si el
+   servidor respondió y de verdad no hay nada, o { motivo } si falló.
+
+   Devuelve un estado, nunca lanza:
+     bien · vacia · cancelada · tarde · fallaron · reemplazada */
+async function conPresupuesto(op, intentos, pide, opciones = {}){
+  const { alProbar = null } = opciones;
+  let ultimo = "";
+  const fuera = () => ({ estado: op.cancelada ? "cancelada" : "reemplazada" });
+
+  for (let n = 0; n < intentos.length; n++){
+    if (!op.viva()) return fuera();
+
+    const queda = op.queda();
+    if (queda <= 300) return { estado:"tarde", motivo:ultimo };
+
+    if (alProbar) { try { alProbar(n, intentos.length); } catch {} }
+
+    const propio = new AbortController();
+    const contagia = () => { try { propio.abort(); } catch {} };
+    op.maestro.signal.addEventListener("abort", contagia, { once:true });
+    const corte = setTimeout(contagia, Math.min(intentos[n].ms, queda));
+
+    try {
+      const r = await pide(n, propio.signal);
+      if (!op.viva()) return fuera();
+      if (r && r.listo) return { estado:"bien", valor:r.valor };
+      if (r && r.vacia) return { estado:"vacia" };
+      if (r && r.motivo) ultimo = r.motivo;
+    } catch (e){
+      if (!op.viva()) return fuera();
+      ultimo = /abort/i.test(String((e && e.name) || e)) ? "lento"
+             : String((e && e.message) || e);
+    } finally {
+      clearTimeout(corte);
+      op.maestro.signal.removeEventListener("abort", contagia);
+    }
+  }
+  return { estado:"fallaron", motivo:ultimo };
+}
+
+/* Los tiempos por carretera: mejora, no requisito.
+
+   Va con su propio límite corto, fuera del plazo principal, porque para
+   cuando se llama los resultados ya están en pantalla y ya sirven. Si
+   falla, si lo cancelan o si tarda, los resultados se quedan como están
+   y solo cambia la nota de abajo. Nunca sustituye resultados válidos por
+   un mensaje de error. */
+async function porCarreteraDeBusqueda(op, origen, destinos){
+  if (!op || !op.viva()) return null;
+  try {
+    const t = await porCarretera(origen, destinos, { ms: TOPE_RUTA, senal: op.maestro.signal });
+    return op.viva() ? t : null;        // llegó tarde, ya hay otra búsqueda
+  } catch { return null; }
+}
+
+/* Lo que se le dice a la persona. Cancelar no es un fallo: fue decisión
+   suya, y el texto no puede sonar a que algo se ha roto. Y no se dice
+   cuántos servidores se probaron, porque no son los mismos en todas las
+   apps: el visor consulta uno solo. */
+function textoDeBusqueda(r, contexto = {}){
+  const { km = "", modo = "" } = contexto;
+  if (r.estado === "cancelada")
+    return "Búsqueda cancelada. Puedes intentarlo otra vez cuando quieras.";
+  if (r.estado === "tarde")
+    return "Los servidores de mapas no han respondido a tiempo. Prueba en un momento.";
+  if (r.estado === "vacia")
+    return `Nada en ${km} km. Prueba a ampliar el radio.`;
+  if (!navigator.onLine)
+    return "Sin cobertura. Esto necesita red.";
+  const m = String(r.motivo || "");
+  if (m === "ocupado")
+    return "El servidor de mapas está saturado ahora mismo. Prueba en un minuto.";
+  if (m === "lento" || /abort/i.test(m))
+    return `El servidor de mapas va lento ahora mismo. ${+km > 25
+      ? "Prueba con un radio menor" : "Vuelve a intentarlo en un momento"}.`;
+  if (m) return `No se pudo consultar${modo === "ruta" ? " por el camino" : ""}.`;
+  return "Los servidores de mapas no responden ahora. Prueba en un momento.";
+}
+
+/* La línea de progreso con su botón de cancelar. El botón va aparte de
+   los chips de categoría para que un toque en marcha no lo confunda con
+   relanzar la búsqueda. */
+function pintaBuscando(cont, texto){
+  if (!cont) return;
+  cont.innerHTML =
+    `<p class="note" id="busca-txt" aria-live="polite">${esc(texto)}</p>
+     <div class="btns"><button class="btn parar" id="busca-cancelar"
+       aria-label="Cancelar la búsqueda">Cancelar</button></div>`;
+  const b = document.getElementById("busca-cancelar");
+  if (b) b.addEventListener("click", () => {
+    b.disabled = true;
+    b.textContent = "Cancelando…";
+    cancelaBusqueda();
+  });
+}
+
+/* El final de una búsqueda que no trajo resultados. Cancelar no lleva
+   botón de «ver por qué»: no hubo ningún fallo que explicar. */
+function pintaFinBusqueda(cont, op, r, contexto = {}){
+  if (!cont) return;
+  const texto = textoDeBusqueda(r, contexto);
+  const conDetalle = r.estado === "fallaron" && typeof ULTIMO_FALLO !== "undefined" && ULTIMO_FALLO;
+  cont.innerHTML = `<p class="note" aria-live="polite">${esc(texto)}` +
+    (conDetalle ? ` <button class="lnk" id="ver-motivo">ver por qué</button>` : "") +
+    `</p><div id="detalle-fallo"></div>`;
+}
+
+function progresoBusqueda(texto){
+  const t = document.getElementById("busca-txt");
+  if (t) t.textContent = texto;
+}
+
 /* ---- Qué ver por aquí: lo que merece la pena alrededor ---- */
 const QUE_VER = [
   { id:"mirador", n:"Miradores",  q:'node["tourism"="viewpoint"]' },
@@ -425,28 +668,24 @@ function meritoDe(e){
   return m;
 }
 
-async function queVerCerca(cat, pos, km){
+async function queVerCerca(cat, pos, km, op, alProbar){
   const SERVIDORES = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter"
   ];
-  const intentos = [ {tope:60, espera:25}, {tope:30, espera:15}, {tope:15, espera:10} ];
-  let ultimo = "";
+  const intentos = [ {tope:60, espera:25}, {tope:30, espera:15}, {tope:15, espera:10} ]
+    .map(x => ({ ...x, ms: (x.espera + 6) * 1000 }));
 
-  for (let n = 0; n < intentos.length; n++){
+  return conPresupuesto(op, intentos, async (n, senal) => {
     const { tope, espera } = intentos[n];
     const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
     const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-    const ctrl = new AbortController();
-    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
-    try {
+    {
       const r = await fetch(SERVIDORES[n % SERVIDORES.length] + "?data=" + encodeURIComponent(consulta),
-                            { signal: ctrl.signal });
-      clearTimeout(corte);
+                            { signal: senal });
       if (!r.ok){
-        ultimo = r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status);
-        continue;
+        return { motivo: r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status) };
       }
       const d = await r.json();
       const sitios = (d.elements || []).map(e => {
@@ -472,14 +711,11 @@ async function queVerCerca(cat, pos, km){
         vistos.add(k); return true;
       }).sort((a,b) => (b.merito - a.merito) || (a.km - b.km));
 
-      if (unicos.length) return unicos.slice(0, 20);
-      if (n === 0) return [];
-    } catch (e){
-      clearTimeout(corte);
-      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+      if (unicos.length) return { listo:true, valor: unicos.slice(0, 20) };
+      if (n === 0) return { vacia:true };      // respondió y no hay nada de verdad
+      return {};
     }
-  }
-  throw new Error(ultimo || "sin respuesta");
+  }, { alProbar });
 }
 
 /* Dónde estamos, se llame como se llame en cada app */
@@ -515,18 +751,30 @@ function bloqueQueVer(){
   </div>`;
 }
 
-async function lanzarQueVer(){
+async function lanzarQueVer(presupuesto){
   const cont = document.getElementById("res-quever");
   const cat = QUE_VER.find(c => c.id === verCat);
   if (!cont || !cat) return;
-  cont.innerHTML = `<p class="note">Buscando ${cat.n.toLowerCase()} en ${verKm} km…</p>`;
+  const op = abreBusqueda(presupuesto);
+  pintaBuscando(cont, `Localizando…`);
   try {
-    if (typeof ubicacionFresca === "function") await ubicacionFresca();
-    const r = await queVerCerca(cat, comoPar(posActual()), verKm);
-    if (!r.length){
-      cont.innerHTML = `<p class="note">Nada con nombre en ${verKm} km. Prueba a ampliar el radio o con otra categoría.</p>`;
+    await ubicacionDeBusqueda(op);
+    if (!op.viva()) { pintaFinBusqueda(cont, op, { estado:"cancelada" }, { km:verKm }); return; }
+
+    progresoBusqueda(`Buscando ${cat.n.toLowerCase()} en ${verKm} km…`);
+    const res = await queVerCerca(cat, comoPar(posActual()), verKm, op,
+      n => progresoBusqueda(n === 0 ? `Buscando ${cat.n.toLowerCase()} en ${verKm} km…`
+                                    : "Sigue buscando, probando otro servidor…"));
+
+    if (res.estado === "reemplazada") return;          // ya hay otra búsqueda
+    if (res.estado !== "bien"){
+      if (res.estado === "vacia")
+        cont.innerHTML = `<p class="note">Nada con nombre en ${verKm} km. Prueba a ampliar el radio o con otra categoría.</p>`;
+      else pintaFinBusqueda(cont, op, res, { km:verKm });
       return;
     }
+    const r = res.valor;
+
     cont.innerHTML = `<ul class="plain">${r.map((x, i) => `
       <li>
         <div class="serv-fila">
@@ -544,7 +792,9 @@ async function lanzarQueVer(){
       </li>`).join("")}</ul>
       <p class="note" id="nota-quever">Calculando el tiempo por carretera…</p>`;
 
-    const t = await porCarretera(comoPar(posActual()), r.map(x => x.xy));
+    // Los resultados ya están y ya sirven. Lo de abajo es mejora: si falla,
+    // si se cancela o si tarda, la lista se queda como está.
+    const t = await porCarreteraDeBusqueda(op, comoPar(posActual()), r.map(x => x.xy));
     const nv = document.getElementById("nota-quever");
     if (t){
       t.forEach((x, i) => {
@@ -556,19 +806,18 @@ async function lanzarQueVer(){
       nv.textContent = "Distancias en línea recta. Datos de OpenStreetMap.";
     }
   } catch (e) {
-    const motivo = String(e?.message || "");
-    cont.innerHTML = `<p class="note">${!navigator.onLine ? "Sin conexión. Esto necesita red."
-      : `No se pudo consultar. <span class="motivo">${esc(motivo).slice(0, 60)}</span>`}</p>`;
+    if (op.viva()) pintaFinBusqueda(cont, op, { estado:"fallaron", motivo:String((e && e.message) || e) }, { km:verKm });
+  } finally {
+    cierraBusqueda(op);
   }
 }
 
 function activaQueVer(){
   const b = document.getElementById("btn-quever");
-  if (b) b.addEventListener("click", async () => {
-    b.textContent = "Localizando…";
-    try { await pedirUbicacion(); repintaBusqueda(); }
-    catch { b.textContent = "No se pudo obtener la ubicación"; }
-  });
+  if (b) b.addEventListener("click", () => trabajando(b, "Localizando…", async () => {
+    await pedirUbicacion();
+    repintaBusqueda();
+  }, { fallo:"No se pudo situarte" }));
   document.querySelectorAll("[data-ver]").forEach(x => x.addEventListener("click", () => {
     verCat = x.dataset.ver; repintaBusqueda(); lanzarQueVer();
   }));
@@ -580,6 +829,203 @@ function activaQueVer(){
 /* La posición llega unas veces como "46.3,14.1" y otras como [46.3, 14.1]:
    cada app la guarda a su manera. Esta función admite ambas y devuelve
    siempre el mismo formato de texto, o null si no vale. */
+/* ---- Cuál es el viaje que manda ----
+   Eslovenia y Asturias traen sus datos escritos en su datos.js. En
+   cuanto se editan desde el editor, la versión buena pasa a ser la
+   guardada en el móvil, que además se sincroniza con el otro teléfono.
+   Aquí se decide cuál de las dos se usa. Borrar la copia guardada
+   devuelve el viaje tal y como venía en el archivo: se puede deshacer. */
+function viajeEnUso(id, delArchivo){
+  try {
+    const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
+    const guardado = propios.find(v => v && v.id === id && !v.borrado);
+    // Solo si tiene días: un viaje vacío por un guardado a medias no
+    // puede dejar la app sin itinerario en mitad de la carretera.
+    if (guardado && Array.isArray(guardado.dias) && guardado.dias.length){
+      // El archivo debajo, la copia encima. La copia puede venir de una
+      // nube que todavía no sabe guardar todos los bloques —una base sin
+      // la columna `extra`— y entonces trae los días pero no la guía, ni
+      // los vuelos, ni los seguros. Lo que la copia no traiga se queda
+      // como está en el archivo, en vez de desaparecer.
+      return { ...delArchivo, ...guardado };
+    }
+  } catch {}
+  return delArchivo;
+}
+
+/* ¿Este viaje ya tiene una copia editada guardada en el móvil? */
+function hayCopiaPropia(id){
+  try {
+    const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
+    return propios.some(v => v && v.id === id);
+  } catch { return false; }
+}
+
+/* Quita la copia editada: el viaje vuelve a ser el del archivo.
+   No toca el diario ni las fotos, que van por su cuenta. SYNC.borrar()
+   deja apuntado el borrado si no hay cobertura, para que no resucite. */
+function borraCopiaPropia(id){
+  try {
+    const propios = JSON.parse(localStorage.getItem("viajes_propios")) || [];
+    localStorage.setItem("viajes_propios", JSON.stringify(propios.filter(v => v && v.id !== id)));
+    if (typeof SYNC !== "undefined") SYNC.borrar(id).catch(() => {});
+    return true;
+  } catch { return false; }
+}
+
+/* ---- Llevar el viaje al editor ----
+   El editor es otra app, en otra carpeta. Aquí se deja el viaje en el
+   almacén del móvil y se abre el editor, que lo recoge.
+
+   El problema: en iOS, una app añadida a la pantalla de inicio tiene su
+   propio almacén, separado del de Safari. WebKit lo confirma como
+   intencional (bug 181849). Si al abrir el editor se sale del contenedor
+   de la app, el almacén ya no es el mismo y el viaje no llega.
+
+   No se puede saber de antemano si pasará: depende de si iOS mantiene la
+   navegación dentro de la app instalada, y eso cambia entre versiones y no
+   está documentado. Así que en vez de suponerlo, se comprueba en el propio
+   móvil: el editor deja un acuse de recibo cuando el viaje le llega. Hasta
+   que ese acuse aparece, no se da por bueno el camino. */
+const TRASPASO = "traspaso_viaje";
+const TRASPASO_OK = "traspaso_ok";
+
+function dejaTraspaso(id, viaje){
+  const vale = "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  try {
+    localStorage.setItem(TRASPASO, JSON.stringify({ vale, id, viaje }));
+    return vale;
+  } catch { return null; }   // sin sitio o en modo privado
+}
+
+/* ¿Quedó un traspaso sin recoger? Entonces el editor no llegó a verlo. */
+function traspasoSinRecoger(id){
+  try {
+    const t = JSON.parse(localStorage.getItem(TRASPASO) || "null");
+    return !!(t && t.id === id);
+  } catch { return false; }
+}
+
+/* ¿Se ha comprobado ya en este móvil que el editor sí recibe el viaje? */
+function traspasoFunciona(){
+  try { return localStorage.getItem(TRASPASO_OK) === "1"; } catch { return false; }
+}
+
+function bloqueEditarViaje(){
+  const editado = hayCopiaPropia(VIAJE_ID);
+  // Solo se da por fallido si nunca ha funcionado en este móvil: si ya
+  // llegó alguna vez, un traspaso sin recoger es que el usuario volvió
+  // atrás antes de que el editor cargara, no que el camino esté roto.
+  const falloElCamino = !editado && traspasoSinRecoger(VIAJE_ID) && !traspasoFunciona();
+
+  const cuerpo = editado ? `
+      <p>Estás viendo tu versión. Puedes seguir cambiándola, o volver al viaje
+         tal y como venía: las marcas, las notas y las fotos no se tocan.</p>
+      <div class="btns">
+        <a class="btn solid" href="#" id="btn-editar">Seguir editando</a>
+        <button class="btn" id="btn-original">Volver al viaje original</button>
+      </div>`
+    : falloElCamino ? `
+      <p>El editor no ha recibido el viaje. Este iPhone guarda cada app de la
+         pantalla de inicio por separado, así que lo que guarda esta app no lo
+         ve el editor.</p>
+      <p>Copia el viaje y pégalo en el editor, en «Importar». Lo que cambies
+         allí se queda allí: para que vuelva aquí hace falta entrar con la
+         cuenta y tener cobertura.</p>
+      <div class="btns">
+        <button class="btn solid" id="btn-copiar">Copiar el viaje</button>
+        <a class="btn" href="#" id="btn-editar">Probar otra vez</a>
+      </div>`
+    : `
+      <p>Días, paradas, horarios, notas y alojamiento. Lo que cambies se guarda
+         en el móvil y lo ve el otro. La guía y las reservas se conservan aunque
+         el editor todavía no las enseñe.</p>
+      <div class="btns"><a class="btn solid" href="#" id="btn-editar">Abrir en el editor</a></div>`;
+
+  return `<div class="hotel-zona">
+    <span class="label">Cambiar el plan</span>
+    <div class="card" style="margin-top:8px">
+      <h3>Editar este viaje</h3>
+      ${cuerpo}
+      <p class="note" id="aviso-copia"></p>
+    </div>
+  </div>`;
+}
+
+function activaEditarViaje(){
+  const b = document.getElementById("btn-editar");
+  if (b) b.addEventListener("click", e => {
+    e.preventDefault();
+    const vale = dejaTraspaso(VIAJE_ID, VIAJE);
+    if (!vale){ b.textContent = "Este móvil no deja guardar"; return; }
+    location.href = "../crear/?id=" + encodeURIComponent(VIAJE_ID) + "&traspaso=" + vale;
+  });
+
+  const c = document.getElementById("btn-copiar");
+  if (c) c.addEventListener("click", async () => {
+    const aviso = document.getElementById("aviso-copia");
+    const texto = JSON.stringify(VIAJE);
+    try {
+      await navigator.clipboard.writeText(texto);
+      if (aviso) aviso.textContent = "Copiado. Abre el editor y pulsa «Importar».";
+    } catch {
+      if (aviso) aviso.innerHTML =
+        `<textarea readonly rows="4" style="width:100%">${esc(texto)}</textarea>
+         <br>Mantén pulsado dentro, «Seleccionar todo», y copia.`;
+    }
+  });
+
+  const o = document.getElementById("btn-original");
+  if (o) o.addEventListener("click", () => {
+    if (!confirm("¿Volver al viaje original? Se pierden los cambios que hayas hecho al itinerario. Las marcas, las notas y las fotos se quedan.")) return;
+    borraCopiaPropia(VIAJE_ID);
+    location.reload();
+  });
+}
+
+/* ---- Cómo va todo, en la pestaña Información ----
+   El mismo modelo que la portada y el editor, en una línea. Va aquí y no
+   en la cabecera a propósito: la cabecera es lo que se mira conduciendo
+   para saber dónde estás, no para saber si hay wifi. */
+function bloqueEstado(){
+  return `<div class="hotel-zona">
+    <span class="label">Cómo va</span>
+    <div class="card" style="margin-top:8px">
+      <button class="estado-linea" id="est-linea" aria-live="polite"
+              aria-expanded="false" aria-controls="est-mas">comprobando…</button>
+      <div id="est-mas" hidden></div>
+    </div>
+  </div>`;
+}
+
+async function activaEstado(){
+  const linea = document.getElementById("est-linea");
+  if (!linea || typeof comoEstaTodo !== "function") return;
+
+  const e = await comoEstaTodo();
+  pintaResumenEn(linea, resumenDeEstado(e));
+
+  linea.addEventListener("click", () => {
+    const mas = document.getElementById("est-mas");
+    if (!mas) return;
+    const abierto = linea.getAttribute("aria-expanded") === "true";
+    linea.setAttribute("aria-expanded", String(!abierto));
+    mas.hidden = abierto;
+    if (!abierto) mas.innerHTML = detalleEstado(e);
+  });
+}
+
+/* ---- La guía, indexada por su id ----
+   Una parada apunta a su ficha con `g`, y esto es lo que convierte ese
+   nombre en la ficha. Los dos viajes lo hacían por su cuenta, uno desde
+   una lista suelta y otro desde dentro del viaje. */
+function indexaGuia(viaje){
+  const porId = {};
+  ((viaje && viaje.guia) || []).forEach(z =>
+    (z.lugares || []).forEach(l => { porId[l.id] = l; l.zona = z.zona; }));
+  return porId;
+}
+
 function comoTexto(v){
   if (!v) return null;
   const p = Array.isArray(v) ? v.map(Number) : String(v).split(",").map(Number);
@@ -669,8 +1115,10 @@ async function ubicacionFresca(){
   });
 }
 
-async function buscarEnRuta(cat, i, km){
-  const aqui = await ubicacionFresca();        // primero, dónde estamos AHORA
+async function buscarEnRuta(cat, i, km, aqui, op, alProbar){
+  // La posición llega de fuera: antes se pedía aquí Y en quien llama, así
+  // que «de camino hoy» podía esperar dos veces al GPS, diez segundos cada
+  // una. Ahora el orquestador es el único que la pide.
   const todos = puntosDeRuta(i, aqui);
   if (todos.length < 2) return null;          // sin ruta que seguir
 
@@ -690,32 +1138,30 @@ async function buscarEnRuta(cat, i, km){
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter"
   ];
-  const intentos = [ {tope:80, espera:25}, {tope:40, espera:15}, {tope:20, espera:10} ];
+  const intentos = [ {tope:80, espera:25}, {tope:40, espera:15}, {tope:20, espera:10} ]
+    .map(x => ({ ...x, ms: (x.espera + 6) * 1000 }));
 
-  let ultimo = "";
-  for (let n = 0; n < intentos.length; n++){
+  return conPresupuesto(op, intentos, async (n, senal) => {
     const { tope, espera } = intentos[n];
     const partes = cat.q.split(";").map(t => `${t}(${caja});`).join("");
     const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-    const ctrl = new AbortController();
-    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
-    try {
+    {
       const r = await fetch(SERVIDORES[n % SERVIDORES.length] + "?data=" + encodeURIComponent(consulta),
-                            { signal: ctrl.signal });
-      clearTimeout(corte);
+                            { signal: senal });
       if (!r.ok){
         // el cuerpo del error suele explicar qué no le gustó
         let detalle = "";
         try { detalle = (await r.text()).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120); } catch {}
-        ultimo = r.status === 429 ? "ocupado"
-               : r.status === 504 ? "lento"
-               : `HTTP ${r.status}${detalle ? " · " + detalle : ""}`;
         ULTIMO_FALLO = { servidor: SERVIDORES[n % SERVIDORES.length], estado: r.status, detalle, consulta };
-        continue;
+        return { motivo: r.status === 429 ? "ocupado"
+                       : r.status === 504 ? "lento"
+                       : `HTTP ${r.status}${detalle ? " · " + detalle : ""}` };
       }
       const d = await r.json();
-      if (d.remark){ ultimo = "aviso: " + String(d.remark).slice(0, 100);
-                     ULTIMO_FALLO = { remark: d.remark, consulta }; continue; }
+      if (d.remark){
+        ULTIMO_FALLO = { remark: d.remark, consulta };
+        return { motivo: "aviso: " + String(d.remark).slice(0, 100) };
+      }
       const origen = todos[0];
       const sitios = (d.elements || []).map(e => {
         const la = e.lat ?? e.center?.lat, lo = e.lon ?? e.center?.lon;
@@ -732,17 +1178,14 @@ async function buscarEnRuta(cat, i, km){
         // primero lo que pillas pronto: se ordena por lo lejos que está de ti,
         // ya filtrado a lo que queda de paso
         .sort((a,b) => a.desdeAqui - b.desdeAqui);
-      if (sitios.length) return sitios.slice(0, 20);
-      if (n === 0) return [];
-    } catch (e){
-      clearTimeout(corte);
-      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+      if (sitios.length) return { listo:true, valor: sitios.slice(0, 20) };
+      if (n === 0) return { vacia:true };
+      return {};
     }
-  }
-  throw new Error(ultimo || "sin respuesta");
+  }, { alProbar });
 }
 
-async function buscarServicios(cat, pos, km){
+async function buscarServicios(cat, pos, km, op, alProbar){
   // Tres servidores: si uno está saturado, se prueba el siguiente.
   // Y cada intento pide menos: mejor quince sitios que ninguno.
   const SERVIDORES = [
@@ -751,21 +1194,17 @@ async function buscarServicios(cat, pos, km){
     "https://overpass.private.coffee/api/interpreter"
   ];
   const partes = cat.q.split(";").map(t => `${t}(around:${km*1000},${pos[0]},${pos[1]});`).join("");
-  const intentos = [ {tope:40, espera:25}, {tope:20, espera:15}, {tope:10, espera:10} ];
+  const intentos = [ {tope:40, espera:25}, {tope:20, espera:15}, {tope:10, espera:10} ]
+    .map(x => ({ ...x, ms: (x.espera + 6) * 1000 }));
 
-  let ultimo = "";
-  for (let n = 0; n < intentos.length; n++){
+  return conPresupuesto(op, intentos, async (n, senal) => {
     const { tope, espera } = intentos[n];
     const servidor = SERVIDORES[n % SERVIDORES.length];
     const consulta = `[out:json][timeout:${espera}];(${partes});out center ${tope};`;
-    const ctrl = new AbortController();
-    const corte = setTimeout(() => ctrl.abort(), (espera + 6) * 1000);
-    try {
-      const r = await fetch(servidor + "?data=" + encodeURIComponent(consulta), { signal: ctrl.signal });
-      clearTimeout(corte);
+    {
+      const r = await fetch(servidor + "?data=" + encodeURIComponent(consulta), { signal: senal });
       if (!r.ok){
-        ultimo = r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status);
-        continue;
+        return { motivo: r.status === 429 ? "ocupado" : r.status === 504 ? "lento" : String(r.status) };
       }
       const d = await r.json();
       const sitios = (d.elements || []).map(e => {
@@ -775,14 +1214,11 @@ async function buscarServicios(cat, pos, km){
                  detalle: e.tags?.["addr:street"] || e.tags?.operator || "",
                  xy:[la, lo], km: distancia(pos, [la, lo]) };
       }).filter(Boolean).sort((a,b) => a.km - b.km);
-      if (sitios.length) return sitios.slice(0, 20);
-      if (n === 0) return [];          // no hay nada de verdad
-    } catch (e){
-      clearTimeout(corte);
-      ultimo = /abort/i.test(String(e?.name || e)) ? "lento" : String(e?.message || e);
+      if (sitios.length) return { listo:true, valor: sitios.slice(0, 20) };
+      if (n === 0) return { vacia:true };      // no hay nada de verdad
+      return {};
     }
-  }
-  throw new Error(ultimo || "sin respuesta");
+  }, { alProbar });
 }
 
 /* ---- Cámara y fotos del día ---- */
@@ -859,22 +1295,38 @@ function activaCamara(i, ctx = "hoy"){
   document.querySelectorAll(`[data-camara="${ctx}:${i}"], [data-carrete="${ctx}:${i}"]`).forEach(inp => {
     if (inp.dataset.listo) return;
     inp.dataset.listo = "1";
+    // Una tanda cada vez. Comprimir y guardar tarda, y una segunda
+    // selección mientras tanto guardaba las mismas fotos dos veces.
+    let procesando = false;
     inp.addEventListener("change", async e => {
       const archivos = [...(e.target.files || [])];
-      if (!archivos.length) return;
-      const eti = inp.parentElement.querySelector("span");
+      if (!archivos.length) return;      // canceló el selector: nada que bloquear
+      if (procesando) return;            // ya hay una tanda en marcha
+      procesando = true;
+
+      const control = inp.parentElement;
+      const eti = control ? control.querySelector("span") : null;
       const original = eti ? eti.textContent : "";
       if (eti) eti.textContent = archivos.length > 1 ? `Guardando ${archivos.length}…` : "Guardando…";
+      if (control) control.setAttribute("aria-busy", "true");
+
       let fallos = 0;
-      for (const a of archivos){
-        try {
-          const datos = await comprimirFoto(a);
-          const id = await FOTOS.guardar(VIAJE_ID, i, datos);
-          if (!id) fallos++;
-        } catch { fallos++; }
+      try {
+        for (const a of archivos){
+          try {
+            const datos = await comprimirFoto(a);
+            const id = await FOTOS.guardar(VIAJE_ID, i, datos);
+            if (!id) fallos++;
+          } catch { fallos++; }
+        }
+      } finally {
+        // Pase lo que pase, el control vuelve a estar disponible
+        procesando = false;
+        if (eti) eti.textContent = original;
+        if (control) control.removeAttribute("aria-busy");
+        inp.value = "";
       }
-      if (eti) eti.textContent = original;
-      inp.value = "";
+
       if (fallos) alert(fallos === archivos.length
         ? "No se pudieron guardar las fotos en este móvil."
         : `${fallos} de ${archivos.length} no se pudieron guardar.`);
@@ -971,9 +1423,7 @@ function ubicacionRapida(){
 function activaMapaDia(i, ctx = "hoy"){
   document.querySelectorAll(`[data-mi-pos="${ctx}:${i}"]`).forEach(b => {
     if (b.dataset.listo) return; b.dataset.listo = "1";
-    b.addEventListener("click", async () => {
-      b.textContent = "localizando…";
-      try {
+    b.addEventListener("click", () => trabajando(b, "localizando…", async () => {
         const p = await ubicacionRapida();
         MI_POS = Array.isArray(p) ? p.join(",") : p;
         refrescaMapaDia(i, ctx);
@@ -986,8 +1436,7 @@ function activaMapaDia(i, ctx = "hoy"){
             MI_POS = mejor.join(",");
             refrescaMapaDia(i, ctx);
           }).catch(()=>{});
-      } catch { b.textContent = "no se pudo"; }
-    });
+    }, { fallo:"no se pudo situarte" }));
   });
 }
 
@@ -1094,3 +1543,134 @@ async function pintaTiempo(xy, donde){
   </div>`;
 }
 
+
+/* ═══ Modo conducción ═══════════════════════════════════════
+   Una parada cada vez, letra grande y un solo botón. Se usa al
+   volante: no pide ubicación, no reordena nada por distancia y
+   no escribe en el diario. Solo lee lo que ya hay.
+
+   Cada app aporta lo suyo con el mismo nombre: indiceHoy(),
+   navegar(), navegarXY(), comoNavego() y esc(). Lo único que
+   cambia de verdad es dónde vive el diario: Eslovenia y Asturias
+   tienen DIARIO, el visor usa P. De ahí la adaptación de abajo.
+   ═══════════════════════════════════════════════════════════ */
+
+function botonModoConduccion(){
+  return `<div class="conducir">
+    <button class="btn solid" id="abrir-conduccion">Modo conducción</button>
+  </div>`;
+}
+
+/* Qué paradas del día están hechas.
+   Devuelve null —no una lista de falsos— cuando el diario no se
+   puede consultar: no es lo mismo «ninguna hecha» que «no se sabe»,
+   y en el segundo caso hay que empezar por la primera parada. */
+function marcasDeParadas(iDia, cuantas){
+  const diario =
+    (typeof DIARIO !== "undefined" && DIARIO && typeof DIARIO.esta === "function") ? DIARIO :
+    (typeof P !== "undefined" && P && typeof P.esta === "function") ? P : null;
+  if (!diario) return null;
+  try {
+    const m = [];
+    for (let k = 0; k < cuantas; k++) m.push(!!diario.esta(`${iDia}:${k}`));
+    return m;
+  } catch(e){ return null; }
+}
+
+/* Adónde lleva «Ir». Primero el destino escrito en los datos —el
+   mismo orden que ya usan los chips de ruta, con el aparcamiento
+   por delante del sitio— y solo si no hay ninguno, las coordenadas.
+   Si no hay ni una cosa ni la otra devuelve null: una parada sin
+   ubicación no puede inventarse una. */
+function destinoDeParada(p){
+  const texto = String((p.park && p.park.w) || p.w || p.mapa || "").trim();
+  if (texto) return { url: navegar(texto), donde: texto };
+  const par = comoPar(xyDeParada(p));
+  if (par) return { url: navegarXY(par[0], par[1]), donde: `${par[0]}, ${par[1]}` };
+  return null;
+}
+
+function activaModoConduccion(i){
+  const boton = document.getElementById("abrir-conduccion");
+  if (boton) boton.addEventListener("click", () => abreModoConduccion(i, boton));
+}
+
+function abreModoConduccion(i, boton){
+  const dia = VIAJE && VIAJE.dias && VIAJE.dias[i];
+  if (!dia) return;
+  const paradas = dia.paradas || [];
+  const cabecera = String(dia.t || dia.dest || `Día ${i + 1}`);
+
+  // Dónde empezar: la primera que no esté hecha. Si el diario no se
+  // puede leer, la primera de todas.
+  const marcas = marcasDeParadas(i, paradas.length);
+  let n = 0;
+  if (marcas) while (n < paradas.length && marcas[n]) n++;
+
+  const v = document.createElement("div");
+  v.className = "conduce";
+  v.setAttribute("role", "dialog");
+  v.setAttribute("aria-modal", "true");
+  v.setAttribute("aria-label", "Modo conducción");
+  v.tabIndex = -1;
+
+  let conHistorial = false;
+  const alTeclado = e => { if (e.key === "Escape"){ e.preventDefault(); cierra(); } };
+  const alVolver  = () => { conHistorial = false; cierra(); };
+
+  function cierra(){
+    document.removeEventListener("keydown", alTeclado);
+    window.removeEventListener("popstate", alVolver);
+    v.remove();
+    // Deshacer la entrada del historial que se puso al abrir, para que
+    // el botón Atrás no deje a nadie dando vueltas en una pantalla vacía.
+    if (conHistorial){ conHistorial = false; try { history.back(); } catch(e){} }
+    if (boton && document.body.contains(boton)) boton.focus();
+  }
+
+  function pinta(foco){
+    const p = paradas[n];
+    if (!p){
+      v.innerHTML = `<div class="cd-texto">
+          <p class="cd-cab">${esc(cabecera)}</p>
+          <h1>No quedan más paradas para hoy</h1>
+        </div>
+        <div class="cd-acciones">
+          <button class="cd-btn" id="cd-salir">Salir del modo conducción</button>
+        </div>`;
+    } else {
+      const destino = destinoDeParada(p);
+      v.innerHTML = `<div class="cd-texto">
+          <p class="cd-cab">${esc(cabecera)} · parada ${n + 1} de ${paradas.length}</p>
+          ${p.h ? `<p class="cd-hora">${esc(p.h)}</p>` : ""}
+          <h1>${esc(p.txt || p.c || `Parada ${n + 1}`)}</h1>
+          ${p.n ? `<p class="cd-nota">${esc(p.n)}</p>` : ""}
+        </div>
+        <div class="cd-acciones">
+          ${destino
+            ? `<a class="cd-btn cd-ir" href="${destino.url}" target="_blank" rel="noopener"
+                  aria-label="Ir a ${esc(destino.donde)} con ${esc(comoNavego())}">Ir</a>`
+            : `<p class="cd-sin">Esta parada no tiene ubicación</p>`}
+          <button class="cd-btn" id="cd-sig">Siguiente</button>
+          <button class="cd-btn" id="cd-salir">Salir del modo conducción</button>
+        </div>`;
+    }
+
+    const sig = v.querySelector("#cd-sig");
+    // «Siguiente» solo mueve el sitio donde estamos mirando: no marca
+    // la parada, no toca el diario y no guarda nada.
+    if (sig) sig.addEventListener("click", () => { n++; pinta("sig"); });
+    v.querySelector("#cd-salir").addEventListener("click", cierra);
+
+    const aFoco = foco === "sig" ? (sig || v) : v;
+    try { aFoco.focus(); } catch(e){}
+  }
+
+  // Al DOM antes de pintar: si no, el foco inicial cae en un elemento
+  // que todavía no está en la página y no se mueve nada.
+  document.body.appendChild(v);
+  pinta();
+  document.addEventListener("keydown", alTeclado);
+  try { history.pushState({ conduce: true }, ""); conHistorial = true; } catch(e){}
+  window.addEventListener("popstate", alVolver);
+}

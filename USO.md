@@ -47,6 +47,23 @@ duermes y, si tienes una parada a menos de 5 km, un aviso.
 **Los botones de navegación** van numerados en el orden del día. El grande abre
 Waze; el pequeño de al lado, **map**, abre Google Maps por si Waze falla.
 
+**Modo conducción.** En Hoy, en su propio bloque separado por una línea, debajo
+de los botones de navegación. Abre una
+pantalla a tamaño grande con una sola parada: la primera que no hayáis tachado.
+Sale la hora si la tiene, el nombre de la parada, la nota, y un botón **Ir** que
+ocupa media pantalla. Debajo, *Siguiente* para pasar a la parada de después y
+*Salir del modo conducción* para volver.
+
+Está pensado para mirarlo de reojo en un cruce, así que hace poco a propósito:
+no pide la ubicación, no reordena las paradas por cercanía, y *Siguiente* no
+tacha nada — el diario se queda como estaba. Si una parada no tiene a dónde ir
+—un check-in, una cena, un tramo de carretera— lo dice: «Esta parada no tiene
+ubicación», y no ofrece un botón que llevaría a cualquier sitio. Cuando se
+acaban, pone «No quedan más paradas para hoy». Funciona sin cobertura: lo único
+que necesita red es Waze o Maps, y eso ya es cosa suya.
+
+Se cierra con el botón, con la tecla Escape y con el botón Atrás del navegador.
+
 **Marcar y anotar.** El círculo de cada parada la tacha. Abajo de cada día hay
 un campo para escribir. Todo se sincroniza con el otro móvil.
 
@@ -66,6 +83,11 @@ pedir fechas.
 miradores, museos, naturaleza, iglesias o plazas. Te saca lo que merece la pena
 alrededor, lo más interesante primero, y los que tienen artículo en Wikipedia
 llevan un botón «Qué es». Sirve en cualquier sitio, esté o no en el viaje.
+
+**Si una búsqueda tarda, puedes pararla.** Mientras busca sale un botón
+**Cancelar**. Y aunque no lo toques, ninguna búsqueda se alarga más de medio
+minuto: antes podía tenerte esperando hasta minuto y medio sin decir nada.
+Cancelar no es un error: puedes volver a intentarlo cuando quieras.
 
 **Comer, gasolina, tiendas.** Botón en el día, o pestaña Guía. Da la ubicación y
 elige qué buscas. Dos formas de buscar: **Cerca de aquí**, con el radio que
@@ -89,6 +111,45 @@ El nombre de cada punto se puede tocar para buscarlo en Google y ver qué es.
 
 **Modo de color.** Arriba a la derecha: ◐ automático, ☀ claro, ☾ oscuro. El
 claro es para cuando da el sol en la pantalla.
+
+---
+
+## Cambiar Eslovenia o Asturias
+
+En el viaje, pestaña **Información** → **Editar este viaje** → *Abrir en el
+editor*. Desde ahí puedes cambiar el nombre y las fechas, añadir o quitar días,
+reordenar las paradas, ponerles hora, escribir notas, apuntar dónde dormís, y
+marcar lo imprescindible y el plan B si llueve.
+
+**La guía y las reservas no se pierden.** Aunque el editor todavía no enseñe las
+fichas de lugares, los vuelos ni los seguros, siguen ahí. Puedes abrir el viaje,
+guardarlo sin tocar nada, y sale exactamente igual que estaba.
+
+**Lo que cambies manda desde ese momento.** La dirección `…/eslovenia/` sigue
+siendo la misma, pero a partir de la primera edición enseña tu versión.
+
+**Se puede deshacer.** En la misma pestaña aparece **Volver al viaje original**
+en cuanto hayas editado algo. Devuelve el viaje tal y como venía de fábrica. Las
+marcas, las notas, las fotos y los sitios donde habéis dormido van aparte y no se
+tocan. Si lo haces sin cobertura, el borrado queda apuntado y se aplica cuando
+vuelva la línea: el viaje no reaparece luego por su cuenta.
+
+### Si sale «El editor no ha recibido el viaje»
+
+Puede pasar **desde el icono de la pantalla de inicio**, no desde Safari.
+
+iPhone guarda cada app de la pantalla de inicio en su propio cajón. Si al abrir
+el editor iOS se sale de la app de Eslovenia, el editor mira en otro cajón y no
+encuentra nada. La app se da cuenta y te lo dice en vez de abrirte un viaje en
+blanco haciéndolo pasar por el tuyo.
+
+Cuando pase, la pestaña Información te ofrece **Copiar el viaje**. Cópialo, abre
+el editor y pulsa **Importar**. Pero ten en cuenta una cosa importante: lo que
+edites allí **se queda allí**. Para que vuelva al viaje hace falta haber entrado
+con la cuenta y tener cobertura, porque el único camino de vuelta es la nube.
+
+Si te pasa, lo más cómodo es **editar desde Safari**, no desde el icono: en
+Safari las dos páginas comparten cajón y funciona sin más.
 
 ---
 
@@ -135,7 +196,99 @@ no tiene.
 
 ---
 
+## Copia de seguridad
+
+En la portada, abajo del todo, en su propio recuadro. Dos botones.
+
+**Descargar copia.** Antes de bajar nada te enseña qué lleva: cuántos viajes,
+cuántas entradas de diario, cuántas fotos, cuántos documentos, qué queda por
+subir y cuánto ocupa el archivo. Si te cuadra, *Guardar el archivo* baja un
+único `.json` con la fecha en el nombre, del tipo
+`viajes-copia-2026-08-24.json`. Funciona sin cobertura: todo sale de este móvil.
+
+Dentro va lo que has ido creando: los viajes, el diario entero —paradas
+tachadas, notas, sitios apuntados y dónde dormisteis—, las fotos y los
+documentos tal cual están, sin recomprimir, lo que quedaba por subir y los
+viajes borrados que aún no se han aplicado en la nube. También los ajustes que
+cuestan de volver a poner, como el día de salida de Asturias.
+
+**Lo que no lleva, a propósito:** la sesión de la nube, la contraseña guardada
+de Eslovenia y el traspaso al editor. Quien tuviera el archivo no puede entrar
+en vuestra cuenta con él. Para volver a la nube hay que entrar otra vez.
+
+Guárdalo donde quieras: Archivos, Drive, el correo. Es un archivo normal.
+
+**Restaurar copia.** Elige el archivo y **no toca nada todavía**: primero lo
+comprueba y luego te dice exactamente qué va a pasar — cuántos viajes nuevos
+entran, cuántos se actualizan, cuántos se quedan como están, cuántas fotos
+faltan. Solo entonces aparece el botón de *Restaurar*.
+
+**Funde, no sustituye.** Lo que ya hay en este móvil no se borra:
+
+- Un viaje que está en los dos sitios se queda con la versión más reciente. Si
+  empatan, gana la de este móvil.
+- El diario se funde marca a marca y nota a nota, igual que cuando se
+  sincronizan dos móviles: gana lo más nuevo de cada cosa, no se pierde ninguna.
+- Las fotos y los documentos que ya están no se tocan. Restaurar dos veces la
+  misma copia no duplica nada.
+- Los ajustes solo se rellenan si aquí no los tienes puestos.
+- **Un viaje que borraste no vuelve** porque salga en la copia. Y al revés: un
+  viaje que tienes vivo aquí no se borra porque la copia diga que estaba
+  borrado.
+
+Si el archivo no es un JSON, no es de esta app, es de otro formato o le falta
+algo, se rechaza y te dice por qué **sin haber cambiado ni un dato**.
+
+Si el móvil se queda sin sitio a mitad de escribir, se deshace lo escrito y se
+vuelve a como estaba. Si por lo que sea no se pudiera deshacer del todo, la app
+lo dice claramente en vez de dejarlo a medias en silencio.
+
+Cuando termina hay que recargar para verlo, y hay un botón para hacerlo.
+
+---
+
+## Saber cómo va todo
+
+En la portada, debajo de la versión, hay una línea que lo dice: **«Viajes y fotos
+al día»** cuando no queda nada por subir, o qué falta cuando sí. Tócala y se abre
+el detalle: qué hay guardado en este móvil, qué queda por subir, cómo está el
+diario, cómo está la nube y si podréis abrirlo todo sin cobertura.
+
+La misma línea está en el editor y en la pestaña **Información** de cada viaje.
+
+Cuatro cosas que conviene saber:
+
+**Del diario no se puede confirmar nada.** Las notas, las marcas, los sitios
+donde habéis parado y dónde habéis dormido se guardan siempre en vuestro móvil,
+y se intentan subir en el momento. Pero si esa subida falla, la app no se entera:
+no queda constancia. Por eso la línea nunca dice «todo a salvo» a secas — dice
+**viajes y fotos**, que es de lo único que puede responder. El diario tiene su
+propia fila en el detalle diciendo exactamente esto.
+
+**«Sin cobertura» no es un problema.** Es lo normal en la montaña. Lo que
+escribas se guarda en el móvil y sube solo en cuanto vuelva la línea. No hace
+falta esperar mirando la pantalla.
+
+**Si dice «Abre con wifi antes de salir»**, hazlo: te dirá qué viaje falta. Con
+abrirlo una vez con datos es suficiente.
+
+**No verás una hora de última sincronización.** No la ponemos porque no la
+sabemos de verdad: el reloj sería el de vuestro móvil, no el de la nube, y
+podría engañar.
+
+---
+
 ## Si algo va raro
+
+**Un botón se queda pensando** → ya no puede quedarse para siempre. Todo lo que
+va por red tiene un límite; si se pasa, el botón te dice qué ha fallado y vuelve
+a estar listo para intentarlo otra vez. Mientras trabaja, se apaga: si lo tocas
+dos veces no se hace dos veces.
+
+**«Guardado» no es lo mismo que «Guardado y sincronizado»** → el primero quiere
+decir que está a salvo en este móvil. El segundo, que el otro móvil ya lo ve. Sin
+cobertura verás el primero, y subirá solo cuando vuelva la línea.
+
 
 **Sale un botón «Versión nueva · tocar para usarla»** → tócalo. Es la forma
 rápida y segura de actualizar.

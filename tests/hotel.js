@@ -1,8 +1,9 @@
-const { JSDOM } = require('/home/claude/viaje/node_modules/jsdom');
+const { JSDOM } = require('jsdom');
 const fs = require('fs');
-const SYNCJS = fs.readFileSync('/home/claude/viaje/sync.js','utf8');
-const MOTOR = fs.readFileSync('/home/claude/viaje/assets/app.js','utf8');
-const FDB = require('/home/claude/viaje/node_modules/fake-indexeddb');
+const path = require('path');
+const SYNCJS = fs.readFileSync(path.join(__dirname, '..', 'sync.js'), 'utf8');
+const MOTOR = fs.readFileSync(path.join(__dirname, '..', 'assets/app.js'), 'utf8');
+const FDB = require('fake-indexeddb');
 
 const MD = `# Croacia
 Salida: León
@@ -21,7 +22,7 @@ Alojamiento: Casa Kordić
 - **Mañana** · Lagos — Reserva online. [Plitvicka Jezera]`;
 
 const alm = {}; let avisos = [];
-const htmlC = fs.readFileSync('/home/claude/viaje/crear/index.html','utf8')
+const htmlC = fs.readFileSync(path.join(__dirname, '..', 'crear/index.html'),'utf8')
   .replace(/<script src="[^"]*sync\.js[^"]*"><\/script>/, `<script>\n${SYNCJS}\n</script>`);
 const ed = new JSDOM(htmlC, { runScripts:"dangerously", url:"https://x/crear/", pretendToBeVisual:true,
   beforeParse(w){
@@ -44,7 +45,7 @@ const ed = new JSDOM(htmlC, { runScripts:"dangerously", url:"https://x/crear/", 
 
   console.log("\n═══ CÓMO SE VE EN EL VIAJE ═══");
   const alm2 = { viajes_propios: JSON.stringify([v]) };
-  const htmlV = fs.readFileSync('/home/claude/viaje/viaje/index.html','utf8')
+  const htmlV = fs.readFileSync(path.join(__dirname, '..', 'viaje/index.html'),'utf8')
     .replace(/<script src="[^"]*sync\.js[^"]*"><\/script>/, `<script>\n${SYNCJS}\n</script>`)
     .replace(/<script src="[^"]*assets\/app\.js[^"]*"><\/script>/, `<script>\n${MOTOR}\n</script>`);
   const vis = new JSDOM(htmlV, { runScripts:"dangerously", url:`https://x/viaje/?id=${v.id}`, pretendToBeVisual:true,

@@ -1,7 +1,7 @@
 /* Editor de viajes — funcionamiento sin cobertura */
 
-const CACHE = "editor-v4";
-const ARCHIVOS = ["./", "./index.html"];
+const CACHE = "editor-v14";
+const ARCHIVOS = ["./", "./index.html", "../sync.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARCHIVOS)).then(() => self.skipWaiting()));

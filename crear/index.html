@@ -11,7 +11,12 @@
 :root{
   --fondo:#12181C; --fondo-2:#1C252A; --fondo-3:#232E34;
   --tinta:#EDF1F3; --tinta-dim:#93A3AA; --linea:rgba(237,241,243,.13);
-  --acento:#5BC8B4; --acento-dim:#3E8C7E; --ambar:#D9A233; --rojo:#C0503F;
+  --acento:#5BC8B4; --acento-dim:#3E8C7E; --ambar:#D9A233;
+  /* El rojo de borrar daba 2,95 sobre el fondo de una parada: el botón
+     que más conviene leer era el que peor se leía. Mismo valor que la
+     portada ya usa en --rojo-txt, y por lo mismo. */
+  --rojo:#E08A72;
+  --ok-txt:#5BC8B4; --aviso-txt:#E0B25A;
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
 }
@@ -20,7 +25,7 @@ body{margin:0;background:var(--fondo);color:var(--tinta);font-family:var(--sans)
   font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
   padding-bottom:calc(90px + env(safe-area-inset-bottom))}
 a{color:var(--acento);text-decoration:none}
-:focus-visible{outline:2px solid var(--ambar);outline-offset:2px;border-radius:6px}
+:focus-visible{outline:3px solid var(--ambar);outline-offset:3px}
 
 header{position:sticky;top:0;z-index:20;background:var(--fondo);
   padding:calc(14px + env(safe-area-inset-top)) 20px 14px;border-bottom:1px solid var(--linea)}
@@ -28,12 +33,12 @@ header{position:sticky;top:0;z-index:20;background:var(--fondo);
   text-transform:uppercase;color:var(--tinta-dim);padding:5px 11px 5px 8px;
   border:1px solid var(--linea);border-radius:999px;margin-bottom:10px}
 h1{font-size:24px;line-height:1.15;letter-spacing:-.02em;font-weight:800;margin:0}
-.sub{color:var(--tinta-dim);font-size:13.5px;margin:5px 0 0}
+.sub{color:var(--tinta-dim);font-size:14.5px;margin:6px 0 0}
 
 main{padding:18px 20px 20px;max-width:640px;margin:0 auto}
-.campo{margin:0 0 15px}
-.campo label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
-  text-transform:uppercase;color:var(--tinta-dim);margin-bottom:6px}
+.campo{display:block;margin:0 0 17px}
+.campo > span{display:block;font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--tinta-dim);margin-bottom:7px}
 input[type=text],input[type=date],textarea,select{
   width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--linea);
   background:var(--fondo-2);color:var(--tinta);font-family:var(--sans);font-size:15.5px}
@@ -43,24 +48,25 @@ input::placeholder,textarea::placeholder{color:var(--tinta-dim)}
 .dos .campo{flex:1}
 
 .dia{background:var(--fondo-2);border:1px solid var(--linea);border-radius:16px;
-  padding:15px;margin:0 0 14px}
+  padding:17px;margin:0 0 16px}
 .dia-cab{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .dia-num{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--acento);
   color:var(--fondo);font-family:var(--mono);font-size:12px;font-weight:700;
   display:grid;place-items:center}
-.dia-cab h2{margin:0;font-size:16px;flex:1;letter-spacing:-.01em}
-.parada{background:var(--fondo-3);border-radius:12px;padding:12px;margin:0 0 9px}
+.dia-cab h2{margin:0;font-size:17.5px;flex:1;letter-spacing:-.01em}
+.parada{background:var(--fondo-3);border-radius:12px;padding:13px;margin:0 0 11px}
 .parada .fila{display:flex;gap:8px;align-items:flex-start}
 .parada .fila input:first-child{flex:0 0 82px}
-.mini{font-size:13.5px !important;padding:9px 11px !important}
+.mini{font-size:14.5px !important;padding:11px 12px !important}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  padding:10px 15px;border-radius:999px;border:1px solid var(--acento-dim);
-  color:var(--acento);font-size:13.5px;font-weight:600;background:none;
+  min-height:44px;padding:10px 18px;border-radius:999px;
+  border:1px solid var(--acento-dim);
+  color:var(--acento);font-size:14px;font-weight:600;background:none;
   cursor:pointer;font-family:var(--sans)}
 .btn.solid{background:var(--acento);color:var(--fondo);border-color:var(--acento)}
-.btn.fino{padding:7px 12px;font-size:12.5px}
-.btn.borrar{border-color:var(--rojo);color:var(--rojo)}
+.btn.fino{min-height:40px;padding:8px 14px;font-size:13px}
+.btn.borrar{border-width:2px;font-weight:800;border-color:var(--rojo);color:var(--rojo)}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
 
 .barra{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;gap:10px;
@@ -73,16 +79,27 @@ input::placeholder,textarea::placeholder{color:var(--tinta-dim)}
 .aviso .ic{flex:0 0 auto;width:20px;height:20px;border-radius:50%;background:var(--ambar);
   color:var(--fondo);font-family:var(--mono);font-size:12px;font-weight:700;
   display:grid;place-items:center;margin-top:1px}
-.aviso p{margin:0;font-size:13px;line-height:1.5;color:var(--tinta)}
+.aviso p{margin:0;font-size:14px;line-height:1.55;color:var(--tinta)}
 .aviso p a{color:var(--ambar);text-decoration:underline}
+.estado-linea{display:block;width:100%;text-align:left;background:none;border:0;
+  padding:0 0 4px;font:inherit;font-size:13px;color:var(--tinta-dim);cursor:pointer}
+.estado-linea .est-glifo{font-weight:700;margin-right:3px}
+.estado-linea[data-nivel="bien"] .est-glifo{color:var(--ok-txt)}
+.estado-linea[data-nivel="aviso"] .est-glifo,
+.estado-linea[data-nivel="problema"] .est-glifo{color:var(--aviso-txt)}
+.est-detalle{margin-top:8px;border-top:1px solid var(--linea);padding-top:8px;margin-bottom:16px}
+.est-detalle .row{display:flex;justify-content:space-between;gap:12px;
+  padding:4px 0;font-size:12.5px;align-items:baseline}
+.est-detalle .k{color:var(--tinta-dim);flex:0 0 auto}
+.est-detalle .v{text-align:right}
 .aviso.ok{background:rgba(91,200,180,.1);border-color:rgba(91,200,180,.35)}
 .aviso.ok .ic{background:var(--acento)}
 .aviso.ok p{color:var(--tinta)}
 .aviso.ok p a{color:var(--acento)}
-.nota{font-size:13px;color:var(--tinta-dim);line-height:1.5;margin:10px 0 0}
-.sec{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--tinta-dim);margin:26px 0 10px}
-.vacio{color:var(--tinta-dim);font-size:14px;padding:14px 0}
+.nota{font-size:14px;color:var(--tinta-dim);line-height:1.55;margin:11px 0 0}
+.sec{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--tinta-dim);margin:30px 0 12px}
+.vacio{color:var(--tinta-dim);font-size:14.5px;padding:16px 0}
 .ok{color:var(--acento)}
 .subir{display:block;text-align:center;padding:16px;border:1px dashed var(--linea);
   border-radius:12px;color:var(--acento);font-size:14px;cursor:pointer}
@@ -130,11 +147,13 @@ input::placeholder,textarea::placeholder{color:var(--tinta-dim)}
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
-  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;}
+  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;
+  --ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 @media (prefers-color-scheme: light){
   body.auto{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EDF1F2;
   --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
-  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;}
+  --acento:#0F7A69;--acento-dim:#14907C;--ambar:#8A6412;--rojo:#A83E29;
+  --ok-txt:#0F6B5C;--aviso-txt:#7A5510;}
 }
 
 /* Selector de color, arriba a la derecha */
@@ -177,21 +196,21 @@ header{position:relative}
     <div id="zona-pedir"></div>
   </div>
 
-  <div class="campo">
-    <label>Nombre del viaje</label>
+  <label class="campo">
+    <span>Nombre del viaje</span>
     <input type="text" id="nombre" placeholder="Portugal en furgo" autocomplete="off">
-  </div>
+  </label>
 
   <div class="dos">
-    <div class="campo"><label>Salida</label><input type="date" id="desde"></div>
-    <div class="campo"><label>Vuelta</label><input type="date" id="hasta"></div>
+    <label class="campo"><span>Salida</span><input type="date" id="desde"></label>
+    <label class="campo"><span>Vuelta</span><input type="date" id="hasta"></label>
   </div>
   <p class="nota" style="margin-top:-6px">Si aún no las sabéis, déjalas en blanco: los días saldrán como «Día 1», «Día 2»…</p>
 
-  <div class="campo" style="margin-top:16px">
-    <label>Punto de partida</label>
+  <label class="campo" style="margin-top:16px">
+    <span>Punto de partida</span>
     <input type="text" id="salida" placeholder="San Miguel de las Dueñas" autocomplete="off">
-  </div>
+  </label>
 
   <p class="sec">Los días</p>
   <div id="dias"></div>
@@ -277,14 +296,52 @@ function guardarTodos(v){
   try { localStorage.setItem(CLAVE, JSON.stringify(v)); return true; } catch { return false; }
 }
 
+/* ---- Recoger un viaje que manda otra app ----
+   Eslovenia y Asturias traen su viaje en un archivo, no en el almacén del
+   móvil, así que para editarlo lo dejan aquí antes de abrir el editor.
+
+   En iOS esto puede no llegar: una app añadida a la pantalla de inicio
+   tiene su propio almacén, separado del de Safari (WebKit lo confirma como
+   intencional), así que si al abrir el editor se sale del contenedor de la
+   app, este almacén ya no es el mismo. Por eso el traspaso lleva acuse de
+   recibo: en vez de suponer que ha llegado, se comprueba. */
+const TRASPASO = "traspaso_viaje";
+const TRASPASO_OK = "traspaso_ok";
+
+function recogeTraspaso(vale){
+  try {
+    const crudo = localStorage.getItem(TRASPASO);
+    if (!crudo) return null;
+    const t = JSON.parse(crudo);
+    if (!t || t.vale !== vale || !t.viaje) return null;
+    localStorage.removeItem(TRASPASO);
+    localStorage.setItem(TRASPASO_OK, "1");   // el acuse: aquí sí se comparte
+    return t.viaje;
+  } catch { return null; }
+}
+
 /* ---- Viaje en edición ---- */
 const params = new URLSearchParams(location.search);
 let viaje = null;
 const idExistente = params.get("id");
-if (idExistente) viaje = leerTodos().find(v => v.id === idExistente) || null;
+const vale = params.get("traspaso");
+
+if (vale) viaje = recogeTraspaso(vale);
+if (!viaje && idExistente) viaje = leerTodos().find(v => v.id === idExistente) || null;
+
+// Nos han pedido editar un viaje concreto y no ha llegado. No se finge:
+// abrir un viaje en blanco haría creer que se está editando el de verdad.
+const noLlego = !viaje && !!(idExistente || vale);
 if (!viaje) viaje = { id:nuevoId(), nombre:"", desde:"", hasta:"", salida:"", dias:[] };
 
-if (idExistente && viaje.nombre){
+if (noLlego){
+  document.getElementById("titulo").textContent = "No he podido traer el viaje";
+  document.getElementById("sub").innerHTML =
+    `Este iPhone guarda cada app de la pantalla de inicio por separado, así que el
+     editor no ve lo que guardó la app del viaje. <strong>Esto de abajo está en blanco:
+     no es tu viaje.</strong><br>
+     Vuelve al viaje, usa <em>Copiar el viaje</em> y luego <em>Importar</em> aquí.`;
+} else if ((idExistente || vale) && viaje.nombre){
   document.getElementById("titulo").textContent = viaje.nombre;
   document.getElementById("sub").textContent = "Editando un viaje que ya tenías.";
 }
@@ -308,39 +365,39 @@ function pintaReservas(){
           <h2>${esc(v.ruta) || "Vuelo"}</h2>
           <button class="btn fino borrar" data-borrar-vuelo="${i}">Quitar</button>
         </div>
-        <div class="campo"><label>Trayecto</label>
-          <input type="text" class="v-ruta" data-i="${i}" value="${esc(v.ruta)}" placeholder="Madrid MAD → Zagreb ZAG"></div>
+        <label class="campo"><span>Trayecto</span>
+          <input type="text" class="v-ruta" data-i="${i}" value="${esc(v.ruta)}" placeholder="Madrid MAD → Zagreb ZAG"></label>
         <div class="dos">
-          <div class="campo"><label>Fecha</label>
-            <input type="text" class="v-fecha" data-i="${i}" value="${esc(v.fecha)}" placeholder="18 jul"></div>
-          <div class="campo"><label>Hora</label>
-            <input type="text" class="v-hora" data-i="${i}" value="${esc(v.hora)}" placeholder="18:55"></div>
+          <label class="campo"><span>Fecha</span>
+            <input type="text" class="v-fecha" data-i="${i}" value="${esc(v.fecha)}" placeholder="18 jul"></label>
+          <label class="campo"><span>Hora</span>
+            <input type="text" class="v-hora" data-i="${i}" value="${esc(v.hora)}" placeholder="18:55"></label>
         </div>
         <div class="dos">
-          <div class="campo"><label>Compañía</label>
-            <input type="text" class="v-cia" data-i="${i}" value="${esc(v.cia)}" placeholder="Vueling"></div>
-          <div class="campo"><label>Localizador</label>
+          <label class="campo"><span>Compañía</span>
+            <input type="text" class="v-cia" data-i="${i}" value="${esc(v.cia)}" placeholder="Vueling"></label>
+          <label class="campo"><span>Localizador</span>
             <input type="text" class="v-loc" data-i="${i}" value="${esc(v.loc)}" placeholder="ABC123"
-              autocapitalize="characters"></div>
+              autocapitalize="characters"></label>
         </div>
-        <div class="campo"><label>Notas</label>
-          <input type="text" class="v-n" data-i="${i}" value="${esc(v.n)}" placeholder="Terminal 4, facturar equipaje…"></div>
+        <label class="campo"><span>Notas</span>
+          <input type="text" class="v-n" data-i="${i}" value="${esc(v.n)}" placeholder="Terminal 4, facturar equipaje…"></label>
       </div>`).join("")
 
     + `<div class="dia">
         <div class="dia-cab"><span class="dia-num">🚗</span><h2>Coche de alquiler</h2></div>
         <div class="dos">
-          <div class="campo"><label>Empresa</label>
-            <input type="text" id="c-emp" value="${esc(c.empresa)}" placeholder="Last Minute Rent"></div>
-          <div class="campo"><label>Reserva</label>
-            <input type="text" id="c-res" value="${esc(c.reserva)}" placeholder="D014608185"></div>
+          <label class="campo"><span>Empresa</span>
+            <input type="text" id="c-emp" value="${esc(c.empresa)}" placeholder="Last Minute Rent"></label>
+          <label class="campo"><span>Reserva</span>
+            <input type="text" id="c-res" value="${esc(c.reserva)}" placeholder="D014608185"></label>
         </div>
-        <div class="campo"><label>Recogida</label>
-          <input type="text" id="c-rec" value="${esc(c.recogida)}" placeholder="19 jul 15:00 · Aeropuerto"></div>
-        <div class="campo"><label>Devolución</label>
-          <input type="text" id="c-dev" value="${esc(c.devolucion)}" placeholder="28 jul 15:00 · Aeropuerto"></div>
-        <div class="campo"><label>Teléfono</label>
-          <input type="text" id="c-tel" value="${esc(c.telefono)}" placeholder="+39 342 013 8930" inputmode="tel"></div>
+        <label class="campo"><span>Recogida</span>
+          <input type="text" id="c-rec" value="${esc(c.recogida)}" placeholder="19 jul 15:00 · Aeropuerto"></label>
+        <label class="campo"><span>Devolución</span>
+          <input type="text" id="c-dev" value="${esc(c.devolucion)}" placeholder="28 jul 15:00 · Aeropuerto"></label>
+        <label class="campo"><span>Teléfono</span>
+          <input type="text" id="c-tel" value="${esc(c.telefono)}" placeholder="+39 342 013 8930" inputmode="tel"></label>
       </div>`
 
     + r.telefonos.map((t, i) => `
@@ -403,14 +460,14 @@ function pintaDias(){
         <h2>${esc(d.t) || "Sin título"}</h2>
         <button class="btn fino borrar" data-borrar-dia="${i}">Quitar</button>
       </div>
-      <div class="campo">
-        <label>Qué se hace ese día</label>
+      <label class="campo">
+        <span>Qué se hace ese día</span>
         <input type="text" class="d-t" data-i="${i}" value="${esc(d.t)}" placeholder="Subida a Somiedo">
-      </div>
-      <div class="campo">
-        <label>Dónde se duerme</label>
+      </label>
+      <label class="campo">
+        <span>Dónde se duerme</span>
         <input type="text" class="d-dest" data-i="${i}" value="${esc(d.dest)}" placeholder="Pola de Somiedo">
-      </div>
+      </label>
 
       <label style="font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
         text-transform:uppercase;color:var(--tinta-dim);display:block;margin:14px 0 7px">Paradas</label>
@@ -469,82 +526,20 @@ function engancha(){
 
   document.querySelectorAll("[data-add-par]").forEach(b => b.addEventListener("click", () => {
     viaje.dias[+b.dataset.addPar].paradas.push({h:"", txt:"", n:"", mapa:""});
-    async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-sucio();
+    pintaDias();
+    sucio();
   }));
   document.querySelectorAll("[data-borrar-par]").forEach(b => b.addEventListener("click", () => {
     const [i,k] = b.dataset.borrarPar.split(":").map(Number);
-    viaje.dias[i].paradas.splice(k,1); async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+    viaje.dias[i].paradas.splice(k,1);
+    pintaDias();
+    sucio();
   }));
   document.querySelectorAll("[data-borrar-dia]").forEach(b => b.addEventListener("click", () => {
     if (!confirm("¿Quitar este día entero?")) return;
-    viaje.dias.splice(+b.dataset.borrarDia,1); async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+    viaje.dias.splice(+b.dataset.borrarDia,1);
+    pintaDias();
+    sucio();
   }));
 }
 
@@ -585,30 +580,8 @@ function enganchaFotos(){
         if (kb > 600){ eti.textContent = "+ Añadir una foto";
           alert("Esa foto pesa demasiado incluso comprimida. Prueba con otra."); return; }
         viaje.dias[+inp.dataset.foto].foto = datos;
-        async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+        pintaDias();
+        sucio();
       } catch { eti.textContent = "+ Añadir una foto"; alert("No se pudo leer la imagen."); }
     });
   });
@@ -616,30 +589,8 @@ setTimeout(pintaAvisoNube, 300); sucio();
     if (b.dataset.l) return; b.dataset.l = 1;
     b.addEventListener("click", () => {
       delete viaje.dias[+b.dataset.quitarFoto].foto;
-      async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+      pintaDias();
+      sucio();
     });
   });
 }
@@ -738,30 +689,8 @@ function engancharResultados(){
       viaje.dias[i].paradas.push({
         h:"", txt:res.titulo, n:res.texto.slice(0, 240), mapa:res.titulo
       });
-      async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+      pintaDias();
+      sucio();
     });
   });
   document.querySelectorAll("[data-usar-img]").forEach(b => {
@@ -769,36 +698,12 @@ setTimeout(pintaAvisoNube, 300); sucio();
     b.addEventListener("click", async () => {
       const [i, k] = b.dataset.usarImg.split(":").map(Number);
       const res = JSON.parse(document.getElementById("rs-" + i).dataset.res)[k];
-      b.textContent = "Guardando…";
-      try {
-        const r = await fetch(res.imagen);
-        const blob = await r.blob();
-        viaje.dias[i].foto = await comprimir(blob);
-        async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
-      } catch { b.textContent = "No se pudo guardar"; }
+      await trabajando(b, "Guardando…", async () => {
+        const r = await fetchConTope(res.imagen, 12000);
+        viaje.dias[i].foto = await comprimir(await r.blob());
+        pintaDias();
+        sucio();
+      }, { fallo: "No se pudo guardar" });
     });
   });
 }
@@ -936,45 +841,45 @@ function abrirPedir(){
   document.getElementById("abrir-pedir").textContent = "Cerrar";
   z.innerHTML = `
     <div class="pedir-form">
-      <div class="campo"><label>A dónde</label>
-        <input type="text" id="p-destino" placeholder="Croacia, Dolomitas, Picos de Europa…"></div>
+      <label class="campo"><span>A dónde</span>
+        <input type="text" id="p-destino" placeholder="Croacia, Dolomitas, Picos de Europa…"></label>
       <div class="dos">
-        <div class="campo"><label>Cuántos días</label>
-          <input type="text" id="p-dias" value="5" inputmode="numeric"></div>
-        <div class="campo"><label>Desde dónde salís</label>
-          <input type="text" id="p-salida" placeholder="San Miguel de las Dueñas"></div>
+        <label class="campo"><span>Cuántos días</span>
+          <input type="text" id="p-dias" value="5" inputmode="numeric"></label>
+        <label class="campo"><span>Desde dónde salís</span>
+          <input type="text" id="p-salida" placeholder="San Miguel de las Dueñas"></label>
       </div>
-      <div class="campo"><label>Cómo viajáis</label>
-        <input type="text" id="p-como" placeholder="En furgo camper, durmiendo en ella, con dos perras"></div>
+      <label class="campo"><span>Cómo viajáis</span>
+        <input type="text" id="p-como" placeholder="En furgo camper, durmiendo en ella, con dos perras"></label>
 
       <p class="sub-sec">Lo que ya está cerrado</p>
       <p class="nota" style="margin:0 0 10px">Si tenéis vuelos o coche reservado, ponlo aquí: es lo que manda sobre el resto.</p>
-      <div class="campo"><label>Ida</label>
-        <input type="text" id="p-ida" placeholder="Vuelo Madrid–Zagreb, sale 18:55, llega 21:30"></div>
+      <label class="campo"><span>Ida</span>
+        <input type="text" id="p-ida" placeholder="Vuelo Madrid–Zagreb, sale 18:55, llega 21:30"></label>
       <p class="nota" style="margin:-4px 0 10px">Los localizadores y teléfonos se apuntan luego, en «Reservas», abajo del todo.</p>
-      <div class="campo"><label>Vuelta</label>
-        <input type="text" id="p-vuelta" placeholder="Vuelo Zagreb–Madrid a las 06:00 del último día"></div>
-      <div class="campo"><label>Coche de alquiler</label>
-        <input type="text" id="p-coche-alq" placeholder="Recojo en el aeropuerto a las 22:00, devuelvo el día 7 a las 18:00"></div>
+      <label class="campo"><span>Vuelta</span>
+        <input type="text" id="p-vuelta" placeholder="Vuelo Zagreb–Madrid a las 06:00 del último día"></label>
+      <label class="campo"><span>Coche de alquiler</span>
+        <input type="text" id="p-coche-alq" placeholder="Recojo en el aeropuerto a las 22:00, devuelvo el día 7 a las 18:00"></label>
       <p class="sub-sec">Cómo lo queréis</p>
-      <div class="campo"><label>Qué os interesa</label>
-        <input type="text" id="p-interes" placeholder="Montaña, rutas a pie, pueblos, comer bien…"></div>
+      <label class="campo"><span>Qué os interesa</span>
+        <input type="text" id="p-interes" placeholder="Montaña, rutas a pie, pueblos, comer bien…"></label>
       <div class="dos">
-        <div class="campo"><label>Ritmo</label>
+        <label class="campo"><span>Ritmo</span>
           <select id="p-ritmo">
             <option value="tranquilo, sin madrugar y con tiempo en cada sitio">Tranquilo</option>
             <option value="normal, equilibrado entre ver cosas y disfrutarlas" selected>Normal</option>
             <option value="intenso, aprovechando el día de sol a sol">Intenso</option>
-          </select></div>
-        <div class="campo"><label>Horas de coche al día</label>
+          </select></label>
+        <label class="campo"><span>Horas de coche al día</span>
           <select id="p-coche">
             <option value="1,5">Poco · 1,5 h</option>
             <option value="2,5" selected>Normal · 2,5 h</option>
             <option value="4">Me da igual · 4 h</option>
-          </select></div>
+          </select></label>
       </div>
-      <div class="campo"><label>Algo más</label>
-        <input type="text" id="p-extra" placeholder="En agosto, evitar masificación, vamos con perros…"></div>
+      <label class="campo"><span>Algo más</span>
+        <input type="text" id="p-extra" placeholder="En agosto, evitar masificación, vamos con perros…"></label>
       <button class="btn solid" id="copiar-pedir" style="width:100%">Copiar la petición</button>
       <ol class="pasos">
         <li><b>Pega la petición</b> en Claude, ChatGPT o Gemini.</li>
@@ -1004,30 +909,8 @@ document.getElementById("abrir-pedir").addEventListener("click", abrirPedir);
 
 document.getElementById("add-dia").addEventListener("click", () => {
   viaje.dias.push({ t:"", dest:"", paradas:[{h:"", txt:"", n:"", mapa:""}] });
-  async function pintaAvisoNube(){
-  const z = document.getElementById("aviso-nube");
-  if (!z) return;
-  const pinta = (clase, icono, texto) =>
-    z.innerHTML = `<div class="aviso ${clase}"><span class="ic">${icono}</span><p>${texto}</p></div>`;
-
-  pinta("", "…", "Comprobando si se puede sincronizar…");
-  if (typeof SYNC === "undefined")
-    return pinta("", "!", "El viaje se guarda en este móvil. Para que lo vea otra persona, expórtalo.");
-  try {
-    const e = await SYNC.estado();
-    if (e.ok) pinta("ok", "✓",
-      `Se guarda aquí y se sube a la nube. Pilar lo verá en su móvil en cuanto abra la app, sin hacer nada.`);
-    else if (e.login) pinta("", "!",
-      `Sin sesión: por ahora solo se guarda en este móvil. Entra desde <a href="../">Viajes</a> para que lo vea Pilar.`);
-    else pinta("", "!",
-      `Sin conexión: se guarda aquí y subirá solo cuando haya cobertura.`);
-  } catch {
-    pinta("", "!", "El viaje se guarda en este móvil.");
-  }
-}
-pintaDias();
-pintaReservas();
-setTimeout(pintaAvisoNube, 300); sucio();
+  pintaDias();
+  sucio();
   const ds = document.querySelectorAll(".dia");
   ds[ds.length-1]?.scrollIntoView?.({behavior:"smooth", block:"center"});
 });
@@ -1228,32 +1111,49 @@ function leerMarkdown(texto){
   return v.dias.length ? v : null;
 }
 
+/* Pone en su sitio lo que sí se conoce y deja intacto todo lo demás.
+   Antes se reconstruía el viaje con una lista de campos permitidos y
+   cualquier cosa que no estuviera en ella se tiraba en silencio: la guía
+   de lugares, las coordenadas de una parada, el aparcamiento, los vuelos.
+   Un viaje traído de una IA o exportado de otro sitio perdía la mitad. */
 function normalizar(v){
   const texto = x => typeof x === "string" ? x : (x == null ? "" : String(x));
   const dias = Array.isArray(v.dias) ? v.dias : [];
-  return {
-    id: nuevoId(),
-    nombre: texto(v.nombre || v.titulo || "Viaje sin nombre"),
-    desde: texto(v.desde || ""), hasta: texto(v.hasta || ""),
-    salida: texto(v.salida || v.origen || ""),
-    normas: Array.isArray(v.normas) ? v.normas.map(texto).filter(Boolean) : [],
-    actualizado: new Date().toISOString(),
-    dias: dias.map(d => ({
-      t: texto(d.t || d.titulo || d.nombre || ""),
-      dest: texto(d.dest || d.destino || d.duerme || ""),
-      km: texto(d.km || ""),
-      hotel: texto(d.hotel || ""),
-      hotelWeb: texto(d.hotelWeb || ""),
-      lluvia: texto(d.lluvia || ""),
-      paradas: (Array.isArray(d.paradas) ? d.paradas : []).map(p => ({
-        h: texto(p.h || p.hora || ""),
-        txt: texto(p.txt || p.texto || p.nombre || p.titulo || ""),
-        n: texto(p.n || p.nota || p.descripcion || ""),
-        mapa: texto(p.mapa || p.gps || p.buscar || p.txt || p.nombre || ""),
-        key: !!p.key
-      })).filter(p => p.txt)
-    }))
-  };
+
+  // Los nombres alternativos que se aceptan al leer, para no dejarlos
+  // duplicados al lado del bueno una vez recogidos
+  const sinAlias = (o, alias) => { for (const a of alias) delete o[a]; return o; };
+
+  const limpio = sinAlias({ ...v }, ["titulo", "origen"]);
+  limpio.id = nuevoId();
+  limpio.nombre = texto(v.nombre || v.titulo || "Viaje sin nombre");
+  limpio.desde = texto(v.desde || "");
+  limpio.hasta = texto(v.hasta || "");
+  limpio.salida = texto(v.salida || v.origen || "");
+  limpio.normas = Array.isArray(v.normas) ? v.normas.map(texto).filter(Boolean) : [];
+  limpio.actualizado = new Date().toISOString();
+
+  limpio.dias = dias.map(d => {
+    const dia = sinAlias({ ...d }, ["titulo", "nombre", "destino", "duerme"]);
+    dia.t = texto(d.t || d.titulo || d.nombre || "");
+    dia.dest = texto(d.dest || d.destino || d.duerme || "");
+    dia.km = texto(d.km || "");
+    dia.hotel = texto(d.hotel || "");
+    dia.hotelWeb = texto(d.hotelWeb || "");
+    dia.lluvia = texto(d.lluvia || "");
+    dia.paradas = (Array.isArray(d.paradas) ? d.paradas : []).map(p => {
+      const par = sinAlias({ ...p }, ["hora", "texto", "nombre", "titulo", "gps", "buscar", "descripcion", "nota"]);
+      par.h = texto(p.h || p.hora || "");
+      par.txt = texto(p.txt || p.texto || p.nombre || p.titulo || "");
+      par.n = texto(p.n || p.nota || p.descripcion || "");
+      par.mapa = texto(p.mapa || p.gps || p.buscar || p.txt || p.nombre || "");
+      par.key = !!p.key;
+      return par;
+    }).filter(p => p.txt);
+    return dia;
+  });
+
+  return limpio;
 }
 
 document.getElementById("importar").addEventListener("click", () => {
@@ -1278,8 +1178,13 @@ document.getElementById("importar").addEventListener("click", () => {
 
 document.getElementById("eliminar").addEventListener("click", async () => {
   if (!confirm("¿Eliminar este viaje del móvil? No se puede deshacer.")) return;
+  // Se borra primero en el móvil: eso manda y es inmediato. Lo de la nube
+  // puede tardar, y si no hay cobertura queda apuntado para más tarde.
   guardarTodos(leerTodos().filter(v => v.id !== viaje.id));
-  if (typeof SYNC !== "undefined") { try { await SYNC.borrar(viaje.id); } catch {} }
+  pendiente = false;                       // ya no hay nada que avisar al salir
+  await trabajando(e.target, "Eliminando…", async () => {
+    if (typeof SYNC !== "undefined") await conTope(SYNC.borrar(viaje.id), 8000, null);
+  }, { fallo:"Borrado aquí, pendiente en la nube" });
   location.href = "../";
 });
 
@@ -1287,7 +1192,32 @@ window.addEventListener("beforeunload", e => {
   if (pendiente){ e.preventDefault(); e.returnValue = ""; }
 });
 
+/* Resumen compacto: una línea del mismo modelo común que la portada, y
+   el detalle debajo si se toca. Antes había un párrafo fijo en mitad del
+   formulario que decía casi lo mismo que el «Guardado…» de abajo, dos
+   veces seguidas y con dos redacciones distintas. */
 async function pintaAvisoNube(){
+  const z = document.getElementById("aviso-nube");
+  if (!z) return;
+  if (typeof comoEstaTodo !== "function") return pintaAvisoNubeViejo();
+
+  const e = await comoEstaTodo();
+  z.innerHTML = `<button class="estado-linea" id="est-linea" aria-live="polite"
+                         aria-expanded="false" aria-controls="est-mas"></button>
+                 <div id="est-mas" hidden></div>`;
+  const linea = document.getElementById("est-linea");
+  pintaResumenEn(linea, resumenDeEstado(e));
+
+  linea.addEventListener("click", () => {
+    const mas = document.getElementById("est-mas");
+    const abierto = linea.getAttribute("aria-expanded") === "true";
+    linea.setAttribute("aria-expanded", String(!abierto));
+    mas.hidden = abierto;
+    if (!abierto) mas.innerHTML = detalleEstado(e);
+  });
+}
+
+async function pintaAvisoNubeViejo(){
   const z = document.getElementById("aviso-nube");
   if (!z) return;
   const pinta = (clase, icono, texto) =>

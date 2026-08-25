@@ -71,13 +71,24 @@ un fallo grave, no un detalle.
 En modo privado de iOS lanza excepción. Sin el `catch`, la app entera se cae.
 
 ### El caché es traicionero
-Si tocas `sync.js`, sube el `?v=NN` en las tres páginas que lo cargan. Si tocas
-una app, sube su `const VERSION`. Ya ha pasado dos veces que el usuario viera
-una versión antigua y pensara que algo estaba roto.
+El código común (`sync.js`, `assets/app.js`, los `datos.js`) se pide **sin
+`?v=`**: la versión la lleva el service worker. Si tocas cualquiera de esos
+archivos, sube el `CACHE` de los `sw.js` que lo guardan. Si tocas una app, sube
+su `const VERSION`. Ya ha pasado dos veces que el usuario viera una versión
+antigua y pensara que algo estaba roto.
 
 ### Mover código: fotografiar antes
 Si vas a refactorizar, `node tests/foto.js guardar` primero. Mueve **un bloque**,
 `comparar`, sigue. Nunca cinco de golpe: si algo se rompe no sabrás cuál fue.
+
+### Cada viaje son datos, no una app
+Eslovenia y Asturias viven en `carpeta/datos.js` con un `VIAJE_ORIGINAL`. El
+HTML pone la estructura y `assets/app.js` el motor. Si al añadir algo te sale
+un `if` con el nombre del viaje dentro del motor, ese trozo no era común: hazlo
+dato o bloque opcional.
+
+Y si añades un `datos.js` nuevo, dilo en su `sw.js`. Hay una prueba que lo
+vigila, pero es mejor no verla saltar.
 
 ### Nada de dependencias
 Ni frameworks, ni compilación, ni `node_modules` en producción. Un archivo HTML
@@ -154,6 +165,30 @@ Están aquí para que no se repitan:
 | «Demasiados resultados en 10 km» | Se culpaba al radio de un fallo del servidor, sin reintentar | Tres servidores alternativos y tres intentos pidiendo menos cada vez |
 | Se volvió a publicar con pruebas en rojo | Segunda vez. Se lanzó la subida en el mismo comando que las pruebas, sin leer la salida | **Ejecutar las pruebas en un comando aparte, leerlas, y solo entonces subir** |
 | El motor usaba `distancia()` y el visor `distKm()` | Al unificar, los nombres deben unificarse también | La prueba de funciones sin definir lo cazó al enseñarle qué es el motor |
+| La fotografía saltaba al cambiar un comentario | `_pagina` guardaba el `body` entero, y ahí van inyectados `sync.js` y el motor: comparaba código, no lo pintado | `normaliza()` vacía los `<script>`. Si la red de seguridad avisa de lo que no importa, deja de servir para lo que importa |
+| Una prueba daba verde comparando dos `undefined` | Miraba `window.VIAJE`, pero un `const` de un script normal **no** se cuelga de `window`. Comparaba `undefined === undefined` | Comprobar lo que se pinta en el DOM, no las variables. Y desconfiar de una prueba que pasa a la primera |
+| Reservas, normas y guía se borraban solas al sincronizar | `subir()` no mandaba esos campos y `_sincronizar()` **sustituía** el viaje local por el de la nube | Al fundir, partir de lo local y poner la nube encima. Lo que la nube no sepa llevar no puede borrarlo |
+| Una variable usada ocho veces y declarada ninguna | `modoBusca` en el visor: al pulsar «Usar mi ubicación» saltaba un ReferenceError que el try/catch se tragaba, y la pestaña «Qué hay cerca» no llegaba a funcionar nunca | Un `catch` que no enseña el motivo esconde fallos enteros. Las pruebas que recorren la pantalla los encuentran; las que solo miran el estado inicial, no |
+| Una prueba se colgaba esperando su propio simulador | El `fetch` de mentira no rechazaba al abortarlo, y el de verdad sí. El motor esperaba una promesa que no se resolvía jamás | Un simulador de red tiene que rechazar al abortar, o no simula nada |
+| El reloj congelado del banco de pruebas | Con `fecha` fija, `Date.now()` no avanza y cualquier prueba de plazos pasa o falla por el motivo equivocado | Las pruebas de tiempo van en una app abierta sin `fecha` |
+| El estado decía «a salvo» incluyendo datos que no se pueden comprobar | El diario no tiene cola de pendientes: una nota podía no subir y la pantalla afirmar que todo estaba bien | Una frase de estado solo puede responder por lo que se comprueba. Nombrar el alcance: «viajes y fotos», no «todo» |
+| Una prueba leía los comentarios del código como si fueran pantalla | `body.textContent` incluye el contenido de los `<script>`, que en las pruebas van metidos en línea | Clonar el body y quitar `script`, `style` y `template` antes de leer lo que se ve |
+| Un `const` global choca con otro del mismo nombre | Al añadir un `esc()` a `sync.js` habría roto las cinco apps: cada una declara `const esc` y dos declaraciones del mismo nombre en el ámbito global rompen la página antes de ejecutar nada | Antes de añadir algo a `sync.js`, comprobar que el nombre no lo usa ninguna app |
+| `caches.open()` crea la caché si no existe | Comprobar si una app está guardada abriéndola directamente daba por buena una que no estaba | Filtrar antes por `caches.keys()`, y buscar por prefijo porque los nombres llevan versión |
+| Un botón con `disabled` no despacha el clic | Al verificar la guarda de doble pulsación, quitarla no cambiaba nada: quien impide el segundo toque es el propio `disabled`, no la guarda | Inyectar el fallo donde de verdad decide: quitar `disabled = true`, no la guarda de después |
+| Un reemplazo sin `assert` falló en silencio | Se inyectó un fallo con `s.replace(...)` sin comprobar que la cadena existía; no cambió nada y la prueba «pasó» | Todo reemplazo lleva `assert`, y después se comprueba con `grep` que el cambio está |
+| Una prueba pasaba con y sin el fallo | Contaba visitas guardadas: dos toques a la vez leen el diario antes de que el otro escriba, se pisan, y queda una sola igualmente | Contar las **operaciones lanzadas**, no el resultado, cuando el resultado puede coincidir por otra razón |
+| Una prueba con el fallo puesto no saltaba, y la prueba estaba bien | El fallo se inyectó en una línea a la que no se llega en ese caso: el código salía antes | Al verificar en los dos sentidos, comprobar que el fallo inyectado **se ejecuta**, no solo que está escrito |
+| Las pruebas del traspaso al editor daban verde en falso | Compartían un solo `localStorage` simulado, así que nunca podían reproducir el caso que importaba | Cuando dos páginas pueden estar en almacenes distintos, la prueba tiene que darles almacenes distintos |
+| Un reemplazo se llevó cuatro funciones por delante | Se sustituyó por rango entre dos anclas y en medio había más código del que se creía | Después de reemplazar por rango, comprobar qué funciones siguen definidas, no solo `node --check` |
+| Un color escrito a mano que ya se había corregido una vez | `--ok-txt` se arregló porque `#5BC8B4` daba 1,87 sobre fondo claro. El mismo valor seguía a mano en otros cinco sitios de la portada, con el mismo 1,87 | Al arreglar un color, buscar ese valor en todo el archivo. Si hizo falta una variable, es que hace falta en todos los sitios donde estaba |
+| Una variable nueva con un nombre ya ocupado | Al meter `--acento` en el `:root` de la portada, resultó que cada tarjeta de viaje ya define el suyo en línea con el color de su viaje | Antes de añadir una variable, `grep` de su nombre. Vale para `--var` igual que para un `const` de `sync.js` |
+| Una prueba que contaba fallos sobre una lista vacía | «ninguna etiqueta suelta» daba verde cuando no había ninguna etiqueta | Contar lo que SÍ tiene que estar, y exigir un mínimo. Un cero puede significar «todo bien» o «no hay nada» |
+| Una prueba de rechazo que habría pasado con la comprobación quitada | El archivo malo que se le daba no llevaba datos: aunque se hubiera colado, no habría cambiado nada visible, así que el «no cambió ningún almacén» daba verde igual | Una prueba de rechazo se hace con una carga que **haría daño de verdad** si pasara. Si no, no prueba la comprobación: prueba que un archivo vacío no hace nada |
+| Volcar un almacén entero para copiarlo mete secretos dentro | `localStorage` guarda también la sesión de Supabase y la contraseña de Eslovenia. Una copia hecha con `Object.keys(localStorage)` se los habría llevado al archivo | La copia lleva una **lista explícita** de claves. Es más larga de mantener, pero lo que no está en la lista no puede colarse |
+| Un lector de estado que devolvía `false` cuando no podía leer | El modo conducción pregunta qué paradas están hechas. Si el diario no se puede consultar, «ninguna hecha» y «no se sabe» llevan a sitios distintos: la primera respuesta haría empezar por una parada que igual ya está hecha | Cuando el que pregunta tiene que actuar distinto sin dato, el lector devuelve `null`, no el valor por defecto. `marcasDeParadas()` lo hace así |
+| `.focus()` en un elemento que aún no estaba en la página | El panel se pintaba y se enfocaba antes del `appendChild`. No daba error: el foco simplemente no se movía, y con teclado no se llegaba a nada | Meter en el DOM primero y pintar después. Un `focus()` que falla no avisa |
+| Las pestañas Info y Reservas reventaban con un viaje editado | Un viaje creado en el editor no trae `info`, ni `vuelos`, ni `seguros`. El código los daba por seguros | Todo bloque que no tengan los dos viajes es opcional: `(VIAJE.x \|\| [])`, y el bloque vacío no se pinta |
 
 El patrón se repite: **dar algo por bueno sin ejecutarlo**. Por eso existen las
 pruebas.
@@ -167,9 +202,10 @@ comprueba que salta. Si pasa igual, la prueba está mal.
 ## Cómo se publica
 
 ```bash
-node tests/probar.js              # las 68 en verde, y LEER el resultado
+node tests/probar.js              # las 615 en verde, y LEER el resultado
 node tests/foto.js comparar       # si has movido código
-# subir VERSION, y el ?v=NN de sync.js y assets/app.js si los tocaste
+# subir VERSION, y el CACHE del sw.js de cada app que toques
+#   (el código común va SIN ?v=: la versión la lleva el service worker)
 # actualizar README / PENDIENTE / USO / AGENTS según toque
 git checkout dev && git commit -am "…" && git push origin dev
 # …y parar aquí. A main solo cuando lo pidan.

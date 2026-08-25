@@ -1,5 +1,6 @@
 const fs = require('fs');
-const MOTOR = fs.readFileSync('/home/claude/viaje/assets/app.js','utf8');
+const path = require('path');
+const MOTOR = fs.readFileSync(path.join(__dirname, '..', 'assets/app.js'), 'utf8');
 
 // Un día como los de verdad: unas paradas con xy, otras con ficha
 const VIAJE = { dias: [{
@@ -14,11 +15,13 @@ const LUGARES = {
   ojstrica: { xy:"46.368,14.095" },
   vintgar:  { xy:"46.393,14.058" }
 };
-let MIPOS = "46.290,14.310";
+let MIPOS = "46.370,14.094";
 const distancia = (a,b) => Math.hypot(a[0]-b[0], a[1]-b[1]) * 111;
 
 const ctx = { VIAJE, LUGARES, MIPOS, distancia, VIAJE_ID:"x" };
 const fn = new Function(...Object.keys(ctx),
+  MOTOR.match(/function comoTexto[\s\S]*?\n\}/)[0] + "\n" +
+  MOTOR.match(/function comoPar[\s\S]*?\n\}/)[0] + "\n" +
   MOTOR.match(/function xyDeParada[\s\S]*?\n\}/)[0] + "\n" +
   MOTOR.match(/function puntosDeRuta[\s\S]*?\n\}/)[0] +
   "\nreturn { puntosDeRuta, xyDeParada };");

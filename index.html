@@ -8,10 +8,23 @@
 <meta name="apple-mobile-web-app-title" content="Viajes">
 <meta name="theme-color" content="#12181C">
 <title>Viajes</title>
+<link rel="manifest" href="manifest.json">
 <style>
 :root{
   --fondo:#12181C; --fondo-2:#1C252A; --tinta:#EDF1F3; --tinta-dim:#93A3AA;
   --linea:rgba(237,241,243,.12);
+  /* El rojo de los mensajes de error cambia con el tema: el de fondo
+     oscuro sobre fondo claro daba 2,4 de contraste y no se leía al sol. */
+  --rojo-txt:#E08A72;
+  /* El verde de «todo bien» tenía 1,87 de contraste sobre fondo claro:
+     el estado que más se mira era el que peor se leía al sol. */
+  --ok-txt:#5BC8B4;
+  --aviso-txt:#E0B25A;
+  /* El acento de la portada. Escrito a mano daba 1,87 sobre fondo
+     claro: el mismo fallo que ya se corrigió en --ok-txt. Se llama
+     --marca y no --acento porque ese ya lo usa cada tarjeta de viaje
+     con el color del suyo. */
+  --marca:#5BC8B4;
   --soca:#4FC3B8;   /* Eslovenia */
   --prau:#7FB069;   /* Asturias */
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
@@ -23,6 +36,9 @@ body{margin:0;background:var(--fondo);color:var(--tinta);font-family:var(--sans)
 header{padding:calc(34px + env(safe-area-inset-top)) 22px 10px;max-width:640px;margin:0 auto}
 .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;
   color:var(--tinta-dim);margin:0 0 6px}
+/* La portada no tenía ninguna regla de foco: con teclado no se veía
+   dónde estabas. Mismo anillo que las tres apps de viaje. */
+:focus-visible{outline:3px solid var(--aviso-txt);outline-offset:3px}
 h1{font-size:34px;line-height:1.08;letter-spacing:-.03em;font-weight:800;margin:0}
 main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
 
@@ -41,53 +57,83 @@ main{padding:14px 22px calc(40px + env(safe-area-inset-bottom));max-width:640px;
 .viaje.futuro .estado,.viaje.hecho .estado{color:var(--tinta-dim)}
 .viaje.hecho{opacity:.62}
 .viaje .flecha{position:absolute;right:17px;bottom:17px;font-size:20px;color:var(--acento)}
-.nota{font-size:13px;color:var(--tinta-dim);line-height:1.55;margin:22px 2px 0}
-.mantenimiento{margin:26px 0 0;padding:16px;border:1px solid var(--linea);border-radius:16px;
+.nota{font-size:13.5px;color:var(--tinta-dim);line-height:1.6;margin:22px 2px 0}
+.mantenimiento{margin:34px 0 0;padding:18px;border:1px solid var(--linea);border-radius:16px;
   background:var(--fondo-2)}
 .ver{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--tinta-dim);margin:0 0 11px}
-.btn-act{width:100%;padding:12px;border-radius:999px;border:0;background:var(--tinta);color:var(--fondo);
-  font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer}
+.btn-act{display:flex;align-items:center;justify-content:center;width:100%;
+  min-height:48px;padding:12px 16px;border-radius:999px;border:0;
+  background:var(--tinta);color:var(--fondo);
+  font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer}
 .btn-act.ligero{background:transparent;color:var(--tinta);border:1px solid var(--linea);
   font-weight:600;margin-top:8px}
 .mantenimiento .nota{margin:0}
+.copia{margin-top:14px}
+.copia .btn-act{margin-top:8px}
+.copia-caja{margin-top:12px;border-top:1px solid var(--linea);padding-top:11px}
+.copia-caja .row{display:flex;justify-content:space-between;gap:12px;
+  padding:7px 0;font-size:13.5px;align-items:baseline}
+.copia-caja .k{color:var(--tinta-dim);flex:0 0 auto}
+.copia-caja .v{text-align:right}
+.copia-caja h3{margin:0 0 8px;font-size:14.5px}
+.copia-caja p{margin:0 0 9px;font-size:13.5px;line-height:1.55;color:var(--tinta-dim)}
+.copia-caja p.mal{color:var(--rojo-txt)}
+.copia-caja p.bien{color:var(--ok-txt)}
 .ops{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}
 .op{flex:1 1 92px;text-align:left;padding:10px 11px;border-radius:11px;cursor:pointer;
   background:transparent;border:1px solid var(--linea);color:var(--tinta);font:inherit}
 .op b{display:block;font-size:13.5px;font-weight:600}
 .op small{display:block;font-size:11px;color:var(--tinta-dim);margin-top:2px;line-height:1.3}
-.op.on{border-color:#5BC8B4;background:rgba(91,200,180,.12)}
-.op.on b{color:#5BC8B4}
+.op.on{border-color:var(--marca);background:rgba(91,200,180,.12)}
+.op.on b{color:var(--marca)}
 .crear{display:flex;align-items:center;gap:13px;padding:16px;margin:0 0 14px;
   border:1px dashed var(--linea);border-radius:18px;color:inherit;text-decoration:none}
 .crear .mas{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--fondo-2);
-  border:1px solid var(--linea);color:#5BC8B4;font-size:20px;display:grid;place-items:center}
+  border:1px solid var(--linea);color:var(--marca);font-size:20px;display:grid;place-items:center}
 .crear b{display:block;font-size:15.5px}
 .crear small{display:block;font-size:12.5px;color:var(--tinta-dim);margin-top:2px}
-.lnk{background:none;border:0;padding:0;font:inherit;color:#5BC8B4;
-  cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.lnk{position:relative;background:none;border:0;padding:0;font:inherit;
+  color:var(--marca);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.lnk::after{content:"";position:absolute;inset:-12px -8px}
 .login{margin-top:12px}
 .login input{width:100%;padding:11px 13px;margin-bottom:8px;border-radius:12px;
   border:1px solid var(--linea);background:var(--fondo);color:var(--tinta);
   font-family:var(--sans);font-size:15px}
 .login input::placeholder{color:var(--tinta-dim)}
-#err-login{color:#E08A72}
+#err-login{color:var(--rojo-txt)}
+.estado-linea{display:flex;align-items:center;width:100%;min-height:44px;
+  text-align:left;background:none;border:0;padding:10px 0 6px;font:inherit;
+  font-size:13.5px;color:var(--tinta-dim);cursor:pointer}
+.estado-linea .est-glifo{font-weight:700;margin-right:2px}
+.estado-linea[data-nivel="bien"] .est-glifo{color:var(--ok-txt)}
+.estado-linea[data-nivel="aviso"] .est-glifo,
+.estado-linea[data-nivel="problema"] .est-glifo{color:var(--aviso-txt)}
+.estado-linea[data-nivel="problema"] .est-txt{color:var(--rojo-txt)}
+.est-detalle{margin-top:10px;border-top:1px solid var(--linea);padding-top:10px}
+.est-detalle .row{display:flex;justify-content:space-between;gap:12px;
+  padding:7px 0;font-size:13.5px;align-items:baseline}
+.est-detalle .k{color:var(--tinta-dim);flex:0 0 auto}
+.est-detalle .v{text-align:right}
 
 /* ── Modo claro: se activa con la clase, o solo si el sistema está en claro ── */
 body.claro{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
-  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);}
+  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
+  --rojo-txt:#A93226;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;--marca:#0F7A69;}
 @media (prefers-color-scheme: light){
   body.auto{--fondo:#F4F6F7;--fondo-2:#FFFFFF;--fondo-3:#EEF1F2;
-  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);}
+  --tinta:#111A1F;--tinta-dim:#4E626C;--linea:rgba(17,26,31,.15);
+  --rojo-txt:#A93226;--ok-txt:#0F6B5C;--aviso-txt:#7A5510;--marca:#0F7A69;}
 }
 
 /* Selector de color, arriba a la derecha */
 header{position:relative}
 .tema-mini{position:absolute;top:calc(12px + env(safe-area-inset-top));right:18px;
   display:flex;gap:2px;padding:2px;border-radius:999px;z-index:2}
-.tm{width:28px;height:28px;border-radius:50%;border:0;background:transparent;
-  cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.42;
+.tm{position:relative;width:30px;height:30px;border-radius:50%;border:0;
+  background:transparent;cursor:pointer;font-size:14px;line-height:1;padding:0;opacity:.42;
   color:currentColor;font-family:var(--sans)}
 .tm.on{opacity:1;background:rgba(127,127,127,.18)}
+.tm::after{content:"";position:absolute;inset:-7px;border-radius:50%}
 
 /* La barra y la cabecera siguen el color de fondo, sea cual sea el tema */
 @supports not (background: color-mix(in srgb, red 50%, transparent)){
@@ -96,7 +142,7 @@ header{position:relative}
 }
 
 .aviso-nueva{position:fixed;left:14px;right:14px;bottom:calc(16px + env(safe-area-inset-bottom));
-  z-index:60;padding:14px;border-radius:14px;border:0;background:#5BC8B4;color:#12181C;
+  z-index:60;padding:14px;border-radius:14px;border:0;background:var(--marca);color:var(--fondo);
   font-family:var(--sans);font-size:14.5px;font-weight:700;cursor:pointer;
   box-shadow:0 6px 24px rgba(0,0,0,.3)}
 </style>
@@ -170,7 +216,7 @@ const VIAJES = [
         <path d="M250 104h60l-40-13h62"/></g></svg>` }
 ];
 
-const VERSION = "v96 · 28/07 20:23";
+const VERSION = "v106 · 25/08 12:40";
 const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 const hoy = (() => { const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; })();
@@ -189,7 +235,14 @@ function estado(v){
 }
 
 function propios(){
-  try { return (JSON.parse(localStorage.getItem("viajes_propios")) || []).map(v => ({
+  // Eslovenia y Asturias tienen su propia app y ya salen arriba. Al
+  // hacerlas editables entran también en los viajes del móvil, y sin
+  // esto la portada las enseñaría dos veces: una a su app y otra al
+  // visor genérico.
+  const conAppPropia = new Set(VIAJES.map(v => v.id));
+  try { return (JSON.parse(localStorage.getItem("viajes_propios")) || [])
+    .filter(v => v && !conAppPropia.has(v.id))
+    .map(v => ({
     id:v.id, n:v.nombre, ruta:`viaje/?id=${v.id}`, desde:v.desde||"", hasta:v.hasta||"",
     acento:"#5BC8B4", propio:true, ndias:(v.dias||[]).length,
     art:`<svg viewBox="0 0 400 104" preserveAspectRatio="xMidYMid slice">
@@ -232,12 +285,25 @@ function pintaPie(){
       <span><b>Crear un viaje</b><small>Días, paradas y navegación, montado por ti</small></span>
     </a>
     <div class="mantenimiento">
-      <p class="ver">Versión ${VERSION} · <span id="nube"></span></p>
+      <p class="ver">Versión ${VERSION}</p>
+      <button class="estado-linea" id="nube" aria-live="polite"
+              aria-expanded="false" aria-controls="estado-detalle">comprobando…</button>
+      <div id="estado-detalle" hidden></div>
       <button class="btn-act" id="btn-actualizar">Buscar actualización</button>
       <button class="btn-act ligero" id="btn-compartir">Compartir la app</button>
       <p class="nota" style="margin-top:10px">Actualiza esta portada y los viajes a la vez.</p>
       <div id="cuenta"></div>
 
+    </div>
+    <div class="mantenimiento copia">
+      <p class="ver">Copia de seguridad</p>
+      <button class="btn-act ligero" id="btn-copia">Descargar copia</button>
+      <button class="btn-act ligero" id="btn-restaurar">Restaurar copia</button>
+      <input type="file" id="archivo-copia" accept="application/json,.json" hidden>
+      <div id="zona-copia" aria-live="polite"></div>
+      <p class="nota" style="margin-top:10px">Un archivo con los viajes, el diario, las fotos y los
+      documentos de este móvil. Se descarga y se restaura sin cobertura. No lleva la contraseña ni la
+      sesión: para volver a la nube hay que entrar otra vez.</p>
     </div>
     <p class="nota">Cada viaje funciona sin cobertura una vez abierto con datos. Puedes añadir cualquiera a la pantalla de inicio por separado.</p>`;
 
@@ -255,29 +321,40 @@ function pintaPie(){
     setTimeout(() => { b.textContent = "Compartir la app"; }, 2500);
   });
 
+  activaCopiaDeSeguridad();
+
+/* Limpiar puede colgarse: si el service worker no contesta, sin tope el
+   botón se queda en «Limpiando…» para siempre. Y es justo el botón que se
+   pulsa cuando algo ya va mal. Pase lo que pase, se recarga. */
+const TOPE_LIMPIEZA = 4000;
+
+async function limpiaLoGuardado(){
+  if ("serviceWorker" in navigator){
+    const carpetas = ["./", "eslovenia/", "asturias/", "viaje/", "crear/"];
+    for (const c of carpetas){
+      try {
+        const reg = await navigator.serviceWorker.getRegistration(c);
+        if (reg) await reg.unregister();
+      } catch {}
+    }
+    const regs = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(regs.map(r => r.unregister()));
+  }
+  if (window.caches){
+    const ks = await caches.keys();
+    await Promise.all(ks.map(k => caches.delete(k)));
+  }
+}
+
   document.getElementById("btn-actualizar").addEventListener("click", async e => {
     const b = e.target;
+    if (b.disabled) return;                    // el segundo toque no relanza la limpieza
+    b.disabled = true;
+    b.setAttribute("aria-busy", "true");
     b.textContent = "Limpiando…";
-    try {
-      // Cada carpeta tiene su propio service worker y getRegistrations() solo
-      // devuelve el de esta. Hay que ir a por los demás uno por uno.
-      if ("serviceWorker" in navigator){
-        const carpetas = ["./", "eslovenia/", "asturias/", "viaje/", "crear/"];
-        for (const c of carpetas){
-          try {
-            const reg = await navigator.serviceWorker.getRegistration(c);
-            if (reg) await reg.unregister();
-          } catch {}
-        }
-        // y por si quedara alguno más
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(regs.map(r => r.unregister()));
-      }
-      if (window.caches){
-        const ks = await caches.keys();
-        await Promise.all(ks.map(k => caches.delete(k)));
-      }
-    } catch {}
+    // Cada carpeta tiene su propio service worker y getRegistrations() solo
+    // devuelve el de esta. Hay que ir a por los demás uno por uno.
+    await conTope(limpiaLoGuardado().catch(() => {}), TOPE_LIMPIEZA, null);
     b.textContent = "Recargando…";
     location.replace(location.pathname + "?v=" + Date.now());
   });
@@ -288,13 +365,50 @@ let ultimoEstado = { txt:"comprobando…", ok:false };
 
 function ponEstado(e){
   ultimoEstado = e;
+  pintaSalir(e);
+  pintaEstado();
+}
+
+/* El resumen de una línea, y el detalle debajo si está abierto.
+   El texto se saca del modelo común de sync.js: aquí no se decide nada,
+   solo se pinta, y así las cinco apps dicen lo mismo. */
+let ESTADO_AHORA = null;
+
+async function pintaEstado(){
   const el = document.getElementById("nube");
   if (!el) return;
-  el.innerHTML = e.login ? `${e.txt} · <button class="lnk" id="abrir-login">entrar</button>` : e.txt;
-  el.style.color = e.ok ? "#5BC8B4" : "";
-  const b = document.getElementById("abrir-login");
-  if (b) b.addEventListener("click", pintaLogin);
-  pintaSalir(e);
+  ESTADO_AHORA = await comoEstaTodo();
+  pintaResumenEn(el, resumenDeEstado(ESTADO_AHORA));
+  if (el.getAttribute("aria-expanded") === "true") pintaDetalle();
+}
+
+function pintaDetalle(){
+  const z = document.getElementById("estado-detalle");
+  if (!z || !ESTADO_AHORA) return;
+  z.innerHTML = detalleEstado(ESTADO_AHORA);
+  const b = document.getElementById("est-accion");
+  if (!b) return;
+  b.addEventListener("click", () => {
+    if (b.dataset.accion === "entrar") return pintaLogin();
+    trabajando(b, "Reintentando…", async () => {
+      await SYNC.sincronizar();
+      TODOS = VIAJES.concat(propios());
+      pintaLista();
+      await pintaEstado();
+    }, { fallo:"No se pudo" });
+  });
+}
+
+function activaEstado(){
+  const el = document.getElementById("nube");
+  if (!el) return;
+  el.addEventListener("click", () => {
+    const z = document.getElementById("estado-detalle");
+    const abierto = el.getAttribute("aria-expanded") === "true";
+    el.setAttribute("aria-expanded", String(!abierto));
+    z.hidden = abierto;
+    if (!abierto) pintaDetalle();
+  });
 }
 
 function pintaSalir(e){
@@ -304,10 +418,12 @@ function pintaSalir(e){
     ? `<p class="nota" style="margin:8px 0 0">Conectado como ${e.correo} ·
        <button class="lnk" id="salir">salir</button></p>` : "";
   const s = document.getElementById("salir");
-  if (s) s.addEventListener("click", async () => {
-    await SYNC.salir();
-    pintaNube();
-  });
+  if (s) s.addEventListener("click", () => trabajando(s, "saliendo…", async () => {
+    await conTope(SYNC.salir(), 8000, null);
+    // Se repinta sin volver a preguntar a la nube: acabamos de cerrar sesión,
+    // ya sabemos la respuesta. Antes esto disparaba una sincronización entera.
+    ponEstado({ ok:false, txt:"Sin sesión", login:true });
+  }, { fallo:"no se pudo salir" }));
 }
 
 function pintaLogin(){
@@ -322,26 +438,27 @@ function pintaLogin(){
       <button class="btn-act" id="hacer-login">Entrar</button>
       <p class="nota" id="err-login" style="margin:9px 0 0"></p>
     </div>`;
-  document.getElementById("hacer-login").addEventListener("click", async () => {
+  document.getElementById("hacer-login").addEventListener("click", () => {
     const b = document.getElementById("hacer-login");
     const err = document.getElementById("err-login");
     const correo = document.getElementById("correo").value.trim();
     const clave = document.getElementById("clave").value;
     if (!correo || !clave){ err.textContent = "Falta el correo o la contraseña."; return; }
-    b.textContent = "Entrando…"; err.textContent = "";
-    let r;
-    try {
+    err.textContent = "";
+    // Antes el botón no se desactivaba: dos toques lanzaban dos intentos de
+    // entrar, y en el peor caso encadenado quedaba pulsable medio minuto.
+    trabajando(b, "Entrando…", async () => {
       if (typeof SYNC.entrar !== "function")
         throw new Error("La app está desactualizada. Pulsa «Buscar actualización».");
-      r = await SYNC.entrar(correo, clave);
-    } catch (ex){
-      b.textContent = "Entrar";
-      err.textContent = ex.message || "No se pudo entrar.";
-      return;
-    }
-    if (!r.ok){ b.textContent = "Entrar"; err.textContent = r.txt; return; }
-    z.innerHTML = "";
-    pintaNube();
+      const r = await SYNC.entrar(correo, clave);
+      if (!r.ok) throw new Error(r.txt);
+      z.innerHTML = "";
+      pintaNube();
+    }, { fallo:"No se pudo entrar" }).then(() => {
+      // El motivo se enseña donde ya se enseñaba, no solo en el botón
+      if (document.getElementById("hacer-login") && b.textContent !== "Entrar")
+        err.textContent = b.textContent.replace(/^No se pudo entrar · /, "");
+    });
   });
   document.getElementById("clave").addEventListener("keydown", ev => {
     if (ev.key === "Enter") document.getElementById("hacer-login").click();
@@ -375,6 +492,7 @@ TEMA.aplica();
 TEMA.pintaMini();
 pintaLista();
 pintaPie();
+activaEstado();
 setTimeout(pintaNube, 300);
 
 if ("serviceWorker" in navigator){
@@ -418,6 +536,118 @@ if ("serviceWorker" in navigator){
     });
     document.body.appendChild(b);
   }
+}
+/* ═══ Copia de seguridad ═══
+   El motor está en sync.js. Aquí solo va la pantalla: enseñar qué lleva
+   antes de descargar, y qué va a pasar antes de restaurar. */
+
+function activaCopiaDeSeguridad(){
+  const zona = document.getElementById("zona-copia");
+  const entrada = document.getElementById("archivo-copia");
+  if (!zona || !entrada) return;
+
+  const caja = html => { zona.innerHTML = `<div class="copia-caja">${html}</div>`; };
+  const fila = (k, v) => `<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  const trabajando = t => caja(`<p>${t}</p>`);
+
+  /* ---- Descargar ---- */
+  document.getElementById("btn-copia").addEventListener("click", async () => {
+    trabajando("Reuniendo lo que hay en este móvil…");
+    let r;
+    try { r = await copiaCompleta(); }
+    catch (e) { return caja(`<p class="mal">No se ha podido hacer la copia: ${escapaTexto(e && e.message || "fallo desconocido")}</p>`); }
+    if (r.error) return caja(`<p class="mal">${escapaTexto(r.error)}</p>`);
+
+    const texto = JSON.stringify(r.copia);
+    const n = resumenDeCopia(r.copia);
+    const mb = (texto.length / 1048576).toFixed(1);
+
+    caja(`<h3>Esto es lo que llevaría</h3>
+      ${fila("Viajes", n.viajes)}
+      ${fila("Entradas del diario", n.diario)}
+      ${fila("Fotos", n.fotos)}
+      ${fila("Documentos", n.documentos)}
+      ${fila("Pendientes de subir", n.pendientes)}
+      ${fila("Viajes borrados sin aplicar", n.borrados)}
+      ${fila("Tamaño del archivo", mb + " MB")}
+      <p style="margin-top:9px">Las entradas del diario son las paradas tachadas, las notas y los
+      sitios apuntados. No lleva la contraseña ni la sesión de la nube.</p>
+      <div id="zona-descarga"></div>`);
+
+    const a = document.createElement("a");
+    a.className = "btn-act";
+    a.style.display = "block";
+    a.style.textAlign = "center";
+    a.style.textDecoration = "none";
+    a.download = nombreDeCopia(r.copia);
+    a.textContent = "Guardar el archivo";
+    try {
+      a.href = URL.createObjectURL(new Blob([texto], { type:"application/json" }));
+    } catch {
+      a.href = "data:application/json;charset=utf-8," + encodeURIComponent(texto);
+    }
+    document.getElementById("zona-descarga").appendChild(a);
+  });
+
+  /* ---- Restaurar ---- */
+  document.getElementById("btn-restaurar").addEventListener("click", () => entrada.click());
+
+  entrada.addEventListener("change", e => {
+    const archivo = (e.target.files || [])[0];
+    entrada.value = "";
+    if (!archivo) return;
+    trabajando("Leyendo el archivo…");
+
+    const lector = new FileReader();
+    lector.onerror = () => caja(`<p class="mal">No se ha podido leer el archivo. No se ha cambiado nada.</p>`);
+    lector.onload = async () => {
+      const texto = String(lector.result || "");
+      const v = validaCopia(texto);
+      if (!v.ok) return caja(`<p class="mal">${escapaTexto(v.motivo)}</p>
+        <p>No se ha tocado ningún dato de este móvil.</p>`);
+
+      const plan = await preparaRestauracion(v.copia);
+      if (plan.error) return caja(`<p class="mal">${escapaTexto(plan.error)}</p>`);
+      const r = plan.resumen;
+
+      caja(`<h3>Se va a fundir, no a sustituir</h3>
+        <p>Copia del ${escapaTexto(String(v.copia.creada || "").slice(0, 10))}. Lo que ya hay en este
+        móvil no se borra: solo se añade lo que falta, y en el diario gana lo más reciente.</p>
+        ${fila("Viajes nuevos", r.viajesNuevos)}
+        ${fila("Viajes que se actualizan", r.viajesActualizados)}
+        ${fila("Viajes que se quedan como están", r.viajesQueSeQuedan)}
+        ${r.viajesNoResucitados ? fila("Viajes borrados que NO vuelven", r.viajesNoResucitados) : ""}
+        ${fila("Fotos nuevas", r.fotosNuevas)}
+        ${fila("Documentos nuevos", r.documentosNuevos)}
+        ${fila("Fotos que ya estaban", r.fotosQueYaEstaban)}
+        ${fila("Diarios que se funden", r.diariosFundidos)}
+        <div style="margin-top:10px">
+          <button class="btn-act" id="copia-si">Restaurar</button>
+          <button class="btn-act ligero" id="copia-no">Dejarlo</button>
+        </div>`);
+
+      document.getElementById("copia-no").addEventListener("click", () => { zona.innerHTML = ""; });
+      document.getElementById("copia-si").addEventListener("click", async () => {
+        trabajando("Restaurando…");
+        const res = await restauraCopia(texto);
+        if (!res.ok){
+          return caja(`<p class="mal">${escapaTexto(res.motivo)}</p>` +
+            (res.revertido === false
+              ? `<p class="mal">No se puede garantizar que todo haya vuelto a su sitio.</p>` : ""));
+        }
+        caja(`<p class="bien">Restaurado.</p>
+          ${fila("Viajes nuevos", res.viajesNuevos)}
+          ${fila("Viajes actualizados", res.viajesActualizados)}
+          ${fila("Fotos nuevas", res.fotosNuevas)}
+          ${fila("Documentos nuevos", res.documentosNuevos)}
+          <p style="margin-top:9px">Hay que recargar la app para verlo.</p>
+          <button class="btn-act" id="copia-recargar">Recargar ahora</button>`);
+        document.getElementById("copia-recargar")
+          .addEventListener("click", () => location.reload());
+      });
+    };
+    lector.readAsText(archivo);
+  });
 }
 </script>
 </body>
